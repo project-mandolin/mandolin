@@ -20,7 +20,7 @@ object MandolinBuild extends Build {
   def projSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
     name := "mandolin",
     organization := "org.mitre",
-    version := "0.3.0-SNAPSHOT",
+    version := "0.3",
     scalaVersion := "2.10.5",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",

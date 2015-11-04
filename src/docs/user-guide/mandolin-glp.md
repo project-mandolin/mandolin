@@ -57,7 +57,7 @@ model, use it for prediction and evaluate:
     import org.mitre.mandolin.glp._
 
     val glp = new GlpModel // Mandolin class for general GLP model
-    val glpClassifier = new GLPClassifier(sc, glp) // GLP using spark.ml API
+    val glpClassifier = new GLPClassifier(glp) // GLP using spark.ml API
 
     // configure network topology
     glpClassifier.setLayerSpec(IndexedSeq(LType(InputLType), LType(SoftMaxLType)))
@@ -90,10 +90,11 @@ See the [spark.ml](http://spark.apache.org/docs/latest/ml-guide.html) programmin
 for additional examples of evaluating models, using models in more complex pipelines,
 use within ensembles, cross validation and model selection.
 
+### Additional Mandolin Shell Examples
 
-The documentation below is **In rough form, needs to be reworked**
-It should include how to do the above without using `spark.ml` and using
-Mandolin "native" capabilities.
+The following code gists show how some of the same can be carried
+out without the use of `spark.ml` using Mandolin's own classifier
+evaluation routines.  
 
 The following example assumes Mandolin has been launched as part of the
 Spark Shell:
