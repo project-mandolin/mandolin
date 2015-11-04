@@ -1,0 +1,28 @@
+== Overview ==
+Mandolin implements a variety of supervised, discriminative, 
+machine learning algorithms, including linear classifiers, (deep)
+feed-forward neural networks and linear-chain conditional random
+fields. For large datasets and/or complex ML algorithms, training times
+can be a real concern. Mandolin implements <i>distributed</i> training
+algorithms using a form of distributed, online learning. Distributed
+computation is realized using [[http://spark.apache.org Apache Spark]].
+Besides the ML algorithms already implemented in Mandolin, the software
+provides a lightweight means for many classes
+of machine learning algorithms to be implemented with distributed
+optimization strategies to estimate model parameters.
+Each ML application/algorithm only needed to implement a simple
+interface that defines the loss function (and its gradient).  The
+implementation details, data-structures and representations are
+entirely abstracted away. This allows each ML algorithm to use
+whatever datastructures and algorithms are most appropriate for the model
+in question.
+
+Mandolin comes with a number of ML
+algorithms, including: 1) a 
+range of linear classifiers with different loss
+functions, 2) "deep" feedforward neural networks
+and 3) a linear-chain conditional random field trainer based on
+MITRE's open-source released jCarafe library.
+
+Mandolin utilizes Apache Spark for distributed optimization. 
+
