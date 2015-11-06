@@ -3,12 +3,10 @@ package org.mitre.mandolin.optimize
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
 import scala.reflect.ClassTag
 import org.mitre.mandolin.util.{ Tensor1, DenseTensor1, SparseTensor1 }
+
+abstract class GenData[T]
 
 /**
  * Represents the weights (or parameters) for a particular model type.
@@ -105,6 +103,10 @@ abstract class Updater[W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,L
 }
 
 
-
-
-
+/**
+ * Abstract class for loss evaluation over an entire (or large sample of a)
+ * dataset.
+ */
+abstract class BatchEvaluator[T, W <: Weights[W], G <: LossGradient[G]] {
+  def evaluate(data: GenData[T], w: W): LossGradient[G]
+}

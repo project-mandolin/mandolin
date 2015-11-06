@@ -5,7 +5,6 @@ package org.mitre.mandolin.config
 
 import scala.util.Properties
 import org.rogach.scallop.{ScallopConf, ScallopOption}
-import org.apache.spark.SparkContext
 import com.typesafe.config.{ Config, ConfigObject, ConfigValueType, ConfigList, ConfigValue, ConfigRenderOptions, ConfigFactory, ConfigValueFactory }
 
 /**

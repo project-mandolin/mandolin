@@ -5,12 +5,9 @@ package org.mitre.mandolin.glp
 
 import org.mitre.mandolin.config.AppConfig
 import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, AlphabetWithUnitScaling, IOAssistant }
-import org.mitre.mandolin.optimize.{
-  OnlineOptimizer,
-  TrainingUnitEvaluator,
-  DistributedOptimizerEstimator,
-  DistributedLbfgsOptimizer,
-  Updater
+import org.mitre.mandolin.optimize.spark.{
+  DistributedOnlineOptimizer,
+  DistributedOptimizerEstimator
 }
 import org.mitre.mandolin.predict.{
   DiscreteConfusion,

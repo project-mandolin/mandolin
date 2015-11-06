@@ -1,4 +1,4 @@
-package org.mitre.mandolin.optimize
+package org.mitre.mandolin.optimize.spark
 /*
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
@@ -48,20 +48,14 @@ import org.apache.spark.broadcast.Broadcast
 
 import org.mitre.mandolin.util._
 
-import ErrorCodes._
+import org.mitre.mandolin.optimize.{Weights, LossGradient, BatchEvaluator, GenData}
+import org.mitre.mandolin.optimize.ErrorCodes._
 
-abstract class GenData[T]
+
 class RDDData[T](val rdd: RDD[T]) extends GenData[T]
-class VectorData[T](val vec: Vector[T]) extends GenData[T]
 
 
-/**
- * Abstract class for loss evaluation over an entire (or large sample of a)
- * dataset.
- */
-abstract class BatchEvaluator[T, W <: Weights[W], G <: LossGradient[G]] {
-  def evaluate(data: GenData[T], w: W): LossGradient[G]
-}
+
 
 
 trait DistributedOptimizerEstimator[T, W <: Weights[W]] {

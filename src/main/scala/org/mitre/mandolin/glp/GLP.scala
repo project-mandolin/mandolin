@@ -4,7 +4,7 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.config.{AppConfig,LearnerSettings, OnlineLearnerSettings}
-import org.mitre.mandolin.optimize.{OnlineOptimizer, DistributedOptimizerEstimator}
+import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, DistributedOptimizerEstimator}
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{Alphabet, AlphabetWithUnitScaling, StdAlphabet, IdentityAlphabet, IOAssistant}
@@ -223,7 +223,7 @@ class GlpModel extends DataFrames {
     val odim = components.labelAlphabet.getSize
     val glp = components.evaluator.glp
     val optimizer = 
-      new OnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, U](sc, glp.generateRandomWeights, components.evaluator, updater, 
+      new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, U](sc, glp.generateRandomWeights, components.evaluator, updater, 
           epochs, 1, threads, None)
     val fvs = mapDfToGLPFactors(sc, trdata, dim, odim)
     val (w,_) = optimizer.estimate(fvs)

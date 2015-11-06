@@ -4,7 +4,8 @@ package org.mitre.mandolin.predict
  */
 
 import scala.reflect.ClassTag
-import org.mitre.mandolin.optimize.{ Weights, DistributedOptimizerEstimator }
+import org.mitre.mandolin.optimize.{ Weights}
+import org.mitre.mandolin.optimize.spark.DistributedOptimizerEstimator
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel

@@ -3,8 +3,9 @@ package org.mitre.mandolin.glp
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer, LocalBatchOptimizer}
-import org.mitre.mandolin.optimize.{OnlineOptimizer, Params, BatchEvaluator, GenData, RDDData, VectorData}
+import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer, LocalBatchOptimizer, VectorData}
+import org.mitre.mandolin.optimize.{BatchEvaluator, GenData}
+import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, Params, RDDData}
 import org.apache.spark.SparkContext
 
 class GlpLocalBatchEvaluator(ev: GLPInstanceEvaluator) extends BatchEvaluator[GLPFactor, GLPWeights, GLPLossGradient] {
@@ -42,32 +43,32 @@ object GLPOptimizer {
         sumSquared set appSettings.initialLearnRate // set to the initial learning rate
         val updater = new GLPAdaGradUpdater(sumSquared, appSettings.initialLearnRate, maxNormArray=maxNormArray, l1Array=l1Array, l2Array=l2Array,
             compose = composeStrategy)
-        new OnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdaGradUpdater](sc, weights, evaluator, updater, appSettings)
+        new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdaGradUpdater](sc, weights, evaluator, updater, appSettings)
       case "adadelta" =>
         val sumSquared = network.generateZeroedLayout
         val prevUpdates = network.generateZeroedLayout
         val up = new GLPAdaDeltaUpdater(sumSquared, prevUpdates, appSettings.epsilon, appSettings.rho, compose = composeStrategy, maxNorm=appSettings.maxNorm)
-        new OnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdaDeltaUpdater](sc, weights, evaluator, up, appSettings)
+        new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdaDeltaUpdater](sc, weights, evaluator, up, appSettings)
       case "rmsprop" =>
         val sumSquared = network.generateZeroedLayout
         sumSquared set appSettings.initialLearnRate // set to the initial learning rate
         val updater = new GLPRMSPropUpdater(sumSquared, appSettings.initialLearnRate, maxNormArray=maxNormArray, l1Array=l1Array, l2Array=l2Array,
             compose = composeStrategy)
-        new OnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPRMSPropUpdater](sc, weights, evaluator, updater, appSettings)
+        new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPRMSPropUpdater](sc, weights, evaluator, updater, appSettings)
       case "nasgd" => // Nesterov accelerated
         val momentum = network.generateZeroedLayout
         val uu = new GLPSgdUpdater(momentum, true, appSettings.initialLearnRate, maxNormArray=maxNormArray, l1Array=l1Array, l2Array=l2Array,
             compose = composeStrategy)
-        new OnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPSgdUpdater](sc, weights, evaluator, uu, appSettings)      
+        new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPSgdUpdater](sc, weights, evaluator, uu, appSettings)      
       case "adam" =>
         val mom1 = network.generateZeroedLayout
         val mom2 = network.generateZeroedLayout
         val uu = new GLPAdamUpdater(0.001, 0.9, 0.999, mom1, mom2, maxNormArray=maxNormArray, l1Array = l1Array, l2Array = l2Array,
             composeSt = composeStrategy)
-        new OnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdamUpdater](sc, weights, evaluator, uu, appSettings)
+        new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdamUpdater](sc, weights, evaluator, uu, appSettings)
       case "sgd" =>
         val up = new BasicGLPSgdUpdater(appSettings.initialLearnRate)
-        new OnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, BasicGLPSgdUpdater](sc, weights, evaluator, up, appSettings)
+        new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, BasicGLPSgdUpdater](sc, weights, evaluator, up, appSettings)
       case a => throw new RuntimeException("Unrecognized onlien training method: " + a)
     }
   }
@@ -119,10 +120,13 @@ object GLPOptimizer {
         val uu = new GLPAdamUpdater(0.001, 0.9, 0.999, mom1, mom2, maxNormArray=maxNormArray, l1Array = l1Array, l2Array = l2Array,
             composeSt = composeStrategy)
         new LocalOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdamUpdater](weights, evaluator, uu, appSettings)
-      case "lbfgs" =>
+      case "lbfgs" => throw new RuntimeException("Batch training not supported without Spark")
+        /*
         val localBatchEvaluator = new GlpLocalBatchEvaluator(evaluator)
         val dim = weights.numWeights
         new LocalBatchOptimizer[GLPFactor, GLPWeights, GLPLossGradient](dim, weights, localBatchEvaluator, new Params())
+        * 
+        */
       case a => throw new RuntimeException("Unrecognized online training method: " + a)
     }
   }

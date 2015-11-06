@@ -4,13 +4,6 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant }
-import org.mitre.mandolin.optimize.{
-  OnlineOptimizer,
-  TrainingUnitEvaluator,
-  DistributedOptimizerEstimator,
-  DistributedLbfgsOptimizer,
-  Updater
-}
 import org.mitre.mandolin.predict.{
   DiscreteConfusion,
   EvalDecoder,
@@ -29,8 +22,6 @@ import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.predict.{ Trainer }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
 import org.mitre.mandolin.util.LineParser
-import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import scala.reflect.ClassTag
 
 /**

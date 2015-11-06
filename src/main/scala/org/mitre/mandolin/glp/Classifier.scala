@@ -6,12 +6,7 @@ package org.mitre.mandolin.glp
 import org.mitre.mandolin.util.DenseTensor1
 import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, OnlineLearnerSettings, BatchLearnerSettings, DecoderSettings, AppConfig }
 import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
-import org.mitre.mandolin.optimize.{
-  OnlineOptimizer,
-  TrainingUnitEvaluator,
-  DistributedOptimizerEstimator,
-  DistributedLbfgsOptimizer
-}
+
 import org.mitre.mandolin.predict.{
   DiscreteConfusion,
   EvalDecoder,
@@ -30,9 +25,6 @@ import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.predict.{ Trainer }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
 import org.mitre.mandolin.util.LineParser
-import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
 import scala.reflect.ClassTag
 
 class GLPModelSettings(args: Array[String]) extends LearnerSettings(args) 
