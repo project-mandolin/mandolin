@@ -57,7 +57,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val fe = components.featureExtractor
     val trainFile = appSettings.trainFile.get
     val network = ev.glp
-    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = GLPOptimizer.getDistributedOptimizer(sc, appSettings, network, ev)
+    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, network, ev)
     val lines =
       if (numPartitions > 0) sc.textFile(trainFile, numPartitions).coalesce(numPartitions, true)
       else sc.textFile(trainFile)
@@ -94,7 +94,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val pr = components.predictor
 
     val trainFile = appSettings.trainFile
-    val optimizer = GLPOptimizer.getDistributedOptimizer(sc, appSettings, ev.glp, ev)
+    val optimizer = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, ev.glp, ev)
     val lines = sc.textFile(appSettings.trainFile.get, numPartitions).coalesce(numPartitions, true)
     val trainer = new Trainer(fe, optimizer)
     val testLines = sc.textFile(appSettings.testFile.get, numPartitions).coalesce(numPartitions, true)

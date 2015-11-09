@@ -5,12 +5,14 @@ package org.mitre.mandolin.glp.local
 
 import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant }
 import org.mitre.mandolin.predict.DiscreteConfusion
-import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
+import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer, VectorData}
 import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalPosteriorDecoder }
 import scala.reflect.ClassTag
 import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPOptimizer, GLPModelWriter, GLPPredictor, GLPModelReader,
-  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights}
+  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPInstanceEvaluator, GLPLossGradient }
+import org.mitre.mandolin.optimize.{BatchEvaluator, GenData}
 
+//import org.mitre.mandolin.glp._
 
 /**
  * @author wellner
@@ -26,7 +28,7 @@ class LocalProcessor extends AbstractProcessor {
     val trainFile = appSettings.trainFile
     val ev = components.evaluator
     val fe = components.featureExtractor
-    val optimizer = GLPOptimizer.getLocalOptimizer(appSettings, ev)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, ev)
     val lines = io.readLines(trainFile.get).toVector
     val trainer = new LocalTrainer(fe, optimizer)
     val (finalWeights,_) = trainer.trainWeights(lines)
@@ -58,7 +60,7 @@ class LocalProcessor extends AbstractProcessor {
     val ev = components.evaluator
     val fe = components.featureExtractor
     val pr = components.predictor
-    val optimizer = GLPOptimizer.getLocalOptimizer(appSettings, ev)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, ev)
     val lines = io.readLines(trainFile.get).toVector
     val trainer = new LocalTrainer(fe, optimizer)
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
@@ -90,7 +92,7 @@ class LocalProcessor extends AbstractProcessor {
           val fe = components.featureExtractor
           val pr = components.predictor
           // XXX - this will only work properly if each train-test split has the same label set as the first fold
-          val optimizer = GLPOptimizer.getLocalOptimizer(appSettings, ev)
+          val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, ev)
           val lines = trLines.toVector
           val trainer = new LocalTrainer(fe, optimizer)
           val testLines = scala.io.Source.fromFile(tst).getLines().toVector
@@ -129,3 +131,15 @@ class LocalProcessor extends AbstractProcessor {
     os.close()
   }
 }
+
+class GlpLocalBatchEvaluator(ev: GLPInstanceEvaluator) extends BatchEvaluator[GLPFactor, GLPWeights, GLPLossGradient] {
+  def evaluate(gd:GenData[GLPFactor], w: GLPWeights) : GLPLossGradient = {
+    gd match {
+      case data: VectorData[GLPFactor] =>
+        data.vec map {d => ev.evaluateTrainingUnit(d, w)} reduce {_ ++ _}
+      case _ => throw new RuntimeException("Require local Scala vector data sequence for LocalBatchEvaluator")
+    }
+  }
+}
+
+

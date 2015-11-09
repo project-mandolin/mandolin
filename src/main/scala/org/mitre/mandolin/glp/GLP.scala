@@ -12,6 +12,7 @@ import org.mitre.mandolin.predict.spark.Trainer
 import org.mitre.mandolin.gm.Feature
 import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1}
 import org.mitre.mandolin.glp.spark.DistributedProcessor
+import org.mitre.mandolin.glp.spark.DistributedGLPOptimizer
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -240,7 +241,7 @@ class GlpModel extends DataFrames {
     val trainFile = appSettings.trainFile
     val sc = AppConfig.getSparkContext(appSettings)
     val network = ev.glp
-    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = GLPOptimizer.getDistributedOptimizer(sc, appSettings, network, ev)
+    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, network, ev)
     val fvs = mapDfToGLPFactors(sc, trdata, trdata.columns.length - 1, components.labelAlphabet.getSize)
     val (w, _) = optimizer.estimate(fvs, Some(appSettings.numEpochs))
     GLPModelSpec(w, components.evaluator, components.labelAlphabet, components.featureExtractor)
