@@ -11,6 +11,7 @@ import org.mitre.mandolin.util.{Alphabet, AlphabetWithUnitScaling, StdAlphabet, 
 import org.mitre.mandolin.predict.spark.Trainer
 import org.mitre.mandolin.gm.Feature
 import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1}
+import org.mitre.mandolin.glp.spark.DistributedProcessor
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD

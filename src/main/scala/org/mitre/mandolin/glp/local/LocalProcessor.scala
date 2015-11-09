@@ -1,36 +1,21 @@
-package org.mitre.mandolin.glp
+package org.mitre.mandolin.glp.local
 /*
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
 import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant }
-import org.mitre.mandolin.predict.{
-  DiscreteConfusion,
-  EvalPredictor,
-  OutputConstructor,
-  Predictor
-}
-import org.mitre.mandolin.predict.spark.{
-  EvalDecoder,
-  TrainTester,
-  PosteriorDecoder,
-  TrainDecoder,
-  Decoder,
-  Trainer
-}
-
+import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
-import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalEvalDecoder, LocalPosteriorDecoder, LocalDecoder }
-
-import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
-import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
-import org.mitre.mandolin.util.LineParser
+import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalPosteriorDecoder }
 import scala.reflect.ClassTag
+import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPOptimizer, GLPModelWriter, GLPPredictor, GLPModelReader,
+  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights}
+
 
 /**
  * @author wellner
  */
-class LocalProcessor extends Processor {        
+class LocalProcessor extends AbstractProcessor {        
   
   
   def processTrain(appSettings: GLPModelSettings) = {

@@ -4,7 +4,7 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.optimize.{ Weights, Updater, LossGradient }
-import org.mitre.mandolin.predict.{ EvalPredictor, DiscreteConfusion, RegressionConfusion }
+import org.mitre.mandolin.predict.{ EvalPredictor, DiscreteConfusion }
 import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, ColumnSparseTensor2 => SparseMat, DenseTensor1 => DenseVec, Tensor2 => Mat }
 
 abstract class ComposeStrategy
