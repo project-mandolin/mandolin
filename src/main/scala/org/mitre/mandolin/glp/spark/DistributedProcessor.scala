@@ -25,8 +25,8 @@ import org.mitre.mandolin.predict.spark.{
   Trainer
 }
 
-import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPOptimizer, GLPModelWriter, GLPPredictor, GLPModelReader,
-  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPLossGradient}
+import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, GLPPredictor, GLPModelReader,
+  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPLossGradient, GLPModelSpec, GLPInstanceEvaluator}
 
 import org.mitre.mandolin.glp.AbstractProcessor
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
@@ -35,9 +35,77 @@ import org.mitre.mandolin.util.LineParser
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import scala.reflect.ClassTag
+import com.twitter.chill.EmptyScalaKryoInstantiator
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{ FileSystem, Path }
+import com.esotericsoftware.kryo.Kryo
+import com.twitter.chill.AllScalaRegistrar
+import org.apache.spark.serializer.KryoRegistrator
+import org.mitre.mandolin.config.MandolinRegistrator
+
+
+/**
+ * Provides and registers a set of classes that will be serialized/deserialized
+ * using Kryo for use within Spark.
+ * @author wellner
+ */
+class MandolinKryoRegistrator extends KryoRegistrator with MandolinRegistrator {
+  override def registerClasses(kryo: Kryo) = register(kryo)
+    
+}
+
+
+/**
+ * @author wellner
+ */
+class DistributedGLPModelWriter(sc: SparkContext) extends GLPModelWriter {
+  val instantiator = new EmptyScalaKryoInstantiator
+
+  val kryo = { 
+      val k = new org.apache.spark.serializer.KryoSerializer(sc.getConf)      
+      k.newKryo()
+  }
+  
+  val registrator = new MandolinKryoRegistrator()
+  registrator.registerClasses(kryo)
+
+  def writeModel(weights: GLPWeights): Unit = {
+    throw new RuntimeException("Intermediate model writing not implemented with GLPWeights")
+  }
+
+  def writeModel(io: IOAssistant, filePath: String, w: GLPWeights, la: Alphabet, ev: GLPInstanceEvaluator, fe: FeatureExtractor[String, GLPFactor]): Unit = {
+    io.writeSerializedObject(kryo, filePath, GLPModelSpec(w, ev, la, fe))
+  }
+}
+
+class DistributedGLPModelReader(sc: SparkContext) extends GLPModelReader {
+  val instantiator = new EmptyScalaKryoInstantiator
+  
+  val kryo = { 
+      val k = new org.apache.spark.serializer.KryoSerializer(sc.getConf)      
+      k.newKryo()
+  }
+
+  val registrator = new MandolinKryoRegistrator()  
+  registrator.registerClasses(kryo)
+
+  /**
+   * def readModel(f: java.io.File): GLPModelSpec = {
+   * val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
+   * val kInput = new KInput(is)
+   * val m = kryo.readObject(kInput, classOf[GLPModelSpec])
+   * kInput.close()
+   * is.close()
+   * m
+   * }
+   */
+
+  def readModel(f: String, io: IOAssistant): GLPModelSpec = {
+    io.readSerializedObject(kryo, f, classOf[GLPModelSpec]).asInstanceOf[GLPModelSpec]
+  }
+}
+
 
 
 /**
@@ -63,7 +131,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
       else sc.textFile(trainFile)
     val trainer = new Trainer[String, GLPFactor, GLPWeights](fe, optimizer, appSettings.storageLevel)
     val (w, _) = trainer.trainWeights(lines)
-    val modelWriter = new GLPModelWriter(Some(sc))
+    val modelWriter = new DistributedGLPModelWriter(sc)
     modelWriter.writeModel(io, appSettings.modelFile.get, w, components.labelAlphabet, ev, fe)
     w
   }
@@ -72,7 +140,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required as input in decoding mode")
     val sc = AppConfig.getSparkContext(appSettings)
     val io = new IOAssistant(Some(sc))
-    val modelSpec = (new GLPModelReader(Some(sc))).readModel(appSettings.modelFile.get, io)
+    val modelSpec = (new DistributedGLPModelReader(sc)).readModel(appSettings.modelFile.get, io)
     val testLines = sc.textFile(appSettings.testFile.get, numPartitions).coalesce(numPartitions, true)
     val evaluator = modelSpec.evaluator
     val predictor = new GLPPredictor(evaluator.glp, true)

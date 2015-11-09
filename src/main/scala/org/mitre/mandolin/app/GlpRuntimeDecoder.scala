@@ -3,7 +3,8 @@ package org.mitre.mandolin.app
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.glp.{GLPModelReader, StdGLPFactor, GLPPredictor, GLPPosteriorOutputConstructor}
+import org.mitre.mandolin.glp.{StdGLPFactor, GLPPredictor, GLPPosteriorOutputConstructor}
+import org.mitre.mandolin.glp.local.LocalGLPModelReader
 import org.mitre.mandolin.gm.NonUnitFeature
 import org.mitre.mandolin.util.{IOAssistant, DenseTensor1 => DenseVec}
 import scala.collection.JavaConversions._
@@ -24,7 +25,7 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
   def this(filePath: String, io: IOAssistant) = this(filePath, io, "")
   def this(filePath: String) = this(filePath, new IOAssistant, "")
   
-  val reader = new GLPModelReader
+  val reader = new LocalGLPModelReader
   val model = reader.readModel(filePath, io)
   
   val posIndex = model.la.ofString(posCase)

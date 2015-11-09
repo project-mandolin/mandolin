@@ -24,7 +24,7 @@ object AppConfig {
     
     val conf = new SparkConf()
         .setAppName(appSettings.name)
-        .setJars(appSettings.appJar)
+        //.setJars(appSettings.appJar)
 
     unwrapped foreach {case (k,v) =>
       println("Setting conf: " + ("spark."+k) + " to " + v)

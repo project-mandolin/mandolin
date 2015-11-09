@@ -5,15 +5,9 @@ package org.mitre.mandolin.config
 
 import com.esotericsoftware.kryo.Kryo
 import com.twitter.chill.AllScalaRegistrar
-import org.apache.spark.serializer.KryoRegistrator
 
-/**
- * Provides and registers a set of classes that will be serialized/deserialized
- * using Kryo for use within Spark.
- * @author wellner
- */
-class MandolinKryoRegistrator extends KryoRegistrator {
-  override def registerClasses(kryo: Kryo) = {
+trait MandolinRegistrator {
+  def register(kryo: Kryo) = {
     (new AllScalaRegistrar).apply(kryo)
     kryo.register(classOf[collection.mutable.HashMap[Int,Double]])
     kryo.register(classOf[cern.colt.map.OpenIntDoubleHashMap])

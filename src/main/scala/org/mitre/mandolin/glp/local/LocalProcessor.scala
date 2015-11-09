@@ -4,21 +4,70 @@ package org.mitre.mandolin.glp.local
  */
 
 import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant }
+import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.predict.DiscreteConfusion
-import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer, VectorData}
+import org.mitre.mandolin.optimize.local.{VectorData}
 import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalPosteriorDecoder }
-import scala.reflect.ClassTag
-import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPOptimizer, GLPModelWriter, GLPPredictor, GLPModelReader,
-  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPInstanceEvaluator, GLPLossGradient }
+import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, GLPPredictor, GLPModelReader,
+  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPInstanceEvaluator, GLPLossGradient, GLPModelSpec }
 import org.mitre.mandolin.optimize.{BatchEvaluator, GenData}
+import com.twitter.chill.EmptyScalaKryoInstantiator
+import org.mitre.mandolin.config.MandolinRegistrator
+import com.esotericsoftware.kryo.Kryo
+import com.twitter.chill.AllScalaRegistrar
 
-//import org.mitre.mandolin.glp._
+class LocalRegistrator extends MandolinRegistrator {
+  def registerClasses(kryo: Kryo) = register(kryo)
+}
+
+/**
+ * @author wellner
+ */
+class LocalGLPModelWriter extends GLPModelWriter {
+  val instantiator = new EmptyScalaKryoInstantiator
+
+  val kryo = {
+    val k = instantiator.newKryo()
+      k.setClassLoader(Thread.currentThread.getContextClassLoader)
+      k
+  }
+  
+  val registrator = new LocalRegistrator
+  registrator.registerClasses(kryo)
+
+  def writeModel(weights: GLPWeights): Unit = {
+    throw new RuntimeException("Intermediate model writing not implemented with GLPWeights")
+  }
+
+  def writeModel(io: IOAssistant, filePath: String, w: GLPWeights, la: Alphabet, ev: GLPInstanceEvaluator, fe: FeatureExtractor[String, GLPFactor]): Unit = {
+    io.writeSerializedObject(kryo, filePath, GLPModelSpec(w, ev, la, fe))
+  }
+}
+
+class LocalGLPModelReader {
+  val instantiator = new EmptyScalaKryoInstantiator
+  
+  val registrator = new LocalRegistrator 
+  
+  val kryo = {
+    val k = instantiator.newKryo()
+      k.setClassLoader(Thread.currentThread.getContextClassLoader)
+      k
+  }
+
+  registrator.registerClasses(kryo)
+
+
+  def readModel(f: String, io: IOAssistant): GLPModelSpec = {
+    io.readSerializedObject(kryo, f, classOf[GLPModelSpec]).asInstanceOf[GLPModelSpec]
+  }
+}
+
 
 /**
  * @author wellner
  */
 class LocalProcessor extends AbstractProcessor {        
-  
   
   def processTrain(appSettings: GLPModelSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in training mode")
@@ -32,7 +81,7 @@ class LocalProcessor extends AbstractProcessor {
     val lines = io.readLines(trainFile.get).toVector
     val trainer = new LocalTrainer(fe, optimizer)
     val (finalWeights,_) = trainer.trainWeights(lines)
-    val modelWriter = new GLPModelWriter(None)
+    val modelWriter = new LocalGLPModelWriter
     modelWriter.writeModel(io, appSettings.modelFile.get, finalWeights, components.labelAlphabet, ev, fe)
     finalWeights
   }
@@ -40,7 +89,7 @@ class LocalProcessor extends AbstractProcessor {
   def processDecode(appSettings: GLPModelSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in decoding mode")
     val io = new IOAssistant
-    val modelSpec = (new GLPModelReader(None)).readModel(appSettings.modelFile.get, io)
+    val modelSpec = (new LocalGLPModelReader).readModel(appSettings.modelFile.get, io)
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
     val evaluator = modelSpec.evaluator
     val predictor = new GLPPredictor(evaluator.glp, true)

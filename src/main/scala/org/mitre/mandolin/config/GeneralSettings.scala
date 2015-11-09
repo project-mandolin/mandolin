@@ -5,7 +5,6 @@ package org.mitre.mandolin.config
 
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.SparkContext
 import net.ceedubs.ficus.Ficus._
 
 /**
@@ -106,6 +105,7 @@ abstract class GeneralSettings(args: Seq[String]) {
     lf
   }
   
+  /*
   protected val getAppJar : Option[String] = asStrOpt("mandolin.jar-file")  
   protected lazy val defaultAppJar : Seq[String] = {
     SparkContext.jarOfClass(this.getClass) match {
@@ -116,7 +116,7 @@ abstract class GeneralSettings(args: Seq[String]) {
   
   /** The application jar itself - if not provided it is inferred */
   def appJar : Seq[String] = getAppJar match {case None => defaultAppJar case Some(j) => Seq(j) }
-  
+  */
 }
 
 /**
