@@ -4,7 +4,7 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.optimize.TrainingUnitEvaluator
-import org.mitre.mandolin.predict.{TrainTester, EvalPredictor, RegressionConfusion, DiscreteConfusion}
+import org.mitre.mandolin.predict.{EvalPredictor, RegressionConfusion, DiscreteConfusion}
 
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1 => Vec}
 

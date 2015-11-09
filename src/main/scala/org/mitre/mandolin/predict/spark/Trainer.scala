@@ -1,4 +1,4 @@
-package org.mitre.mandolin.predict
+package org.mitre.mandolin.predict.spark
 /*
  * Copyright (c) 2014-2015 The MITRE Corporation
  */

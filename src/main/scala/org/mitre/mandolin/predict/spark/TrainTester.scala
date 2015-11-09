@@ -1,4 +1,4 @@
-package org.mitre.mandolin.predict
+package org.mitre.mandolin.predict.spark
 /*
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
@@ -11,6 +11,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.storage.StorageLevel
+import org.mitre.mandolin.predict.{Predictor, OutputConstructor, EvalPredictor, Confusion, ConfusionMatrix}
 
 
 /**

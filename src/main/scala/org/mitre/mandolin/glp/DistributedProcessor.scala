@@ -11,20 +11,24 @@ import org.mitre.mandolin.optimize.spark.{
 }
 import org.mitre.mandolin.predict.{
   DiscreteConfusion,
-  EvalDecoder,
   EvalPredictor,
-  TrainTester,
-  PosteriorDecoder,
-  TrainDecoder,
   OutputConstructor,
-  Decoder,
   Predictor
 }
+
+import org.mitre.mandolin.predict.spark.{
+  EvalDecoder,
+  PosteriorDecoder,
+  TrainDecoder,
+  TrainTester,  
+  Decoder,
+  Trainer
+}
+
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalEvalDecoder, LocalPosteriorDecoder, LocalDecoder }
 
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
-import org.mitre.mandolin.predict.{ Trainer }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
 import org.mitre.mandolin.util.LineParser
 import org.apache.spark.SparkContext

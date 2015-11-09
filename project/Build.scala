@@ -21,7 +21,7 @@ object MandolinBuild extends Build {
     name := "mandolin",
     organization := "org.mitre",
     version := "0.3",
-    scalaVersion := "2.10.5",
+    scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
     resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),

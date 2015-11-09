@@ -6,7 +6,7 @@ package org.mitre.mandolin.predict.local
 import org.mitre.mandolin.optimize.Weights
 import scala.reflect.ClassTag
 import org.mitre.mandolin.transform.{ FeatureExtractor, LineProcessor }
-import org.mitre.mandolin.predict.{Predictor, OutputConstructor, AbstractDecoder, EvalPredictor, Confusion, ConfusionMatrix}
+import org.mitre.mandolin.predict.{Predictor, OutputConstructor, EvalPredictor, Confusion, ConfusionMatrix}
 
 
 class LocalDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, OType : ClassTag](

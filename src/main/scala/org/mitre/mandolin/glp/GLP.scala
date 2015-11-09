@@ -8,7 +8,7 @@ import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, Distribute
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{Alphabet, AlphabetWithUnitScaling, StdAlphabet, IdentityAlphabet, IOAssistant}
-import org.mitre.mandolin.predict.Trainer
+import org.mitre.mandolin.predict.spark.Trainer
 import org.mitre.mandolin.gm.Feature
 import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1}
 
@@ -185,7 +185,7 @@ class GlpModel extends DataFrames {
     val dim = mspec.wts.getInputDim
     val odim = mspec.wts.getOutputDim
     val predictor = new GLPPredictor(mspec.evaluator.glp, true)
-    val evalDecoder = new org.mitre.mandolin.predict.EvalDecoder(mspec.fe, predictor)
+    val evalDecoder = new org.mitre.mandolin.predict.spark.EvalDecoder(mspec.fe, predictor)
     val wBc = sc.broadcast(mspec.wts)
     val tstVecs = mapDfToGLPFactors(sc, tstdata, dim, odim)
     evalDecoder.evalUnits(tstVecs, wBc)
