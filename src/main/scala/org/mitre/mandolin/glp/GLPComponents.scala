@@ -858,3 +858,4 @@ class GLPPredictor(network: ANNetwork, getScores: Boolean = false)
   }
 }
 
+

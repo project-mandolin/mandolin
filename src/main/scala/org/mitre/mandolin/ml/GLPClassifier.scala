@@ -3,8 +3,9 @@ package org.mitre.mandolin.ml
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor, GlpModel, GLPModelSpec, LType, GLPPredictor, 
+import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor, GLPModelSpec, LType, GLPPredictor, 
   SoftMaxLType, InputLType, UpdaterSpec, AdaGradSpec}
+import org.mitre.mandolin.glp.spark.GlpModel
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec}
 import org.apache.spark.ml.{Predictor, PredictorParams, PredictionModel}
 import org.apache.spark.ml.param._

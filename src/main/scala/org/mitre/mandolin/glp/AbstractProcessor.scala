@@ -1,6 +1,6 @@
 package org.mitre.mandolin.glp
 
-import org.mitre.mandolin.config.AppConfig
+
 import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, AlphabetWithUnitScaling, IOAssistant }
 
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }

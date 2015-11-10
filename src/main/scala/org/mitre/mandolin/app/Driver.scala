@@ -16,7 +16,7 @@ case class MissingMainException(s: String) extends Exception
  * is specified through Mandolin configuration.
  * @author wellner
  */
-object Driver extends org.apache.spark.Logging with AppMain {
+object Driver extends AppMain {
   import scala.reflect.runtime.universe
 
   def main(args: Array[String]): Unit = {
@@ -32,7 +32,7 @@ object Driver extends org.apache.spark.Logging with AppMain {
       } 
     } catch {
       case m: MissingMainException =>
-        logError("Driver class name: " + driverClassName + " isn't found.  Check whether driver class name is valid.")
+        println("Driver class name: " + driverClassName + " isn't found.  Check whether driver class name is valid.")
         throw m
       case e: Exception =>        
         throw e

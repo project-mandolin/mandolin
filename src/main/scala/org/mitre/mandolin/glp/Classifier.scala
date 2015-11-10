@@ -4,7 +4,7 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.util.DenseTensor1
-import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, OnlineLearnerSettings, BatchLearnerSettings, DecoderSettings, AppConfig }
+import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, OnlineLearnerSettings, BatchLearnerSettings, DecoderSettings }
 import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.local.LocalProcessor
