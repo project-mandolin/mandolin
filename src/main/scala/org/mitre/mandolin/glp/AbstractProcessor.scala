@@ -1,7 +1,8 @@
 package org.mitre.mandolin.glp
 
 
-import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, AlphabetWithUnitScaling, IOAssistant }
+import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, AlphabetWithUnitScaling, IOAssistant,
+  AbstractPrintWriter}
 
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
@@ -214,7 +215,7 @@ abstract class AbstractProcessor extends LineParser {
     else getComponentsInducedAlphabet(appSettings, io)
   }
 
-  def writeOutputs(os: IOAssistant#PrintWriter, outputs: Iterator[(String, GLPFactor)], laOpt: Option[Alphabet]): Unit = {
+  def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, GLPFactor)], laOpt: Option[Alphabet]): Unit = {
     laOpt foreach { la =>
       val labelHeader = la.getMapping.toSeq.sortWith((a, b) => a._2 < b._2).map(_._1) // get label strings sorted by their index
       os.print("ID")

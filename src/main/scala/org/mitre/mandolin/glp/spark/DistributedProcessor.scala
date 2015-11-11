@@ -5,6 +5,7 @@ package org.mitre.mandolin.glp.spark
 
 
 import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, AlphabetWithUnitScaling, IOAssistant }
+import org.mitre.mandolin.util.spark.SparkIOAssistant
 import org.mitre.mandolin.optimize.spark.{
   DistributedOnlineOptimizer,
   DistributedOptimizerEstimator
@@ -91,17 +92,8 @@ class DistributedGLPModelReader(sc: SparkContext) extends GLPModelReader {
 
   val registrator = new MandolinKryoRegistrator()  
   registrator.registerClasses(kryo)
-
-  /**
-   * def readModel(f: java.io.File): GLPModelSpec = {
-   * val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
-   * val kInput = new KInput(is)
-   * val m = kryo.readObject(kInput, classOf[GLPModelSpec])
-   * kInput.close()
-   * is.close()
-   * m
-   * }
-   */
+  // add in additional Spark data structures to register
+  kryo.register(classOf[org.apache.spark.util.Vector])
 
   def readModel(f: String, io: IOAssistant): GLPModelSpec = {
     io.readSerializedObject(kryo, f, classOf[GLPModelSpec]).asInstanceOf[GLPModelSpec]
@@ -162,7 +154,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
   def processTrain(appSettings: GLPModelSettings) = {
     if (appSettings.trainFile.isEmpty) throw new RuntimeException("Training file required")
     val sc = AppConfig.getSparkContext(appSettings)
-    val io = new IOAssistant(Some(sc))
+    val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val ev = components.evaluator
     val fe = components.featureExtractor
@@ -182,7 +174,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
   def processDecode(appSettings: GLPModelSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required as input in decoding mode")
     val sc = AppConfig.getSparkContext(appSettings)
-    val io = new IOAssistant(Some(sc))
+    val io = new SparkIOAssistant(sc)
     val modelSpec = (new DistributedGLPModelReader(sc)).readModel(appSettings.modelFile.get, io)
     val testLines = sc.textFile(appSettings.testFile.get, numPartitions).coalesce(numPartitions, true)
     val evaluator = modelSpec.evaluator
@@ -198,7 +190,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
   def processTrainTest(appSettings: GLPModelSettings) = {
     if (appSettings.trainFile.isEmpty) throw new RuntimeException("Training file required")    
     val sc = AppConfig.getSparkContext(appSettings)
-    val io = new IOAssistant(Some(sc))
+    val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val ev = components.evaluator
     val fe = components.featureExtractor
@@ -217,7 +209,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
 
   def processTrainDecode(appSettings: GLPModelSettings) = {
     val sc = AppConfig.getSparkContext(appSettings)
-    val io = new IOAssistant(Some(sc))
+    val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val ev = components.evaluator
     val fe = components.featureExtractor

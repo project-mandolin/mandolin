@@ -7,6 +7,7 @@ import scala.reflect.ClassTag
 import org.mitre.mandolin.optimize.{ Weights, LossGradient, BatchEvaluator, GenData  }
 import org.mitre.mandolin.optimize.spark.{DistributedOptimizerEstimator, RDDData}
 import org.mitre.mandolin.util.IOAssistant
+import org.mitre.mandolin.util.spark.SparkIOAssistant
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
@@ -52,7 +53,7 @@ class TrainTester[IType, U: ClassTag, W <: Weights[W]: ClassTag, G <: LossGradie
   val evPr = new EvalDecoder(trainer.fe, predictor)
   var elapsedTrainingTime = 0.0
   var append = false
-  val io = new IOAssistant(Some(sc))
+  val io = new SparkIOAssistant(sc)
   
   def logDetails(trainingLoss: Double, testAccuracy: Double, testAuROC: Double, accAt50: Double, 
       accAt30: Double, elapsedTime: Double, epoch: Int) = {

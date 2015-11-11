@@ -3,7 +3,7 @@ package org.mitre.mandolin.glp.local
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant }
+import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant, LocalIOAssistant }
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.optimize.local.{VectorData}
@@ -72,7 +72,7 @@ class LocalProcessor extends AbstractProcessor {
   def processTrain(appSettings: GLPModelSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in training mode")
     if (appSettings.trainFile.isEmpty) throw new RuntimeException("Training file required in training mode")
-    val io = new IOAssistant
+    val io = new LocalIOAssistant
     val components = getComponentsViaSettings(appSettings, io)       
     val trainFile = appSettings.trainFile
     val ev = components.evaluator
@@ -88,7 +88,7 @@ class LocalProcessor extends AbstractProcessor {
   
   def processDecode(appSettings: GLPModelSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in decoding mode")
-    val io = new IOAssistant
+    val io = new LocalIOAssistant
     val modelSpec = (new LocalGLPModelReader).readModel(appSettings.modelFile.get, io)
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
     val evaluator = modelSpec.evaluator
@@ -104,7 +104,7 @@ class LocalProcessor extends AbstractProcessor {
   def processTrainTest(appSettings: GLPModelSettings) = {
     val trainFile = appSettings.trainFile
     if (trainFile.isEmpty) throw new RuntimeException("Training file required in train-test mode")
-    val io = new IOAssistant
+    val io = new LocalIOAssistant
     val components = getComponentsViaSettings(appSettings, io)
     val ev = components.evaluator
     val fe = components.featureExtractor
@@ -125,7 +125,7 @@ class LocalProcessor extends AbstractProcessor {
    */
   def processTrainTestDirectories(appSettings: GLPModelSettings) = {
     val dir: java.io.File = new java.io.File(appSettings.trainFile.get)
-    val io = new IOAssistant
+    val io = new LocalIOAssistant
     val testDir: java.io.File = new java.io.File(appSettings.testFile.get)
     val outFile = new java.io.File(appSettings.outputFile.get)
     val trainFiles = dir.listFiles().toVector.map { _.getPath }.sorted
@@ -167,7 +167,7 @@ class LocalProcessor extends AbstractProcessor {
   
   def processTrainDecode(appSettings: GLPModelSettings) = {
     val weights = processTrain(appSettings)
-    val io = new IOAssistant
+    val io = new LocalIOAssistant
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor

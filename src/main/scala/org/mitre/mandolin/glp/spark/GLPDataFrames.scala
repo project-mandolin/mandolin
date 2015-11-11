@@ -9,6 +9,7 @@ import org.apache.spark.sql.SQLContext
 import org.mitre.mandolin.glp._
 import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, DistributedOptimizerEstimator}
 import org.mitre.mandolin.util.{Alphabet, IdentityAlphabet, DenseTensor1 => DenseVec, IOAssistant}
+import org.mitre.mandolin.util.spark.SparkIOAssistant
 
 /**
  * Utilities for mapping GLP factors to Spark DataFrames
@@ -136,7 +137,7 @@ class GlpModel extends GLPDataFrames {
   
   def estimate(trdata: DataFrame, appSettings: GLPModelSettings) : GLPModelSpec = {
     val dp = new DistributedProcessor(appSettings.numPartitions)
-    val io = new IOAssistant
+    val io = new SparkIOAssistant(trdata.sqlContext.sparkContext)
     val components = dp.getComponentsViaSettings(appSettings, io)       
     val ev = components.evaluator
     val fe = components.featureExtractor

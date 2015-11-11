@@ -6,7 +6,7 @@ package org.mitre.mandolin.app
 import org.mitre.mandolin.glp.{StdGLPFactor, GLPPredictor, GLPPosteriorOutputConstructor}
 import org.mitre.mandolin.glp.local.LocalGLPModelReader
 import org.mitre.mandolin.gm.NonUnitFeature
-import org.mitre.mandolin.util.{IOAssistant, DenseTensor1 => DenseVec}
+import org.mitre.mandolin.util.{IOAssistant, DenseTensor1 => DenseVec, LocalIOAssistant}
 import scala.collection.JavaConversions._
 
 case class StringDoublePair(val str: String, val value: Double)
@@ -23,7 +23,7 @@ case class StringDoublePair(val str: String, val value: Double)
  */
 class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
   def this(filePath: String, io: IOAssistant) = this(filePath, io, "")
-  def this(filePath: String) = this(filePath, new IOAssistant, "")
+  def this(filePath: String) = this(filePath, new LocalIOAssistant, "")
   
   val reader = new LocalGLPModelReader
   val model = reader.readModel(filePath, io)

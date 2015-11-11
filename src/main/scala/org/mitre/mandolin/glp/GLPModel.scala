@@ -8,7 +8,6 @@ import com.esotericsoftware.kryo.io.{ Input => KInput, Output => KOutput }
 import com.twitter.chill.{ EmptyScalaKryoInstantiator, AllScalaRegistrar }
 import org.mitre.mandolin.util.{ Alphabet, IOAssistant }
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.apache.spark.SparkContext
 
 case class GLPModelSpec(wts: GLPWeights, evaluator: GLPInstanceEvaluator, la: Alphabet, fe: FeatureExtractor[String, GLPFactor]) extends Serializable
 
