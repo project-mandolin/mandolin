@@ -36,6 +36,7 @@ import org.mitre.mandolin.util.LineParser
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkConf
+import org.apache.spark.storage.StorageLevel
 import scala.reflect.ClassTag
 import com.twitter.chill.EmptyScalaKryoInstantiator
 
@@ -164,7 +165,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val lines =
       if (numPartitions > 0) sc.textFile(trainFile, numPartitions).coalesce(numPartitions, true)
       else sc.textFile(trainFile)
-    val trainer = new Trainer[String, GLPFactor, GLPWeights](fe, optimizer, appSettings.storageLevel)
+    val trainer = new Trainer[String, GLPFactor, GLPWeights](fe, optimizer, StorageLevel.MEMORY_ONLY)
     val (w, _) = trainer.trainWeights(lines)
     val modelWriter = new DistributedGLPModelWriter(sc)
     modelWriter.writeModel(io, appSettings.modelFile.get, w, components.labelAlphabet, ev, fe)

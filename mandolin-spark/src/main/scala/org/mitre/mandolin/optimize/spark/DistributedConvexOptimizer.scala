@@ -10,7 +10,7 @@ import org.apache.spark.broadcast.Broadcast
 
 import org.mitre.mandolin.util._
 
-import org.mitre.mandolin.optimize.{Weights, LossGradient, BatchEvaluator, GenData, BatchOptimizer}
+import org.mitre.mandolin.optimize.{Weights, LossGradient, BatchEvaluator, GenData, BatchOptimizer, Numerical, Result, Params}
 import org.mitre.mandolin.optimize.ErrorCodes._
 
 

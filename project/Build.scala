@@ -13,7 +13,7 @@ object MandolinBuild extends Build {
   lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
                             settings(coreSettings:_*).
                             settings(coreDependencySettings:_*).
-                            settings(assemblyProjSettings:_*).
+                            settings(assemblyProjSettings("core"):_*).
                             settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
@@ -21,7 +21,7 @@ object MandolinBuild extends Build {
   lazy val mandolinSpark = Project(id = "mandolin-spark", base = file("mandolin-spark")).
                             settings(sparkSettings:_*).
                             settings(sparkDependencySettings:_*).
-                            settings(assemblyProjSettings:_*).
+                            settings(assemblyProjSettings("spark"):_*).
                             settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
 
@@ -77,9 +77,9 @@ object MandolinBuild extends Build {
     case _ => "net.ceedubs" %% "ficus" % "1.1.2"
   }
 
-  def assemblyProjSettings : Seq[Setting[_]] = assemblySettings ++ Seq(
+  def assemblyProjSettings(subProj: String) : Seq[Setting[_]] = assemblySettings ++ Seq(
     test in assembly := {},
-    jarName in assembly := ("mandolin-assembly-" + version.value + "_" + scalaVersion.value + ".jar"),
+    jarName in assembly := ("mandolin-"+subProj+"-assembly-" + version.value + "_" + scalaVersion.value + ".jar"),
     logLevel in assembly := Level.Error, 
     mergeStrategy in assembly := conflictRobustMergeStrategy,
     mainClass in assembly := Some("org.mitre.mandolin.app.Driver")
