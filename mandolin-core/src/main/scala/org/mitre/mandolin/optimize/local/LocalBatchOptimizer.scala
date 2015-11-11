@@ -3,9 +3,7 @@ package org.mitre.mandolin.optimize.local
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.optimize.spark.BatchOptimizer
-import org.mitre.mandolin.optimize.{Weights, LossGradient, BatchEvaluator, GenData}
-import org.mitre.mandolin.optimize.spark.{Params}
+import org.mitre.mandolin.optimize.{Weights, LossGradient, BatchEvaluator, GenData, BatchOptimizer, Params}
 
 class VectorData[T](val vec: Vector[T]) extends GenData[T]
 

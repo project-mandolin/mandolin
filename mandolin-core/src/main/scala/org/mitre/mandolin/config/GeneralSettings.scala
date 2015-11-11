@@ -4,7 +4,6 @@ package org.mitre.mandolin.config
  */
 
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
-import org.apache.spark.storage.StorageLevel
 import net.ceedubs.ficus.Ficus._
 
 /**
@@ -56,7 +55,8 @@ abstract class GeneralSettings(args: Seq[String]) {
   protected def asBoolean(key: String) = {
     config.getBoolean(key)        
   }
-  
+
+  /*  
   protected def mapStorage(s: String) = s match {
     case "mem_only"          => StorageLevel.MEMORY_ONLY
     case "mem_and_disk"      => StorageLevel.MEMORY_AND_DISK
@@ -66,6 +66,7 @@ abstract class GeneralSettings(args: Seq[String]) {
     case "none"              => StorageLevel.NONE
     case _                   => StorageLevel.MEMORY_ONLY
   }
+  */
   
   protected def mapLogLevel(s: String) = s match {
     case "INFO"  => Level.INFO
@@ -82,7 +83,7 @@ abstract class GeneralSettings(args: Seq[String]) {
   val numPartitions   = asInt("mandolin.partitions")
   
   /** Spark storage level for application */
-  val storageLevel    = mapStorage(asStr("spark.storage"))
+  //val storageLevel    = mapStorage(asStr("spark.storage"))
   
   /** General log-level for Spark and Mandolin */
   val logLevel = {

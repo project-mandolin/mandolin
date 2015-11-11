@@ -8,17 +8,26 @@ import LaikaKeys._
 
 object MandolinBuild extends Build {
 
-  lazy val mandolin = Project(id = "mandolin", base = file(".")).
-                            settings(projSettings:_*).
-                            settings(dependencySettings:_*).
+  lazy val root = Project(id = "mandolin", base = file(".")).settings(rootSettings:_*) aggregate(mandolinCore, mandolinSpark)
+
+  lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
+                            settings(coreSettings:_*).
+                            settings(coreDependencySettings:_*).
                             settings(assemblyProjSettings:_*).
                             settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
-  
 
-  def projSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
-    name := "mandolin",
+  lazy val mandolinSpark = Project(id = "mandolin-spark", base = file("mandolin-spark")).
+                            settings(sparkSettings:_*).
+                            settings(sparkDependencySettings:_*).
+                            settings(assemblyProjSettings:_*).
+                            settings(siteSettings:_*).
+                            settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
+
+  def rootSettings = sharedSettings ++ Seq( name := "mandolin" )
+
+  def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre",
     version := "0.3",
     scalaVersion := "2.11.7",
@@ -28,27 +37,40 @@ object MandolinBuild extends Build {
     resolvers += "Akka Repository" at "http://repo.akka.io/releases/",
     javacOptions ++= Seq("-source","1.7","-target","1.7"),
     scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value+"/src/root-doc.txt", "-unchecked")
+  )  
+
+  def coreSettings : Seq[Setting[_]] = sharedSettings ++ Seq(
+    name := "mandolin-core"    
   )
 
-  def siteSettings : Seq[Setting[_]] = 
-    LaikaPlugin.defaults ++ Seq(includeAPI in Laika := true)
-  
-  def dependencySettings : Seq[Setting[_]] = {
+  def sparkSettings : Seq[Setting[_]] = sharedSettings ++ Seq(  
+    name := "mandolin-spark"
+  )
+
+  def coreDependencySettings : Seq[Setting[_]] = {
     Seq(
       libraryDependencies ++= Seq(
       "commons-cli" % "commons-cli" % "1.2",
       "org.rogach" %% "scallop" % "0.9.5",
-      "org.apache.spark" %% "spark-core" % "1.5.0",
-      "org.apache.spark" %% "spark-sql"  % "1.5.0",
-      "org.apache.spark" %% "spark-mllib"  % "1.5.0",
       "org.scalatest"    %% "scalatest" % "2.2.4" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.5",
       "com.typesafe" % "config" % "1.2.1",
       "colt" % "colt" % "1.2.0",
+      "com.twitter" %% "chill" % "0.7.2",
       versionDependencies(scalaVersion.value)
       )
     )
-   }
+  }
+
+  def sparkDependencySettings : Seq[Setting[_]] = {
+    Seq(
+      libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-core" % "1.5.0",
+      "org.apache.spark" %% "spark-sql"  % "1.5.0",
+      "org.apache.spark" %% "spark-mllib"  % "1.5.0"      
+      )
+    )
+  }  
 
   def versionDependencies(v:String) = v match {
     case "2.10.5" => "net.ceedubs" %% "ficus" % "1.0.1"
@@ -62,6 +84,9 @@ object MandolinBuild extends Build {
     mergeStrategy in assembly := conflictRobustMergeStrategy,
     mainClass in assembly := Some("org.mitre.mandolin.app.Driver")
   )
+
+  def siteSettings : Seq[Setting[_]] = 
+    LaikaPlugin.defaults ++ Seq(includeAPI in Laika := true)
 
   /*
    * Everything below here is hackery related to merging poorly built library dependencies

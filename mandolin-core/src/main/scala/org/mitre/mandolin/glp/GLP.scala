@@ -5,15 +5,11 @@ package org.mitre.mandolin.glp
 
 import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
 
-import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, DistributedOptimizerEstimator}
-import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{Alphabet, AlphabetWithUnitScaling, StdAlphabet, IdentityAlphabet, IOAssistant}
-import org.mitre.mandolin.predict.spark.Trainer
 import org.mitre.mandolin.gm.Feature
 import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1}
-import org.mitre.mandolin.glp.spark.DistributedProcessor
-import org.mitre.mandolin.glp.spark.DistributedGLPOptimizer
+
 
 class GLPSettings(a: Seq[String]) extends LearnerSettings(a) with OnlineLearnerSettings 
 

@@ -8,7 +8,6 @@ import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, OnlineLearn
 import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.local.LocalProcessor
-import org.mitre.mandolin.glp.spark.DistributedProcessor
 import scala.reflect.ClassTag
 
 class GLPModelSettings(args: Array[String]) extends LearnerSettings(args) 
