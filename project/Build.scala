@@ -32,6 +32,24 @@ object MandolinBuild extends Build {
     version := "0.3",
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
+    publishMavenStyle := true,
+    //sonatypeProfileName := "org.mitre.mandolin",
+    licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    homepage := Some(url("https://github.com/project-mandolin/mandolin.git")),
+    pomExtra in Global := {
+      <scm>
+        <connection>scm:git:github.com/project-mandolin/mandolin.git</connection>
+        <developerConnection>scm:git:git@github.com:project-mandolin/mandolin.git</developerConnection>
+        <url>github.com/project-mandolin/mandolin.git</url>
+      </scm>
+      <developers>
+        <developer>
+          <id>wellner</id>
+          <name>Ben Wellner</name>
+          <url>https://github.com/project-mandolin/mandolin.git</url>
+        </developer>
+      </developers>
+    },
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
     resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
     resolvers += "Akka Repository" at "http://repo.akka.io/releases/",
