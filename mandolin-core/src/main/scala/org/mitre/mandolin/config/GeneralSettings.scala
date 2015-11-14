@@ -127,10 +127,6 @@ abstract class GeneralSettings(args: Seq[String]) {
 abstract class AppSettings(args: Seq[String]) extends GeneralSettings(args) {
   /** Name for the app */
   val name             = asStr("mandolin.name")
-  /** Class whose main routine is called when application is started */
-  val appDriverClass   = asStr("mandolin.driver")
-  /** Do NOT use Spark for distributed computation; use a single-process backend optimizer */
-  val appLocalOnly     = asBoolean("mandolin.without-spark")
   /** Mode for application (train|decode|train-test|train-decode) */
   val appMode          = asStr("mandolin.mode")
 }

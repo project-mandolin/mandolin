@@ -8,13 +8,16 @@ import LaikaKeys._
 
 object MandolinBuild extends Build {
 
-  lazy val root = Project(id = "mandolin", base = file(".")).settings(rootSettings:_*) aggregate(mandolinCore, mandolinSpark)
+  lazy val root = Project(id = "mandolin", base = file(".")).
+                            settings(rootSettings:_*).
+                            settings(siteSettings:_*).
+                            aggregate(mandolinCore, mandolinSpark)
 
   lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
                             settings(coreSettings:_*).
                             settings(coreDependencySettings:_*).
                             settings(assemblyProjSettings("core"):_*).
-                            settings(siteSettings:_*).
+                            //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
 
@@ -22,7 +25,7 @@ object MandolinBuild extends Build {
                             settings(sparkSettings:_*).
                             settings(sparkDependencySettings:_*).
                             settings(assemblyProjSettings("spark"):_*).
-                            settings(siteSettings:_*).
+                            //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
 
   def rootSettings = sharedSettings ++ Seq( name := "mandolin" )
@@ -32,15 +35,31 @@ object MandolinBuild extends Build {
     version := "0.3",
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
-    publishMavenStyle := true,
-    //sonatypeProfileName := "org.mitre.mandolin",
-    licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    publishTo := {
+       val nexus = "https://oss.sonatype.org/"
+       if (isSnapshot.value)
+         Some("snapshots" at nexus + "content/repositories/snapshots")
+       else
+         Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    },
+    publishMavenStyle := true,    
+    publishArtifact in Test := false,
+    pomIncludeRepository := { _ => false },
+licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     homepage := Some(url("https://github.com/project-mandolin/mandolin.git")),
+    
     pomExtra in Global := {
+      <url>https://github.com/project-mandolin/mandolin.git</url>
+      <licenses>
+        <license>
+	  <name>Apache 2</name>
+          <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+          <distribution>repo</distribution>
+        </license>
+      </licenses>
       <scm>
-        <connection>scm:git:github.com/project-mandolin/mandolin.git</connection>
-        <developerConnection>scm:git:git@github.com:project-mandolin/mandolin.git</developerConnection>
-        <url>github.com/project-mandolin/mandolin.git</url>
+        <connection>scm:git:github.com:project-mandolin/mandolin.git</connection>
+        <url>git@github.com/project-mandolin/mandolin.git</url>
       </scm>
       <developers>
         <developer>

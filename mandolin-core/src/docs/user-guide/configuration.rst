@@ -20,11 +20,6 @@ behavior. Primarily this is done using a configuration ''file''.
 |                                            |method that is invoked upon startup.              |
 |                                            |                                                  |
 +--------------------------------------------+--------------------------------------------------+
-|``mandolin.without-spark``                  |Set to ``true`` for ``false``. ``true`` disables  |
-|                                            |Spark and uses a different backend for use on a   |
-|                                            |single machine.                                   |
-|                                            |                                                  |
-+--------------------------------------------+--------------------------------------------------+
 |``mandolin.data``                           |Specify a root directory for data to be used by   |
 |                                            |the application.                                  |
 +--------------------------------------------+--------------------------------------------------+

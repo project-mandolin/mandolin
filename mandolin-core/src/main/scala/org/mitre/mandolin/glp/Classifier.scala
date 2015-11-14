@@ -57,7 +57,7 @@ class GLPPosteriorOutputConstructor extends OutputConstructor[String, Seq[(Doubl
  * sparse input file.
  * @author wellner
  */
-object DenseVectorWriter extends org.mitre.mandolin.app.AppMain {
+object DenseVectorWriter {
   
   def exportVectorsDense(f: String, io: IOAssistant, fvs: Vector[GLPFactor], alphabet: Alphabet, la: Alphabet) = {
     val os = io.getPrintWriterFor(f, false)

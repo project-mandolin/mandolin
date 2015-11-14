@@ -11,7 +11,7 @@ regression) model, enter the directory `examples/mnist`. Assuming the Mandolin j
 has been built (see above), the following invocation should train a model and evaluate its
 progress during training every trainin epoch:
 
-    java -cp ../../target/scala-2.11/mandolin-assembly-0.2.7-SNAPSHOT_2.11.7.jar \
+    java -cp ../../mandolin-core/target/scala-2.11/mandolin-core-assembly-0.3_2.11.7.jar \
          org.mitre.mandolin.app.Driver --conf mnist.conf
 
 The evaluation is written in this example to the file `mnist.train.progress` as specified in the
@@ -19,7 +19,7 @@ The evaluation is written in this example to the file `mnist.train.progress` as 
 command line.  So to write the training progress to a different file name, one could use the 
 invocation:
 
-    java -cp ../../target/scala-2.11/mandolin-assembly-0.2.7-SNAPSHOT_2.11.7.jar \
+    java -cp ../../mandolin-core/target/scala-2.11/mandolin-core-assembly-0.3_2.11.7.jar \
         org.mitre.mandolin.app.Driver --conf mnist.conf \
         mandolin.app.trainer.progress-file=$PWD/another.output.file
 
@@ -29,7 +29,7 @@ let's train a DNN model using a single hidden layer of 1000 Rectified Linear Uni
 This model is specified in the configuration file `examples/mnist/mnist.1hl.conf` and can be
 invoked as:
 
-    java -cp ../../target/scala-2.11/mandolin-assembly-0.2.7-SNAPSHOT_2.11.7.jar \
+    java -cp ../../mandolin-core/target/scala-2.11/mandolin-core-assembly-0.3_2.11.7.jar \
          org.mitre.mandolin.app.Driver --conf mnist.conf \
          --conf mnist.1h.conf 
 
@@ -58,7 +58,7 @@ providing the argument `mandolin.without-spark=false` on the command line.  Then
 
     $SPARK_HOME/bin/spark-submit --class org.mitre.mandolin.app.Driver \
       --master spark://master.url:7077 \
-          ../../target/scala-2.11/mandolin-assembly-0.2.7-SNAPSHOT_2.11.7.jar \
+          ../../mandolin-spark/target/scala-2.11/mandolin-spark-assembly-0.3_2.11.7.jar \
       --conf mnist.1h.conf mandolin.without-spark=false
 
 

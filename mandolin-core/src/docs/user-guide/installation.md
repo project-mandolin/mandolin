@@ -2,14 +2,21 @@
   title: Installation
 %}
 
-Mandolin is written entirely in Scala; in order to build to a single .jar file containing
-the entire Mandolin distribution, download
-[SBT](http://www.scala-sbt.org/download.html) and run the command:
+Mandolin is written entirely in Scala. There are two distinct code artifacts, `mandolin-core`
+and `mandolin-spark`, the former including the core ML algorithms without any dependency on
+Apache Spark while the latter includes Spark-based distributed stochastic optimizers as well
+as some additional functionality that interoperates with `spark.ml`.
+
+Both artifacts can be built from source by downloading [SBT](http://www.scala-sbt.org/download.html)
+and running:
 
     > sbt assembly
 
-This will build the file `target/scala-2.11/mandolin-assembly-0.2.7-SNAPSHOT_2.11.7.jar`. This .jar
-file will contain all the Mandolin code along with all necessary dependencies, i.e. it is self-contained.
+This will build two assembly artifacts. The artifact 
+`mandolin-core/target/scala-2.11/mandolin-core-assembly-0.3_2.11.7.jar` contains Mandolin's machine
+learning components without Spark, while 
+`mandolin-spark/target/scala-2.11/mandolin-spark-assembly-0.3_2.11.7.jar` contains Mandolin along
+with Apache Spark and provides distributed stochastic solvers for the same set of ML algorithms.
 
 The current build targets Scala 2.11. In order to use Mandolin with Apache Spark, the Spark build
 must match the major version number of Mandolin.  The current version of Apache Spark is built
@@ -19,20 +26,15 @@ The second option is to build Mandolin using Scala 2.10.  This can be done by si
 
     > sbt 'set scalaVersion := "2.10.5"' assembly
 
-This will build the target jar file in `target/scala-2.11/mandolin-assembly-0.2.7-SNAPSHOT_2.10.5.jar`
 Or, by doing:
 
     > sbt "+ assembly"
 
 which will build _both_ 2.10.x and 2.11.x versions.
 
-<!--
+If only the the mandolin-core artifact is of interest, just that component can be compiled by executing:
 
-TODO:
+    > sbt "project mandolin-core" assembly
 
-  Add build instructions for Spark 1.3 and 1.4
-
-  Decide on default Java target 
-  and provide documentation for building to Java 1.7 and 1.8
-
--->
+This will avoid a full build including Spark which can be time-consuming due to the number of 3rd 
+party libraries that must be downloaded.
