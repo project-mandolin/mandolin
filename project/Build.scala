@@ -10,14 +10,13 @@ object MandolinBuild extends Build {
 
   lazy val root = Project(id = "mandolin", base = file(".")).
                             settings(rootSettings:_*).
-                            settings(siteSettings:_*).
                             aggregate(mandolinCore, mandolinSpark)
 
   lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
                             settings(coreSettings:_*).
                             settings(coreDependencySettings:_*).
                             settings(assemblyProjSettings("core"):_*).
-                            //settings(siteSettings:_*).
+                            settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
 
