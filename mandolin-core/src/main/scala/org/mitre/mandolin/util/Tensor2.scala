@@ -22,7 +22,12 @@ abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
   def /=(v: Double): Unit
   def :=(v: Double): Unit
   def +=(m: Tensor2): Unit
-
+  
+  /*
+   * Perform a component-wise addition of vector terms to each row of the tensor
+   */
+  def +=(vv: Tensor1) : Unit
+  
   def getDimSizes = collection.immutable.IndexedSeq(getDim1, getDim2)
 
   def *=(vv: Tensor1, res: DenseTensor1): Unit
@@ -80,6 +85,16 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   final def -=(v: Double) = { var i = 0; while (i < size) { a(i) -= v; i += 1 } }
   final def /=(v: Double) = { var i = 0; while (i < size) { a(i) /= v; i += 1 } }
   final def :=(v: Double) = { var i = 0; while (i < size) { a(i) = v; i += 1 } }
+  
+  final def +=(vv: Tensor1) : Unit = {
+    var i = 0; while (i < nrows) {
+      var j = 0; while (j < ncols) {
+        a(i * ncols + j) += vv(i)        
+        j += 1
+      }
+      i += 1
+    }
+  }
 
   final def +=(mm: Tensor2) = mm match {
     case m: DenseTensor2 =>
@@ -267,6 +282,9 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
 
   final def -=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
   final def +=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+  
+  final def +=(vv: Tensor1) : Unit = throw new RuntimeException("Operation results in non-sparse Matrix") 
+    
   
   def asArray = {
       //throw new RuntimeException("As array not possible with ColumnSparseTensor2 having " + a.length + " rows")

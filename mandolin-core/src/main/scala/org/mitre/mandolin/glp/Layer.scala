@@ -174,8 +174,6 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
   def getTarget = target.get
 
   def getActFnDeriv = actFnDeriv(output)
-  
-
   def setPrevLayer(l: Layer) = { prevLayer_=(Some(l)) }
   
   def forwardWith(in: Vec, w: Mat, b: DenseVec, training: Boolean) = {
@@ -212,7 +210,7 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
    * Implements row dropout.  This will only work for activation functions
    * with the property that a(0) = 0 - e.g. ReLU or TanH
    */
-  def forward(w: Mat, b: DenseVec, training: Boolean = true) = {
+  def forward(w: Mat, b: DenseVec, training: Boolean = true) = {  
     val prevIn = prev.getOutput(training)
     forwardWith(prevIn, w, b, training)    
   }
