@@ -85,6 +85,9 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   final def -=(v: Double) = { var i = 0; while (i < size) { a(i) -= v; i += 1 } }
   final def /=(v: Double) = { var i = 0; while (i < size) { a(i) /= v; i += 1 } }
   final def :=(v: Double) = { var i = 0; while (i < size) { a(i) = v; i += 1 } }
+  final def :=(dm: DenseTensor2) = {
+    System.arraycopy(dm, 0, a, 0, size)
+  }
   
   final def +=(vv: Tensor1) : Unit = {
     var i = 0; while (i < nrows) {

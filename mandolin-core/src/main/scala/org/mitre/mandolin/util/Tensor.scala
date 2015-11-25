@@ -112,6 +112,9 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
 
   /** Returns the 2-norm of the Tensor1 */
   def norm2: Double
+  
+  /** Map this tensor to an order-2 tensor with `r` rows */
+  def toTensor2(r: Int) : Tensor2
 
   def copy: Tensor1
 
@@ -151,6 +154,12 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
       a(i) = 0.0
       i += 1
     }
+  }
+  
+  final def toTensor2(r: Int) : Tensor2 = {
+    val ncols = size / r
+    assert((size % r) == 0) 
+    new DenseTensor2(a, r, ncols)
   }
 
   def numericalCheck() = {
@@ -358,6 +367,10 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
     val a = indArray
     val b = valArray
     ()
+  }
+  
+  final def toTensor2(r: Int) : Tensor2 = {
+    throw new RuntimeException("UNIMPLEMENTED Conversion to Sparse order-2 tensor")
   }
   
   def getSize = dim
