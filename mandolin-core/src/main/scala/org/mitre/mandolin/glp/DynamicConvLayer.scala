@@ -64,14 +64,15 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     // update bias gradients
     var i = 0; while (i < dim) {
       val bind = i / k
-      b(bind) += delta(i)      
+      bgrad(bind) += delta(i)      
       i += 1
     }    
     // update filter/weight gradients
     val rr = w.getDim1
     val cc = w.getDim2
     val prevIn = prev.getOutput(true)
-    val inputCols = prevIn.getDim / eDim
+    val inMatrix = prevIn.toTensor2(eDim)
+    val ncols = inMatrix.getDim2
     var j = 0
     i = 0; while (i < k * eDim) {      
       val dd = delta(i)        
@@ -80,14 +81,21 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
       val colId = convInd / eDim // col id in convolution matrix
       j = 0; while (j < width) {
         val inCol = colId - j
-        if ((inCol >= 0) && (inCol < inputCols)) {
-          val inIndex = inCol * eDim + rowId
-          val inVal = prevIn(inIndex)
+        if ((inCol >= 0) && (inCol < ncols)) {
+          val inVal = inMatrix(rowId,inCol)
           grad(rowId, j) += dd * inVal
-        }
-        
-        j -= 1
+        }        
+        j += 1
       }
+      i += 1
+    }
+    // TODO
+    //  - Update deltas for previous layer
+    prev match {
+      case p: NonInputLayer =>
+        w.trMult(delta, p.delta)
+        p.delta *= p.getActFnDeriv
+      case _ =>
     }
   }
   
@@ -124,7 +132,8 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
         val i = j - m + y + 1
         if ((i >= 0) && (i < ninputs)) { // element-wise product if 'i' not out-of bounds
           var x = 0; while (x < eDim) {
-            output(x,j) += (filter(x, y) * input(i))
+            val inputInd = i * eDim + x // index within original flat input representation
+            output(x,j) += (filter(x, y) * input(inputInd))
             x += 1
           }
         }

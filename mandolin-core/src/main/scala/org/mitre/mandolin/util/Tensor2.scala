@@ -23,6 +23,9 @@ abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
   def :=(v: Double): Unit
   def +=(m: Tensor2): Unit
   
+  /** Zero out matrix */
+  def clear() : Unit
+  
   /*
    * Perform a component-wise addition of vector terms to each row of the tensor
    */
@@ -74,6 +77,13 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   @inline final def getCol(i: Int): Tensor1 = new DenseTensor1(Array.tabulate(nrows)(j => a(j * ncols + i)))
   
   def asArray = a
+  
+  def clear() = {
+    var i = 0; while (i < size) {
+      a(i) = 0.0
+      i += 1
+    }
+  }
  
   def copy(): Tensor2 = {
     val na = Array.tabulate(nrows * ncols)(i => a(i))
@@ -331,7 +341,6 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
         i += 1
       }
   }
-    
 
   def *=(vv: Tensor1, res: DenseTensor1): Unit = {
     var i = 0 // iterate over rows
@@ -373,6 +382,13 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
     a(0).forEach { (i,v) => sbuf append (" i: " + v) }
     sbuf append "\n"
     sbuf.toString()
+  }
+  
+  def clear() = {
+    var i = 0; while (i < getDim1) {
+      a(i).zeroOut() // clear each row      
+      i += 1
+    }
   }
 }
 

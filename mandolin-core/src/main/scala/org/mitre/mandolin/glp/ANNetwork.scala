@@ -155,15 +155,22 @@ object ANNetwork {
         val lt = specs(i)
         val d = lt.dim
         lt.designate match {
-          case TanHLType   => WeightLayer.getTanHLayer(lt, prevDim, i)
+          case SeqEmbeddingLType =>
+            val prev = specs(i-1)
+            prev.designate match {
+              case SparseSeqInputLType(vs) =>
+                new SeqEmbeddingLayer(i, d, vs, lt)
+              case _ => throw new RuntimeException("Embedding layer must follow SparseSeqInputLType")
+            }            
+          case TanHLType         => WeightLayer.getTanHLayer(lt, prevDim, i)
           case LogisticLType     => WeightLayer.getLogisticLayer(lt, prevDim, (i == lastInd), i)
           case LinearLType       => WeightLayer.getLinearLayer(lt, prevDim, (i == lastInd), i)
           case CrossEntropyLType => WeightLayer.getCELayer(lt, prevDim, (i == lastInd), i)
           case ReluLType         => WeightLayer.getReluLayer(lt, prevDim, i)
           case SoftMaxLType           => WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim, i, olSp)
-          case HingeLType(c)             => WeightLayer.getOutputLayer(new HingeLoss(d, c), lt, prevDim, i, olSp)
+          case HingeLType(c)          => WeightLayer.getOutputLayer(new HingeLoss(d, c), lt, prevDim, i, olSp)
           case ModHuberLType          => WeightLayer.getOutputLayer(new ModifiedHuberLoss(d), lt, prevDim, i, olSp)
-          case RampLType(rl)              => WeightLayer.getOutputLayer(new RampLoss(d,rl), lt, prevDim, i, olSp)
+          case RampLType(rl)          => WeightLayer.getOutputLayer(new RampLoss(d,rl), lt, prevDim, i, olSp)
           case TransLogLType          => WeightLayer.getOutputLayer(new TransLogLoss(d), lt, prevDim, i, olSp)
           case TLogisticLType         => WeightLayer.getOutputLayer(new TLogisticLoss(d), lt, prevDim, i, olSp)
           case _                                  => throw new RuntimeException("Invalid non-input layer specification: " + specs(i))
