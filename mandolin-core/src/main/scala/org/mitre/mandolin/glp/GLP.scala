@@ -100,3 +100,24 @@ class StdVectorExtractorWithAlphabet(la: Alphabet, nfs: Int) extends FeatureExtr
   def getNumberOfFeatures = nfs
 }
 
+class SequenceOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
+  
+  def getNumberOfFeatures = nfs
+  def getAlphabet = new IdentityAlphabet(nfs)
+  def extractFeatures(s: String) : GLPFactor = {
+    val line = s.split(" ")
+    val ln = line.length
+    val lab = line(0)
+    val features = SparseVec(nfs * ln)
+    var i = 1; while (i < ln) {
+      val av = line(i).split(":")
+      val ind = av(0).toInt + (i - 1) * nfs
+      val vl = if (av.length > 1) av(1).toDouble else 1.0
+      features(ind) = vl
+      i += 1
+    }
+    val targetVec = DenseVec.zeros(la.getSize)
+    targetVec.update(la.ofString(lab), 1.0)
+    new SparseGLPFactor(features, targetVec)
+  }
+}

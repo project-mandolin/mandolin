@@ -210,12 +210,28 @@ abstract class AbstractProcessor extends LineParser {
     val lines = io.readLines(appSettings.trainFile.get)
     getComponentsInducedAlphabet(appSettings.netspec, lines, la, appSettings.scaleInputs, appSettings.filterFeaturesMI, io)
   }
+  
+  def getComponentsSeqOneHot(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {    
+    val la = appSettings.labelFile match {
+      case Some(lf) => getLabelAlphabet(Some(lf), io)
+      case None => 
+        val outputDim = appSettings.netspec.last("dim").toInt
+        new IdentityAlphabet(outputDim) 
+    }
+    val inDim = appSettings.netspec.head("dim").toInt
+    val (evaluator, predictor, outConstructor) = getSubComponents(appSettings.netspec, appSettings.numFeatures, la.getSize)
+    val fe = new SequenceOneHotExtractor(la,inDim)
+    // XXX - remove 1000 here and replace with count of number of data points
+    GLPComponentSet(evaluator, predictor, outConstructor, fe, la, inDim, 1000)
+  }
 
   def getComponentsViaSettings(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     if (appSettings.denseVectorSize > 0) getComponentsDenseVecs(appSettings, io)
     else if (appSettings.useRandom) getComponentsHashedFeatures(appSettings, io)
     else getComponentsInducedAlphabet(appSettings, io)
   }
+  
+  
 
   def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, GLPFactor)], laOpt: Option[Alphabet]): Unit = {
     laOpt foreach { la =>

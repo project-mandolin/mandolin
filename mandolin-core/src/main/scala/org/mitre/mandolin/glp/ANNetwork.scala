@@ -158,8 +158,7 @@ object ANNetwork {
           case SeqEmbeddingLType =>
             val prev = specs(i-1)
             prev.designate match {
-              case SparseSeqInputLType(vs) =>
-                new SeqEmbeddingLayer(i, d, vs, lt)
+              case SparseSeqInputLType(vs) => new SeqEmbeddingLayer(i, d, vs, lt)
               case _ => throw new RuntimeException("Embedding layer must follow SparseSeqInputLType")
             }            
           case TanHLType         => WeightLayer.getTanHLayer(lt, prevDim, i)
