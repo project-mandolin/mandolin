@@ -228,6 +228,8 @@ abstract class AbstractProcessor extends LineParser {
   def getComponentsViaSettings(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     if (appSettings.denseVectorSize > 0) getComponentsDenseVecs(appSettings, io)
     else if (appSettings.useRandom) getComponentsHashedFeatures(appSettings, io)
+    else if (appSettings.netspec.head("ltype").equals("SeqInputSparse")) // special-case of one-hot sequence inputs 
+      getComponentsSeqOneHot(appSettings, io)
     else getComponentsInducedAlphabet(appSettings, io)
   }
   

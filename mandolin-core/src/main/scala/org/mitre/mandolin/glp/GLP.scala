@@ -108,7 +108,7 @@ class SequenceOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[S
     val line = s.split(" ")
     val ln = line.length
     val lab = line(0)
-    val features = SparseVec(nfs * ln)
+    val features = SparseVec(nfs * (ln - 1))
     var i = 1; while (i < ln) {
       val av = line(i).split(":")
       val ind = av(0).toInt + (i - 1) * nfs

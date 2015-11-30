@@ -89,8 +89,7 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
       }
       i += 1
     }
-    // TODO
-    //  - Update deltas for previous layer
+    // XXX - this isn't correct .. just a placeholder
     prev match {
       case p: NonInputLayer =>
         w.trMult(delta, p.delta)
