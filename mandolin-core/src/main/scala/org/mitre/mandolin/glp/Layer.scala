@@ -25,6 +25,7 @@ case object LinearLType extends LayerDesignate
 case object CrossEntropyLType extends LayerDesignate
 case object ReluLType extends LayerDesignate
 case object SoftMaxLType extends LayerDesignate
+case object NegSampledSoftMaxLType extends LayerDesignate
 
 /** @param c The coeficient defining the size of the margin*/
 case class  HingeLType(c: Double = 1.0) extends LayerDesignate
@@ -61,14 +62,12 @@ abstract class NonInputLayer(i: Int, val d: Int, lt: LType) extends Layer(i, d, 
 
   def setPrevLayer(l: Layer): Unit
 
+  def setTarget(v: DenseVec): Unit
+  def setTarget(v: SparseVec) : Unit
   /*
    * Method to get output from this layer.  Input layers may have sparse 'outputs'
    */
   def getOutput(tr: Boolean): Vec
-
-  def getTarget: DenseVec
-
-  def setTarget(v: DenseVec): Unit
 
   /* Get the gradients as a pair: gradient matrix and bias vector */
   def getGradient: (Mat, DenseVec)
@@ -77,15 +76,7 @@ abstract class NonInputLayer(i: Int, val d: Int, lt: LType) extends Layer(i, d, 
   
   def getGradientWith(in: Vec, out: DenseVec, w: Mat, b: DenseVec) : (Mat, DenseVec)
 
-  def getActFnDeriv: DenseVec
-
   def getCost: Double
-
-  /* 
-   * Updates the parameter values by the gradients scaled input parameter
-   * @param v scalar value applied to gradients before update 
-   * */
-  def updateScalar(v: Double): Unit = {}
 
   /* Feed-forward using inputs present in the input layer */
   def forward(w: Mat, b: DenseVec, training: Boolean): Unit
@@ -114,11 +105,18 @@ abstract class DenseNonInputLayer(_i: Int, _d: Int, _lt: LType) extends NonInput
     output = v
   }
 
+  def getTarget: DenseVec
+
+  def setTarget(v: SparseVec): Unit = throw new RuntimeException("Sparse vector target not allowed with dense non-input layer")
+  
   /*
    * Method to get output from this layer.  Input layers may have sparse 'outputs'
    */
   def getOutput(tr: Boolean): Vec = output
 
+  def getActFnDeriv: DenseVec
+
+  
   
 }
 

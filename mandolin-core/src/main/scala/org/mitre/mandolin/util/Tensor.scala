@@ -369,6 +369,12 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
     ()
   }
   
+  def getNonZeros : List[Int] = {
+    var b : List[Int] = Nil
+    forEach{(i,_) => b = i :: b}
+    b
+  }
+  
   final def toTensor2(r: Int) : Tensor2 = {
     throw new RuntimeException("UNIMPLEMENTED Conversion to Sparse order-2 tensor")
   }

@@ -23,6 +23,9 @@ abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
   def :=(v: Double): Unit
   def +=(m: Tensor2): Unit
   
+  /** take a row from this matrix and compute dot product with provided vector */
+  def rowDot(row: Int, v: Tensor1) : Double
+  
   /** Zero out matrix */
   def clear() : Unit
   
@@ -88,6 +91,20 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   def copy(): Tensor2 = {
     val na = Array.tabulate(nrows * ncols)(i => a(i))
     new DenseTensor2(na, nrows, ncols, dr)
+  }
+  
+  final def rowDot(row: Int, v: Tensor1) = {
+    var r = 0.0
+    v match {
+      case x: DenseTensor1 =>
+        val l = x.getDim
+        val offset = row * ncols // this may be faster...
+        var i = 0; while (i < l) {
+          r += a(offset + i) * x(i)
+        }
+      case x: SparseTensor1 => throw new RuntimeException("Sparse tensor unsupported against dense matrix with rotDot method")
+    }
+    r
   }
 
   final def *=(v: Double) = { var i = 0; while (i < size) { a(i) *= v; i += 1 } }
@@ -297,7 +314,16 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
   final def +=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
   
   final def +=(vv: Tensor1) : Unit = throw new RuntimeException("Operation results in non-sparse Matrix") 
-    
+  final def rowDot(row: Int, vec: Tensor1) = {
+    var r = 0.0
+    vec match {
+      case x: DenseTensor1 => 
+        val spRow = a(row)
+        spRow.forEach({(i,v) => r += v * vec(i)})
+      case _: SparseTensor1 => throw new RuntimeException("Sparse vector not allows in dot product with row of matrix.")
+    }
+    r
+  }
   
   def asArray = {
       //throw new RuntimeException("As array not possible with ColumnSparseTensor2 having " + a.length + " rows")

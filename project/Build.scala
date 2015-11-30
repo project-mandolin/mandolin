@@ -31,7 +31,7 @@ object MandolinBuild extends Build {
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre",
-    version := "0.3",
+    version := "0.3.1-SNAPSHOT",
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
     publishTo := {
@@ -44,18 +44,9 @@ object MandolinBuild extends Build {
     publishMavenStyle := true,    
     publishArtifact in Test := false,
     pomIncludeRepository := { _ => false },
-licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     homepage := Some(url("https://github.com/project-mandolin/mandolin.git")),
-    
     pomExtra in Global := {
-      <url>https://github.com/project-mandolin/mandolin.git</url>
-      <licenses>
-        <license>
-	  <name>Apache 2</name>
-          <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-          <distribution>repo</distribution>
-        </license>
-      </licenses>
       <scm>
         <connection>scm:git:github.com:project-mandolin/mandolin.git</connection>
         <url>git@github.com/project-mandolin/mandolin.git</url>
