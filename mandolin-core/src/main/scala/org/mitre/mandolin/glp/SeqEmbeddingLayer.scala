@@ -14,7 +14,7 @@ import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, DenseTensor1 => Dense
  * @author wellner
  */
 class SeqEmbeddingLayer(li: Int, eDim: Int, vocabSize: Int, lt: LType) 
-extends NonInputLayer(li, eDim, lt) {
+extends DenseNonInputLayer(li, eDim, lt) {
  
   def getActFnDeriv = output
   def setPrevLayer(l: Layer) = { prevLayer_=(Some(l)) }

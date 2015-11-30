@@ -20,7 +20,7 @@ object DynamicConvLayer {
 class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     actFn: DenseVec => DenseVec,
     actFnDeriv: DenseVec => DenseVec,
-    costFn: (DenseVec, DenseVec) => Double) extends NonInputLayer(li, k * eDim, lt) with Serializable { 
+    costFn: (DenseVec, DenseVec) => Double) extends DenseNonInputLayer(li, k * eDim, lt) with Serializable { 
 
   val kArgMax = Array.fill(k * eDim)(0)
   // cf. Kalchbrenner et al 2014 ACL
@@ -91,7 +91,7 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     }
     prev match {
       // XXX - this really assumes an Embedding Layer as the previous layer
-      case p: NonInputLayer =>
+      case p: DenseNonInputLayer =>
         i = 0; while (i < k * eDim) {      
         val dd = delta(i)        
         val convInd = kArgMax(i)

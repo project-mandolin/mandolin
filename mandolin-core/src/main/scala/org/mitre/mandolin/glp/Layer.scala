@@ -47,9 +47,6 @@ abstract class Layer(val index: Int, val dim: Int, val ltype: LType) extends Ser
   /* Gets the previous layer in the network */
   def prev: Layer = prevLayer.get
 
-  // this stores the errors for backprop
-  val delta: DenseVec = DenseVec.zeros(dim)
-
   def getOutput: Vec = getOutput(false)
   def getOutput(training: Boolean): Vec
   def setOutput(v: Vec) : Unit
@@ -62,24 +59,12 @@ abstract class Layer(val index: Int, val dim: Int, val ltype: LType) extends Ser
  */
 abstract class NonInputLayer(i: Int, val d: Int, lt: LType) extends Layer(i, d, lt) with Serializable {
 
-  // this is the inputs to the layer after weights applied
-  protected var output: DenseVec = DenseVec.zeros(dim)
-
-  def setOutput(v: Vec) : Unit = v match {
-    case vv: DenseVec => setOutput(vv)
-    case _ => throw new RuntimeException("Non-Input layers must have dense outputs")
-  }
-  
-  def setOutput(v: DenseVec) : Unit = {
-    output = v
-  }
-
   def setPrevLayer(l: Layer): Unit
 
   /*
    * Method to get output from this layer.  Input layers may have sparse 'outputs'
    */
-  def getOutput(tr: Boolean): Vec = output
+  def getOutput(tr: Boolean): Vec
 
   def getTarget: DenseVec
 
@@ -111,6 +96,30 @@ abstract class NonInputLayer(i: Int, val d: Int, lt: LType) extends Layer(i, d, 
 
   def sharedWeightCopy(): NonInputLayer
 
+}
+
+abstract class DenseNonInputLayer(_i: Int, _d: Int, _lt: LType) extends NonInputLayer(_i, _d, _lt) with Serializable {
+  // this is the inputs to the layer after weights applied
+  protected var output: DenseVec = DenseVec.zeros(dim)
+  
+  // this stores the errors for backprop
+  val delta: DenseVec = DenseVec.zeros(dim)
+
+  def setOutput(v: Vec) : Unit = v match {
+    case vv: DenseVec => setOutput(vv)
+    case _ => throw new RuntimeException("Non-Input layers must have dense outputs")
+  }
+  
+  def setOutput(v: DenseVec) : Unit = {
+    output = v
+  }
+
+  /*
+   * Method to get output from this layer.  Input layers may have sparse 'outputs'
+   */
+  def getOutput(tr: Boolean): Vec = output
+
+  
 }
 
 /*
@@ -161,7 +170,7 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
                                    costFn: (DenseVec, DenseVec) => Double,
                                    costGradFn: (DenseVec, DenseVec) => DenseVec,
                                    lt: LType,
-                                   dropOut: Double = 0.0) extends NonInputLayer(i, curDim, lt) with Serializable {
+                                   dropOut: Double = 0.0) extends DenseNonInputLayer(i, curDim, lt) with Serializable {
 
   def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double) =
     this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut)
@@ -260,7 +269,7 @@ class WeightLayer(curDim: Int, _prevDim: Int, outputLayer: Boolean, i: Int,
       delta *= deriv
     }
     prev match {
-      case p: NonInputLayer =>
+      case p: DenseNonInputLayer =>
         w.trMult(delta, p.delta)
         p.delta *= p.getActFnDeriv
       case _ =>

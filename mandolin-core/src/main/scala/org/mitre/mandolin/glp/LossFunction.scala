@@ -3,7 +3,7 @@ package org.mitre.mandolin.glp
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.util.{DenseTensor1 => DenseVec}
+import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, Tensor1 => Vec, SparseTensor1 => SparseVec}
 
 /**
  * The loss function here captures both the output activation/link function but
