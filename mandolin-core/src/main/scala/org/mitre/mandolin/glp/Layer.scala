@@ -18,6 +18,7 @@ case object InputLType extends LayerDesignate
 case object SparseInputLType extends LayerDesignate
 case class SparseSeqInputLType(vocabSize: Int) extends LayerDesignate
 case object SeqEmbeddingLType extends LayerDesignate
+case object DynamicConvLType extends LayerDesignate
 case object TanHLType extends LayerDesignate
 case object LogisticLType extends LayerDesignate
 case object LinearLType extends LayerDesignate
@@ -62,7 +63,7 @@ abstract class Layer(val index: Int, val dim: Int, val ltype: LType) extends Ser
 abstract class NonInputLayer(i: Int, val d: Int, lt: LType) extends Layer(i, d, lt) with Serializable {
 
   // this is the inputs to the layer after weights applied
-  protected val output: DenseVec = DenseVec.zeros(dim)
+  protected var output: DenseVec = DenseVec.zeros(dim)
 
   def setOutput(v: Vec) : Unit = v match {
     case vv: DenseVec => setOutput(vv)
@@ -70,7 +71,7 @@ abstract class NonInputLayer(i: Int, val d: Int, lt: LType) extends Layer(i, d, 
   }
   
   def setOutput(v: DenseVec) : Unit = {
-    output := v
+    output = v
   }
 
   def setPrevLayer(l: Layer): Unit
@@ -138,9 +139,9 @@ class DenseInputLayer(_d: Int, drO: Double = 0.0) extends InputLayer(_d, LType(I
 }
 
 class SparseInputLayer(_d: Int, drO: Double = 0.0) extends InputLayer(_d, LType(SparseInputLType, _d, drO)) {
-  protected val output: SparseVec = SparseVec(dim)
+  protected var output: SparseVec = SparseVec(dim)
   def setOutput(v: Vec): Unit = v match { case x: SparseVec => setOutput(x) case _ => throw new RuntimeException("Input vector type mis-match") }
-  def setOutput(v: SparseVec) = { output := v }
+  def setOutput(v: SparseVec) = { output = v }
   def getOutput(tr: Boolean): Vec = output
   def copy() = new SparseInputLayer(_d, drO)
   def sharedWeightCopy() = new SparseInputLayer(_d)

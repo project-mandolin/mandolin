@@ -18,8 +18,11 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
   val numLayers = layers.length
 
   @inline
-  final private def getGaussian(rv: util.Random, v: Double) = 
-    rv.nextGaussian() * v
+  final private def getGaussian(rv: util.Random, v: Double) = {
+    val gaussianVal = rv.nextGaussian()
+    println("Gaussian sample = " + gaussianVal)
+    gaussianVal * v
+  }
 
   private def getLayerWeights(curDim: Int, prevDim: Int, lt: LType, allZero: Boolean): (DenseMat, DenseVec) = {
     val w = DenseMat.zeros(curDim, prevDim)
@@ -28,7 +31,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
       val rv = new scala.util.Random
       var i = 0; while (i < curDim) {
         var j = 0; while (j < prevDim) {
-          if (util.Random.nextBoolean()) w.update(i, j, getGaussian(rv, gv))
+          w.update(i, j, getGaussian(rv, gv))
           j += 1
         }
         i += 1
@@ -37,6 +40,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
     val b = DenseVec.zeros(curDim)
     lt.designate match {
       case TanHLType => b += (0.5)
+      case ReluLType => b += (0.1)
       case _ =>
     }
     (w, b)
@@ -72,6 +76,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
    * weights passed in as `glpW`
    */
   def forwardPass(inputVec: Vec, targetVec: DenseVec, glpW: GLPWeights, training: Boolean = true): Unit = {
+    println("(forwardPass) inputVec size = " + inputVec.getDim)
     if ((numLayers > 1) || !sparseInput) {
       inLayer.setOutput(inputVec)
       outLayer.setTarget(targetVec)

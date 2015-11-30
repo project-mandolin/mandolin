@@ -28,8 +28,15 @@ extends NonInputLayer(li, eDim, lt) {
    */
   def forwardWith(in: Vec, w: Mat, b: DenseVec, training: Boolean) = {
     val seqLen = in.getDim / vocabSize
+    println("(forwardWith) in size = " + in.getDim)
+    println("(forwardWith) vocabSize = " + vocabSize)
+    println("(forwardWith) seqLen = " + seqLen)
+    println("(forwardWith) weight matrix = ")
+    for (i <- 0 until w.getDim1) {
+      print(w.getRow(i))
+    }
     sequenceLength = seqLen // set this to reuse during backprop step
-    output := DenseVec.zeros(eDim * seqLen)
+    output = DenseVec.zeros(eDim * seqLen)
     in.forEach({(i,v) =>
       val vocabInd    = i % vocabSize  // index into vocabulary space
       val seqPosition = i / vocabSize  // item within input sequence
@@ -39,6 +46,7 @@ extends NonInputLayer(li, eDim, lt) {
         j += 1
       }
     })    
+    println("Embedding output = " + output)
   }
   
   def forward(w: Mat, b: DenseVec, training: Boolean = true) = {  
@@ -50,7 +58,7 @@ extends NonInputLayer(li, eDim, lt) {
   def getTarget = throw new RuntimeException("Convolutional layer has no target")
   
   val grad: Mat = SparseMat.zeros(eDim, vocabSize)
-  val bgrad: DenseVec = DenseVec.zeros(eDim)
+  val bgrad: DenseVec = DenseVec.zeros(eDim)  // biases not actually used for embedding layer
     
   def getGradient(w: Mat, b: DenseVec) : (Mat, DenseVec) = {
     backward(w: Mat, b: DenseVec)
@@ -65,8 +73,7 @@ extends NonInputLayer(li, eDim, lt) {
       val vocabInd    = i % vocabSize  // index into vocabulary space
       val seqPosition = i / vocabSize  // item within input sequence
       var j = 0; while (j < eDim) {   
-        val di = (seqPosition * eDim) + j       // delta/error index which is embedding index + position in sequence
-        grad(j,vocabInd) += delta(di) * v
+        grad(j,vocabInd) += delta(j) * v // update gradient for each embedding dim for this vocab item
         j += 1
       }
     })

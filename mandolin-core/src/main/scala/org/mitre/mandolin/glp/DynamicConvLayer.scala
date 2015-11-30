@@ -72,7 +72,7 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     val cc = w.getDim2
     val prevIn = prev.getOutput(true)
     val inMatrix = prevIn.toTensor2(eDim)
-    val ncols = inMatrix.getDim2
+    val ncols = inMatrix.getDim2    
     var j = 0
     i = 0; while (i < k * eDim) {      
       val dd = delta(i)        
@@ -89,11 +89,23 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
       }
       i += 1
     }
-    // XXX - this isn't correct .. just a placeholder
     prev match {
+      // XXX - this really assumes an Embedding Layer as the previous layer
       case p: NonInputLayer =>
-        w.trMult(delta, p.delta)
-        p.delta *= p.getActFnDeriv
+        i = 0; while (i < k * eDim) {      
+        val dd = delta(i)        
+        val convInd = kArgMax(i)
+        val rowId = convInd % eDim // this is the input 'row'
+        val colId = convInd / eDim // col id in convolution matrix
+        j = 0; while (j < width) {
+          val inCol = colId - j
+          if ((inCol >= 0) && (inCol < ncols)) {
+            p.delta(rowId) += dd * w(rowId, j)
+          }        
+          j += 1
+        }
+        i += 1
+        }    
       case _ =>
     }
   }
