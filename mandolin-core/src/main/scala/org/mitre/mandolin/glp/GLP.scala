@@ -8,7 +8,7 @@ import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{Alphabet, AlphabetWithUnitScaling, StdAlphabet, IdentityAlphabet, IOAssistant}
 import org.mitre.mandolin.gm.Feature
-import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1}
+import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1 => Vec}
 
 
 class GLPSettings(a: Seq[String]) extends LearnerSettings(a) with OnlineLearnerSettings 
@@ -116,7 +116,7 @@ class SequenceOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[S
       features(ind) = vl
       i += 1
     }
-    val targetVec = DenseVec.zeros(la.getSize)
+    val targetVec : Vec = SparseVec(la.getSize)
     targetVec.update(la.ofString(lab), 1.0)
     new SparseGLPFactor(features, targetVec)
   }

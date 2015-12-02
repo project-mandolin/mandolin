@@ -34,7 +34,7 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
   def setPrevLayer(l: Layer) = { prevLayer_=(Some(l)) }
   def getCost = costFn(getTarget, output)
   
-  def forwardWith(in: Vec, w: Mat, b: DenseVec, training: Boolean) = {
+  def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {
     val wideConv = convolve(w, in, width)
     val (kMax, kaMax) = kmax(wideConv,eDim)
     kMax += b // assumes each b[i] is added to each entry in kMax[i,:]
@@ -43,24 +43,25 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     output := actFn(flattened)
   }
   
-  def forward(w: Mat, b: DenseVec, training: Boolean = true) = {  
+  def forward(w: Mat, b: Vec, training: Boolean = true) = {  
     val prevIn = prev.getOutput(training)
     forwardWith(prevIn, w, b, training)    
   }
   
-  def setTarget(v: DenseVec) = throw new RuntimeException("Convolutional layer has no target")
+  def setTarget(vv: Vec) : Unit = throw new RuntimeException("Convolutional layer has no target")
+
   def getTarget = throw new RuntimeException("Convolutional layer has no target")
   
   val grad: Mat = DenseMat.zeros(eDim, width)
   // XXX - note that bgrad here has a single bias for each embedding dimension rather than one for each output
   val bgrad: DenseVec = DenseVec.zeros(eDim)
     
-  def getGradient(w: Mat, b: DenseVec) : (Mat, DenseVec) = {
-    backward(w: Mat, b: DenseVec)
+  def getGradient(w: Mat, b: Vec) : (Mat, Vec) = {
+    backward(w, b)
     getGradient
   }
   
-  private def backward(w: Mat, b: DenseVec) = {
+  private def backward(w: Mat, b: Vec) = {
     // update bias gradients
     var i = 0; while (i < dim) {
       val bind = i / k
@@ -110,10 +111,10 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     }
   }
   
-  def getGradientWith(in: Vec, out: DenseVec, w: Mat, b: DenseVec) : (Mat, DenseVec) = 
+  def getGradientWith(in: Vec, out: Vec, w: Mat, b: Vec) : (Mat, Vec) = 
     getGradient(w, b)
   
-  def getGradient : (Mat, DenseVec) = (grad, bgrad)
+  def getGradient : (Mat, Vec) = (grad, bgrad)
   
   def copy() = {
     val cur = this

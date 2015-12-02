@@ -5,7 +5,7 @@ package org.mitre.mandolin.glp
 
 import org.mitre.mandolin.optimize.{ Weights, Updater, LossGradient }
 import org.mitre.mandolin.predict.{ EvalPredictor, DiscreteConfusion }
-import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, ColumnSparseTensor2 => SparseMat, DenseTensor1 => DenseVec, Tensor2 => Mat }
+import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, ColumnSparseTensor2 => SparseMat, DenseTensor1 => DenseVec, Tensor2 => Mat, Tensor1 => Vec }
 
 abstract class ComposeStrategy
 case object Minimum extends ComposeStrategy
@@ -19,11 +19,11 @@ case object Average extends ComposeStrategy
  * for a single layer of the network
  * @author wellner
  */
-class GLPLayout(val w: IndexedSeq[(Mat, DenseVec)]) extends Serializable {
+class GLPLayout(val w: IndexedSeq[(Mat, Vec)]) extends Serializable {
   val length = w.length
   val totalSize = {
     var n = 0
-    w foreach { case (w, b) => n += w.getSize; n += b.getSize }
+    w foreach { case (w, b) => n += w.getSize; n += b.getDim }
     n
   }
 
@@ -38,7 +38,7 @@ class GLPLayout(val w: IndexedSeq[(Mat, DenseVec)]) extends Serializable {
     for (i <- 0 until length) {
       val (thisW, thisB) = this.get(i)
       //thisW.numericalCheck()
-      thisB.numericalCheck()
+      //thisB.numericalCheck()
     }
   }
 
@@ -72,6 +72,7 @@ class GLPLayout(val w: IndexedSeq[(Mat, DenseVec)]) extends Serializable {
     }
   }
 
+  
   def set(v: Double): Unit = {
     for (i <- 0 until length) {
       get(i) match {
@@ -81,7 +82,7 @@ class GLPLayout(val w: IndexedSeq[(Mat, DenseVec)]) extends Serializable {
       }
     }
   }
-
+  
   def timesEquals(v: Double): Unit = {
     for (i <- 0 until length) {
       get(i) match {
@@ -249,7 +250,7 @@ trait Regularizer {
     java.lang.Double.longBitsToDouble(((java.lang.Double.doubleToLongBits(x) >> 32) + 1072632448) << 31)
 
    /** implementation of scaling - cf. Hinton et al "Improving neural networks by preventing co-adaptation of feature detectors" */
-  def rescaleWeightsDense(w_w: DenseMat, w_b: DenseVec, d1: Int, d2: Int, maxLayerSumSq: Double) = {              
+  def rescaleWeightsDense(w_w: DenseMat, w_b: Vec, d1: Int, d2: Int, maxLayerSumSq: Double) = {              
     var i = 0; while (i < d1) {
       var ssq = 0.0
       var j = 0; while (j < d2) {
@@ -270,7 +271,7 @@ trait Regularizer {
   }
   
      /** implementation of scaling - cf. Hinton et al "Improving neural networks by preventing co-adaptation of feature detectors" */
-  def rescaleWeightsSparse(w_w: SparseMat, w_b: DenseVec, d1: Int, maxLayerSumSq: Double) = {              
+  def rescaleWeightsSparse(w_w: SparseMat, w_b: Vec, d1: Int, maxLayerSumSq: Double) = {              
     if (maxLayerSumSq > 0.0) {
     var i = 0; while (i < d1) {
       var ssq = 0.0

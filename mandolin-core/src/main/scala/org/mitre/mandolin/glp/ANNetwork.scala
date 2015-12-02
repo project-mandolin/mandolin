@@ -19,9 +19,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
 
   @inline
   final private def getGaussian(rv: util.Random, v: Double) = {
-    val gaussianVal = rv.nextGaussian()
-    println("Gaussian sample = " + gaussianVal)
-    gaussianVal * v
+    rv.nextGaussian() * v
   }
 
   private def getLayerWeights(curDim: Int, prevDim: Int, lt: LType, allZero: Boolean): (DenseMat, DenseVec) = {
@@ -53,8 +51,8 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
   def generateRandomWeights: GLPWeights = {
     val zeroLastLayer = numLayers == 1
     val wts = IndexedSeq.tabulate(numLayers) { i =>
-      if (i == 0) getLayerWeights(layers(i).dim, inLayer.dim, layers(i).ltype, zeroLastLayer)
-      else getLayerWeights(layers(i).dim, layers(i - 1).dim, layers(i).ltype, false)
+      if (i == 0) getLayerWeights(layers(i).dim, inLayer.getNumberOfOutputs, layers(i).ltype, zeroLastLayer)
+      else getLayerWeights(layers(i).dim, layers(i-1).getNumberOfOutputs, layers(i).ltype, false)
     }
     new GLPWeights(new GLPLayout(wts))
   }
@@ -65,7 +63,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
    */
   def generateZeroedLayout: GLPLayout = {
     val layout = IndexedSeq.tabulate(numLayers) { i =>
-      val prevDim = if (i == 0) inLayer.dim else layers(i - 1).dim
+      val prevDim = if (i == 0) inLayer.dim else layers(i - 1).getNumberOfOutputs
       (DenseMat.zeros(layers(i).dim, prevDim), DenseVec.zeros(layers(i).dim))
     }
     new GLPLayout(layout)
@@ -75,12 +73,12 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
    * Perform a feed-forward pass with `inputVec` as inputs using the current
    * weights passed in as `glpW`
    */
-  def forwardPass(inputVec: Vec, targetVec: DenseVec, glpW: GLPWeights, training: Boolean = true): Unit = {
-    println("(forwardPass) inputVec size = " + inputVec.getDim)
+  def forwardPass(inputVec: Vec, targetVec: Vec, glpW: GLPWeights, training: Boolean = true): Unit = {
     if ((numLayers > 1) || !sparseInput) {
       inLayer.setOutput(inputVec)
       outLayer.setTarget(targetVec)
-      for (i <- 0 until numLayers) {
+      for (i <- 0 until numLayers) {      
+        println("Layer i = " + i)
         val (w, b) = glpW.wts.get(i)
         layers(i).forward(w, b, training)
       }
@@ -94,7 +92,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
    *  target output vector `targetVec`, using the model weights `glpW`
    *  @return GLPLayout object representing the gradient as a sequence of (matrix, vector) pairs 
    */
-  def getGradient(inputVec: Vec, targetVec: DenseVec, glpW: GLPWeights) = {
+  def getGradient(inputVec: Vec, targetVec: Vec, glpW: GLPWeights) = {
     forwardPass(inputVec, targetVec, glpW, true)
     if ((numLayers > 1) || !sparseInput) {
       val revGrads = for (i <- (numLayers - 1) to 0 by -1) yield {
@@ -170,13 +168,14 @@ object ANNetwork {
           case LogisticLType     => WeightLayer.getLogisticLayer(lt, prevDim, (i == lastInd), i)
           case LinearLType       => WeightLayer.getLinearLayer(lt, prevDim, (i == lastInd), i)
           case CrossEntropyLType => WeightLayer.getCELayer(lt, prevDim, (i == lastInd), i)
-          case ReluLType         => WeightLayer.getReluLayer(lt, prevDim, i)
+          case ReluLType         => WeightLayer.getReluLayer(lt, prevDim, i)          
           case SoftMaxLType           => WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim, i, olSp)
           case HingeLType(c)          => WeightLayer.getOutputLayer(new HingeLoss(d, c), lt, prevDim, i, olSp)
           case ModHuberLType          => WeightLayer.getOutputLayer(new ModifiedHuberLoss(d), lt, prevDim, i, olSp)
           case RampLType(rl)          => WeightLayer.getOutputLayer(new RampLoss(d,rl), lt, prevDim, i, olSp)
           case TransLogLType          => WeightLayer.getOutputLayer(new TransLogLoss(d), lt, prevDim, i, olSp)
           case TLogisticLType         => WeightLayer.getOutputLayer(new TLogisticLoss(d), lt, prevDim, i, olSp)
+          case NegSampledSoftMaxLType(inDim,ss) => new NegSampledSoftMaxLayer(i, d, inDim, ss)
           case _                                  => throw new RuntimeException("Invalid non-input layer specification: " + specs(i))
         }
       }

@@ -33,7 +33,15 @@ abstract class Tensor(val densityRatio: Double) extends Serializable {
 abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
 
   def getDimSizes = collection.immutable.IndexedSeq(getDim)
-
+  
+  
+  
+  /** Assign values in tensor `v` to this `Tensor1` */
+  def :=(v: Tensor1) : Unit
+  
+  /** Assign value `v` to each component in `Tensor1` */
+  def :=(v: Double) : Unit
+  
   /** Gets the number of dimensions for this `Tensor1` - i.e. vector */
   def getDim: Int
 
@@ -44,6 +52,12 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
   def update(i: Int, v: Double): Unit
 
   def mapInPlace(fn: (Double => Double)): Unit
+  
+  /** Dot product */
+  def *(t: Tensor1) : Double
+  
+  /** Matrix-scalar product. Returns new `Tensor1` */
+  def *(v: Double) : Tensor1
 
   /** Add the value `v` to the ''i''th element of the Tensor */
   def +=(i: Int, v: Double): Unit
@@ -63,6 +77,9 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
   /** Component-wise addition */
   def +=(t: Tensor1): Unit
 
+  /** Component-wise addition */
+  def -=(t: Tensor1): Unit
+  
   /** Raise each element of this tensor to a power */
   def ^=(v: Double): Unit
 
@@ -121,6 +138,10 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
   def deepCopy: Tensor1
 
   def zeroOut(): Unit
+  
+  def mapInto(vv: Tensor1, fn: (Double, Double) => Double) =  {
+    var i = 0; while (i < getDim) { update(i, fn(this(i), vv(i))); i += 1 }
+  }
 }
 
 trait SparseTensor {
@@ -150,10 +171,27 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
   final def update(i: Int, v: Double) = { a(i) = v }
 
   def zeroOut() = {
-    var i = 0; while (i < size) {
-      a(i) = 0.0
-      i += 1
-    }
+	  var i = 0; while (i < size) {
+		  a(i) = 0.0
+			i += 1
+	  }
+  }
+  
+  def *(v: Double) : Tensor1 = {
+    new DenseTensor1(Array.tabulate(size)(i => a(i) * v))
+  }
+  
+  def *(tt: Tensor1) : Double = {
+	  tt match {
+	  case t: DenseTensor1 =>
+	    var r = 0.0
+	    var i = 0; while (i < dim) {
+		    r += a(i) * t(i)
+				i += 1
+	    }
+	    r
+	  case t: SparseTensor1 => t * this
+	  }
   }
   
   final def toTensor2(r: Int) : Tensor2 = {
@@ -206,17 +244,16 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     val nArray = Array.tabulate(size) { i => a(i) }
     new DenseTensor1(nArray, dr)
   }
-
-  def :=(v: DenseTensor1) = {
-    if (a.length != v.a.length) {
-      println("This length = " + a.length)
-      println("That length = " + v.a.length)
+  
+  def :=(vv: Tensor1) = {
+    assert(vv.getDim == this.getDim)
+    vv match {
+      case v: DenseTensor1 => Array.copy(v.a, 0, a, 0, v.dim)
+      case v: SparseTensor1 =>
+        this.zeroOut()
+        v.forEach({(i,v) => update(i,v)})
     }
-    Array.copy(v.a, 0, a, 0, v.dim) 
-  }
-
-  def mapInto(v: DenseTensor1, fn: (Double, Double) => Double) = {
-    var i = 0; while (i < dim) { a(i) = fn(a(i), v.a(i)); i += 1 }
+    
   }
 
   def mapInPlace(fn: Double => Double): Unit = {
@@ -227,7 +264,8 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     val na = Array.tabulate(dim) { i => fn(a(i)) }
     new DenseTensor1(na, dr)
   }
-
+  
+  
   final def :-(t: DenseTensor1) = new DenseTensor1(Array.tabulate(dim) { i => a(i) - t(i) })
   final def :+(t: DenseTensor1) = new DenseTensor1(Array.tabulate(dim) { i => a(i) + t(i) })
   final def :*(t: DenseTensor1) = new DenseTensor1(Array.tabulate(dim) { i => a(i) * t(i) })
@@ -379,6 +417,18 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
     throw new RuntimeException("UNIMPLEMENTED Conversion to Sparse order-2 tensor")
   }
   
+  def *(t: Double) : Tensor1 = {
+    val nt = deepCopy
+    nt.forEach({(i,v) => nt.update(i, v * t)})
+    nt
+  }
+  
+  def *(t: Tensor1) : Double = {
+    var r = 0.0
+    forEach({(i,v) => r += v * t(i)})
+    r
+  }
+  
   def getSize = dim
   def getDim = dim
 
@@ -421,10 +471,16 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
     umap.put(i, v)
   }
 
-  def :=(v: SparseTensor1) = {
-    umap.clear()
-    this += v
+  def :=(vv: Tensor1) = {
+    vv match {
+      case v: SparseTensor1 =>
+        umap.clear()
+        this += v
+      case _: DenseTensor1 => throw new RuntimeException("Assigning dense tensor to sparse tensor variable. Not allowed.")
+    }    
   }
+  
+  final def :=(v: Double) = throw new RuntimeException("Assigning value to all components of a sparse tensor. Not allowed.")
 
   def +=(i: Int, v: Double) = {
     val cv = if (umap.containsKey(i)) umap.get(i) else 0.0
@@ -447,6 +503,16 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
       }
     }
   }
+  
+  def -=(t: Tensor1) = t match {
+    case dense: DenseTensor1 => throw new RuntimeException("Grave inefficiency: adding dense vector into static sparse vector")
+    case sparse: SparseTensor1 => {
+      sparse forEach { (i, v) =>
+        val cv = if (umap.containsKey(i)) umap.get(i) else 0.0
+        umap.put(i, v - cv)
+      }
+    }
+  }
 
   def ^=(v: Double): Unit = forEach { (k, cv) => umap.put(k, Math.pow(cv, v)) }
 
@@ -455,15 +521,6 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
       val nv = ar(k) + (cv * v)
       ar.update(k, nv)
     }
-  }
-
-  def dot(t: Tensor1): Double = {
-    var ss = 0.0
-    forEach { (k, thisV) =>
-      val v = t(k)
-      ss += (v * thisV)
-    }
-    ss
   }
 
   def *-=(v: Double, ar: Array[Double]): Unit = {

@@ -3,6 +3,8 @@ package org.mitre.mandolin.util
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
+import collection.mutable.HashMap
+
 /**
  * 
  * Represents a 2-dimensional tensor - i.e. a matrix
@@ -101,7 +103,8 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
         val offset = row * ncols // this may be faster...
         var i = 0; while (i < l) {
           r += a(offset + i) * x(i)
-        }
+          i += 1
+        }        
       case x: SparseTensor1 => throw new RuntimeException("Sparse tensor unsupported against dense matrix with rotDot method")
     }
     r
@@ -372,7 +375,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
     var i = 0 // iterate over rows
     val r = res.a
     while (i < nrows) {
-      r(i) = a(i) dot vv
+      r(i) = a(i) * vv
       i += 1
     }
   }
@@ -382,7 +385,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
     val r = res.a
     while (i < nrows) {
       if (mask(i)) {
-        r(i) = a(i) dot vv
+        r(i) = a(i) * vv
       } else r(i) = 0.0
       i += 1
     }
@@ -419,6 +422,91 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
 }
 
 /**
+ * A matrix (tensor2) with sparse rows. Because matrix is sparse, many operations available for dense matrices aren't
+ * provided as they would result in a dense matrix.
+ * @param rows - sparse array of dense vectors
+ * @param nrows - number of rows
+ * @param ncols - number of columns
+ * @param dr - density ratio (if density exceeds this ratio, tensor should convert to dense representation)
+ */
+class RowSparseTensor2(val rows: HashMap[Int,Tensor1], val nrows: Int, val ncols: Int, dr: Double = 1.0) 
+extends Tensor2(dr) with Serializable {
+
+  protected val size = nrows * ncols
+  def getSize = size
+  def getDim1 = nrows
+  def getDim2 = ncols
+  
+  def trMult(vv: DenseTensor1, res: DenseTensor1): Unit = {
+    throw new RuntimeException("Transpose matrix product inefficient with column-sparse representation")
+  }
+  
+  @inline final def apply(i: Int, j: Int): Double = rows(i)(j)
+  @inline final def update(i: Int, j: Int, v: Double) = {
+    val row = rows(i)
+    row.update(i,v)
+  }
+  @inline final def getRow(i: Int): Tensor1 = rows(i)
+  @inline final def getCol(i: Int): Tensor1 = throw new RuntimeException("Column extraction for Column Sparse matrix not implemented")
+  @inline final def :=(v: Double) =
+    if (v == 0.0) {
+      var i = 0; while (i < nrows) { rows(i).zeroOut(); i += 1 }
+    } else throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+
+  final def -=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+  final def +=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+  
+  final def +=(vv: Tensor1) : Unit = throw new RuntimeException("Operation results in non-sparse Matrix") 
+  final def rowDot(row: Int, vec: Tensor1) = {
+    rows(row) * vec
+  }
+  
+  def asArray = {
+      throw new RuntimeException("As array not possible with ColumnSparseTensor2 having sparse rows")      
+    }
+
+  /** This performs a SPARSE map into.  Only non-zero elements in THIS matrix are updated */
+  def mapInto(mm: Tensor2, fn: (Double, Double) => Double) = mm match {
+    case _ => throw new RuntimeException("Sparse/dense matrix incompatibility")
+  }
+  
+  def copy(): Tensor2 = {
+    val na = rows map {case (i,r) => (i, r.copy)}
+    new RowSparseTensor2(na, nrows, ncols)
+  }
+
+  final def *=(v: Double) = rows foreach {case (i,r) => r *= v}
+  final def /=(v: Double) = rows foreach {case (i,r) => r /= v}
+  final def +=(mm: Tensor2) = mm match {
+    case _ => throw new RuntimeException("Adding dense tensor to sparse .. failure")    
+  }
+
+  def *=(vv: Tensor1, res: DenseTensor1): Unit = {
+    rows foreach {case (i, row) => res.update(i, row * vv) }
+  }
+  
+  def *=(vv: Tensor1, res: DenseTensor1, mask: Array[Boolean]): Unit = {
+    rows foreach {case (i, row) => if (mask(i)) res.update(i, row * vv) }    
+  }
+
+  /** Perform an outer product of `v1` and `v2` where v1 is ''dense'' and 
+   *  v2 is ''sparse''; place sparse result in `this` matrix */
+  def outerFill(v1: DenseTensor1, v2: SparseTensor1): Unit = {
+    throw new RuntimeException("Row sparse tensor cannot accept dense outer product")    
+  }
+
+  def outerFill(v1: DenseTensor1, v2: DenseTensor1): Unit = throw new RuntimeException("Row sparse tensor cannot accept dense outer product")
+  
+  def clear() = rows.clear()
+  
+  def setRow(ri: Int, r: Tensor1) = {
+    rows.update(ri, r)
+  }
+  
+}
+
+
+/**
  * Factor to construct [[ColumnSparseTensor2]] objects
  */
 object ColumnSparseTensor2 {
@@ -429,6 +517,12 @@ object ColumnSparseTensor2 {
     else if (r == 3) new ColumnSparseTensor2(Array(SparseTensor1(c), SparseTensor1(c), SparseTensor1(c)), r, c)
     else if (r == 4) new ColumnSparseTensor2(Array(SparseTensor1(c), SparseTensor1(c), SparseTensor1(c), SparseTensor1(c)), r, c)
     else new ColumnSparseTensor2(r,c) 
+  }
+}
+
+object RowSparseTensor2 {
+  def zeros(r: Int, c: Int) = {
+    new RowSparseTensor2(new HashMap[Int,Tensor1](), r, c)
   }
 }
 

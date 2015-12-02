@@ -25,7 +25,7 @@ case object LinearLType extends LayerDesignate
 case object CrossEntropyLType extends LayerDesignate
 case object ReluLType extends LayerDesignate
 case object SoftMaxLType extends LayerDesignate
-case object NegSampledSoftMaxLType extends LayerDesignate
+case class NegSampledSoftMaxLType(inDim: Int, sampleSize: Int) extends LayerDesignate
 
 /** @param c The coeficient defining the size of the margin*/
 case class  HingeLType(c: Double = 1.0) extends LayerDesignate
@@ -51,6 +51,9 @@ abstract class Layer(val index: Int, val dim: Int, val ltype: LType) extends Ser
   def getOutput: Vec = getOutput(false)
   def getOutput(training: Boolean): Vec
   def setOutput(v: Vec) : Unit
+  
+  /** Override this to provide effective output dimension (e.g. with tied weights, sequences, convolutions, etc.) */
+  def getNumberOfOutputs = dim
 
 }
 
@@ -62,26 +65,25 @@ abstract class NonInputLayer(i: Int, val d: Int, lt: LType) extends Layer(i, d, 
 
   def setPrevLayer(l: Layer): Unit
 
-  def setTarget(v: DenseVec): Unit
-  def setTarget(v: SparseVec) : Unit
+  def setTarget(v: Vec) : Unit
   /*
    * Method to get output from this layer.  Input layers may have sparse 'outputs'
    */
   def getOutput(tr: Boolean): Vec
 
   /* Get the gradients as a pair: gradient matrix and bias vector */
-  def getGradient: (Mat, DenseVec)
+  def getGradient: (Mat, Vec)
   
-  def getGradient(w: Mat, b: DenseVec) : (Mat, DenseVec)
+  def getGradient(w: Mat, b: Vec) : (Mat, Vec)
   
-  def getGradientWith(in: Vec, out: DenseVec, w: Mat, b: DenseVec) : (Mat, DenseVec)
+  def getGradientWith(in: Vec, out: Vec, w: Mat, b: Vec) : (Mat, Vec)
 
   def getCost: Double
 
   /* Feed-forward using inputs present in the input layer */
-  def forward(w: Mat, b: DenseVec, training: Boolean): Unit
+  def forward(w: Mat, b: Vec, training: Boolean): Unit
   
-  def forwardWith(in: Vec, w:Mat, b: DenseVec, training: Boolean): Unit
+  def forwardWith(in: Vec, w:Mat, b: Vec, training: Boolean): Unit
 
   def copy(): NonInputLayer
 
@@ -107,8 +109,6 @@ abstract class DenseNonInputLayer(_i: Int, _d: Int, _lt: LType) extends NonInput
 
   def getTarget: DenseVec
 
-  def setTarget(v: SparseVec): Unit = throw new RuntimeException("Sparse vector target not allowed with dense non-input layer")
-  
   /*
    * Method to get output from this layer.  Input layers may have sparse 'outputs'
    */
@@ -180,13 +180,14 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
   // this is the target vector, generally just for output layers
   val target: Option[DenseVec] = if (outputLayer) Some(DenseVec.zeros(dim)) else None
 
-  def setTarget(v: DenseVec) = { target.get := v }
+  def setTarget(vv: Vec) : Unit = target.get := vv    
+      
   def getTarget = target.get
 
   def getActFnDeriv = actFnDeriv(output)
   def setPrevLayer(l: Layer) = { prevLayer_=(Some(l)) }
   
-  def forwardWith(in: Vec, w: Mat, b: DenseVec, training: Boolean) = {
+  def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {
     val drO = dropOut
     if (!outputLayer) {
       if (drO > 0.0) {
@@ -220,7 +221,7 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
    * Implements row dropout.  This will only work for activation functions
    * with the property that a(0) = 0 - e.g. ReLU or TanH
    */
-  def forward(w: Mat, b: DenseVec, training: Boolean = true) = {  
+  def forward(w: Mat, b: Vec, training: Boolean = true) = {  
     val prevIn = prev.getOutput(training)
     forwardWith(prevIn, w, b, training)    
   }
@@ -248,18 +249,18 @@ class WeightLayer(curDim: Int, _prevDim: Int, outputLayer: Boolean, i: Int,
   
   def getCost = costFn(getTarget, output)
   
-  def getGradient(w: Mat, b: DenseVec) : (Mat, DenseVec) = {
-    backward(w: Mat, b: DenseVec)
+  def getGradient(w: Mat, b: Vec) : (Mat, Vec) = {
+    backward(w, b)
     getGradient
   }
   
-  def getGradientWith(in: Vec, out: DenseVec, w: Mat, b: DenseVec) : (Mat, DenseVec) = 
+  def getGradientWith(in: Vec, out: Vec, w: Mat, b: Vec) : (Mat, Vec) = 
     getGradient(w, b)
   
   def getGradient : (Mat, DenseVec) = (grad, bgrad)
   
   
-  private def backward(w: Mat, b: DenseVec) = {
+  private def backward(w: Mat, b: Vec) = {
     val deriv: DenseVec = actFnDeriv(output)
     if (outputLayer) { // hardcoded here for CE-loss or losses with the same form (t - o)
       delta := getTarget
@@ -328,9 +329,10 @@ class SparseGradientWeightLayer(curDim: Int, prevDim: Int, outputLayer: Boolean,
     nl
   }
   
-  def getGradient(w: Mat, b: DenseVec) = getGradientWith(prev.getOutput(true), output, w, b)
+  def getGradient(w: Mat, b: Vec) = getGradientWith(prev.getOutput(true), output, w, b)
   
-  def getGradientWith(in: Vec, target: DenseVec, w: Mat, b: DenseVec) = {
+  def getGradientWith(in: Vec, t: Vec, w: Mat, b: Vec) = {
+    val target : DenseVec = t.asInstanceOf[DenseVec] 
     val deriv: DenseVec = actFnDeriv(output)
     val d = target.copy
     d -= output

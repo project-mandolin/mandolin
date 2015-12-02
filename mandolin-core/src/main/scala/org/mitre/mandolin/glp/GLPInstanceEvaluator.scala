@@ -12,7 +12,7 @@ import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, SparseTensor1 => Spars
 abstract class GLPFactor extends Serializable {
   def getId: Int
   def getInput : Vec
-  def getOutput : DenseVec
+  def getOutput : Vec
   def getOneHot = { getOutput.argmax }
   def getUniqueKey : Option[String]
 }
@@ -33,9 +33,9 @@ class StdGLPFactor(val ind: Int, in: DenseVec, out: DenseVec, val uniqueKey: Opt
   def getUniqueKey = uniqueKey
 }
 
-class SparseGLPFactor(val ind: Int, in: SparseVec, out: DenseVec, val uniqueKey: Option[String]) extends GLPFactor with Serializable {
-  def this(in: SparseVec, out: DenseVec, id: Option[String]) = this(0, in, out, id)
-  def this(in: SparseVec, out: DenseVec) = this(0, in, out, None)
+class SparseGLPFactor(val ind: Int, in: SparseVec, out: Vec, val uniqueKey: Option[String]) extends GLPFactor with Serializable {
+  def this(in: SparseVec, out: Vec, id: Option[String]) = this(0, in, out, id)
+  def this(in: SparseVec, out: Vec) = this(0, in, out, None)
   def this(ind: Int, in: SparseVec, out: DenseVec) = this(ind, in, out, None)
   override def toString() = {
     val sbuf = new StringBuilder

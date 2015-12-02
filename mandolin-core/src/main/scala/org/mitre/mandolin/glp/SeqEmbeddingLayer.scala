@@ -6,19 +6,24 @@ import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, DenseTensor1 => Dense
 /**
  * Represents an embedding from sparse 1-hot inputs to a d-dimensional space
  * Handles sequences of sparse 1-hot representations as an embedding sequence
- * This is useful in a DCNN or for language models or word2vec like setups
+ * This is useful in a DCNN or for language models or word2vec like setups. Note that the effective
+ * number of outputs is eDim * seqLen.
  * @param li layer index - should nearly always be the layer just have the sparse input sequence layer
  * @param eDim embedding dimension size
  * @param vocabSize size of the vocabulary
  * @param lt layer type 
  * @author wellner
  */
-class SeqEmbeddingLayer(li: Int, eDim: Int, vocabSize: Int, lt: LType) 
+class SeqEmbeddingLayer(li: Int, eDim: Int, vocabSize: Int, lt: LType, fixedSeqLen: Int = 0) 
 extends DenseNonInputLayer(li, eDim, lt) {
  
   def getActFnDeriv = output
   def setPrevLayer(l: Layer) = { prevLayer_=(Some(l)) }
   def getCost = throw new RuntimeException("Cost fn not available for embedding layer")
+  
+  def setTarget(vv: Vec) : Unit = throw new RuntimeException("Embedding layer has no target")
+  
+  override def getNumberOfOutputs = if (fixedSeqLen > 0) fixedSeqLen * eDim else eDim 
   
   var sequenceLength = 0
   
@@ -26,7 +31,7 @@ extends DenseNonInputLayer(li, eDim, lt) {
    *  Output should be eDim * seqLen laid out column-wise
    *  Weights here would be eDim x vocabSize, representing the embedding
    */
-  def forwardWith(in: Vec, w: Mat, b: DenseVec, training: Boolean) = {
+  def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {
     val seqLen = in.getDim / vocabSize
     println("(forwardWith) in size = " + in.getDim)
     println("(forwardWith) vocabSize = " + vocabSize)
@@ -49,7 +54,7 @@ extends DenseNonInputLayer(li, eDim, lt) {
     println("Embedding output = " + output)
   }
   
-  def forward(w: Mat, b: DenseVec, training: Boolean = true) = {  
+  def forward(w: Mat, b: Vec, training: Boolean = true) = {  
     val prevIn = prev.getOutput(training)
     forwardWith(prevIn, w, b, training)    
   }
@@ -60,12 +65,12 @@ extends DenseNonInputLayer(li, eDim, lt) {
   val grad: Mat = SparseMat.zeros(eDim, vocabSize)
   val bgrad: DenseVec = DenseVec.zeros(eDim)  // biases not actually used for embedding layer
     
-  def getGradient(w: Mat, b: DenseVec) : (Mat, DenseVec) = {
-    backward(w: Mat, b: DenseVec)
+  def getGradient(w: Mat, b: Vec) : (Mat, Vec) = {
+    backward(w, b)
     getGradient
   }
   
-  private def backward(w: Mat, b: DenseVec) = {
+  private def backward(w: Mat, b: Vec) = {
     // assume this is always the layer just after the input layer, so no need to backprop deltas
     grad.clear() // clear gradient
     val in = prev.getOutput(true)
@@ -80,7 +85,7 @@ extends DenseNonInputLayer(li, eDim, lt) {
     
   }
   
-  def getGradientWith(in: Vec, out: DenseVec, w: Mat, b: DenseVec) : (Mat, DenseVec) = 
+  def getGradientWith(in: Vec, out: Vec, w: Mat, b: Vec) : (Mat, Vec) = 
     getGradient(w, b)
   
   def getGradient : (Mat, DenseVec) = (grad, bgrad)

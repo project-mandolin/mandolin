@@ -1,6 +1,7 @@
 package org.mitre.mandolin.glp
 
-import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, Tensor1 => Vec, SparseTensor1 => SparseVec, Tensor2 => Mat }
+import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, Tensor1 => Vec, SparseTensor1 => SparseVec, Tensor2 => Mat, 
+  ColumnSparseTensor2 => SparseMat, RowSparseTensor2 => RowSparseMat }
 /**
  * Enables sparse/sampled output layers for e.g. word2vec
  * @author wellner
@@ -16,20 +17,61 @@ abstract class SparseOutputLayer(i: Int, curDim: Int, lt: LType) extends NonInpu
   def setTarget(v: SparseVec) = target = v  
   def getTarget = target
 
-  //def getActFnDeriv = actFnDeriv(output)
   def setPrevLayer(l: Layer) = { prevLayer_=(Some(l)) }
     
 }
 
-abstract class NegSampledSoftMax(i: Int, curDim: Int, numSamples: Int) extends SparseOutputLayer(i, curDim, LType(NegSampledSoftMaxLType, curDim)) {
+class NegSampledSoftMaxLayer(i: Int, curDim: Int, prevDim: Int, numSamples: Int) 
+extends SparseOutputLayer(i, curDim, LType(NegSampledSoftMaxLType(prevDim, numSamples), curDim)) {
   val rv = new util.Random
   
-  def forwardWith(in: Vec, w:Mat, b: DenseVec, training: Boolean): Unit = {
+  def logisticFn(x: Double) = 1.0 / (1.0 + math.exp(x))
+  
+  def setOutput(t: Vec) = t match {
+    case v: SparseVec => output = v
+    case _ =>
+  }
+  
+  def getCost = 0.0
+  
+  def setTarget(v: Vec) : Unit = { target := v }
+  
+  def forwardWith(in: Vec, w:Mat, b: Vec, training: Boolean): Unit = {
     val to = SparseVec(curDim)
-    var tgInds = target.getNonZeros
-    for (i <- 0 until numSamples) {
+    var tgInds = target.getNonZeros  // pick up "positive" outputs
+    for (i <- 0 until numSamples) {  // sample "negatives" -- pure UNIFORM sampling here
       tgInds = rv.nextInt(curDim) :: tgInds
     }
-    tgInds map {ind => (ind, w.rowDot(ind, in))}
+    output.zeroOut()
+    tgInds foreach {ind => output.update(ind, logisticFn(w.rowDot(ind, in))) }    
   }
+  
+  def forward(w: Mat, b: Vec, training: Boolean = true) = {  
+    val prevIn = prev.getOutput(training)
+    forwardWith(prevIn, w, b, training)    
+  }
+  
+  def copy() = {
+    val cur = this
+    val nl = new NegSampledSoftMaxLayer(i, curDim, prevDim, numSamples)
+    nl
+  }
+
+  def sharedWeightCopy() = copy()
+
+  def getGradient(w: Mat, b: Vec) = getGradientWith(prev.getOutput(true), output, w, b)  
+  
+  def getGradientWith(in: Vec, target: Vec, w: Mat, b: Vec) = {
+    val d = target.copy
+    d -= output
+    val grad = RowSparseMat.zeros(curDim, prevDim)
+    d.forEach({(i,v) =>
+      val nr = in * v
+      grad.setRow(i, nr)
+      })
+    (grad, d)
+  }
+  
+  def getGradient: (Mat, Vec) = throw new RuntimeException("Unimplemented")
+  
 }
