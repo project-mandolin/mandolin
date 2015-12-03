@@ -12,7 +12,7 @@ class DynamicCNNTest extends FlatSpec with Matchers {
     
   "An Embedding NN" should "proceed with FF pass without error" in {
     val l0 = new SparseInputLayer(10, 0.0)
-    val l1 = new SeqEmbeddingLayer(1, 3, 10, LType(SeqEmbeddingLType, 3))
+    val l1 = new SeqEmbeddingLayer(1, 3, 10, LType(SeqEmbeddingLType(5), 3))
     val l2 = new DynamicConvLayer(2, 3, 3, 3, LType(DynamicConvLType, 3), thFn, thDeriv, {(_,_) => 0.0})
     val l2OutDim = 3 * 3  // embedding dimension * k (k-pooling)
     val l3 = WeightLayer.getOutputLayer(new SoftMaxLoss(2), LType(SoftMaxLType, 2) , l2OutDim, 2, false)

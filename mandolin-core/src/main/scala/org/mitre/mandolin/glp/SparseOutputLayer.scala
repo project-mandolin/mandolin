@@ -32,16 +32,18 @@ extends SparseOutputLayer(i, curDim, LType(NegSampledSoftMaxLType(prevDim, numSa
     case _ =>
   }
   
-  def getCost = 0.0
+  // squared error over sample
+  def getCost = {
+    var r = 0.0
+    output.forEach((i,v) => r += (v - target(i)) * (v - target(i)))
+    r
+  }
   
   def setTarget(v: Vec) : Unit = { target := v }
   
   def forwardWith(in: Vec, w:Mat, b: Vec, training: Boolean): Unit = {
     val to = SparseVec(curDim)
-    var tgInds = target.getNonZeros  // pick up "positive" outputs
-    for (i <- 0 until numSamples) {  // sample "negatives" -- pure UNIFORM sampling here
-      tgInds = rv.nextInt(curDim) :: tgInds
-    }
+    val tgInds = org.mitre.mandolin.util.Sampling.sampleWithoutReplacement(curDim, numSamples, target.getNonZeros)
     output.zeroOut()
     tgInds foreach {ind => output.update(ind, logisticFn(w.rowDot(ind, in))) }    
   }
@@ -59,7 +61,7 @@ extends SparseOutputLayer(i, curDim, LType(NegSampledSoftMaxLType(prevDim, numSa
 
   def sharedWeightCopy() = copy()
 
-  def getGradient(w: Mat, b: Vec) = getGradientWith(prev.getOutput(true), output, w, b)  
+  def getGradient(w: Mat, b: Vec) = getGradientWith(prev.getOutput(true), target, w, b)  
   
   def getGradientWith(in: Vec, target: Vec, w: Mat, b: Vec) = {
     val d = target.copy

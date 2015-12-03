@@ -33,13 +33,6 @@ extends DenseNonInputLayer(li, eDim, lt) {
    */
   def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {
     val seqLen = in.getDim / vocabSize
-    println("(forwardWith) in size = " + in.getDim)
-    println("(forwardWith) vocabSize = " + vocabSize)
-    println("(forwardWith) seqLen = " + seqLen)
-    println("(forwardWith) weight matrix = ")
-    for (i <- 0 until w.getDim1) {
-      print(w.getRow(i))
-    }
     sequenceLength = seqLen // set this to reuse during backprop step
     output = DenseVec.zeros(eDim * seqLen)
     in.forEach({(i,v) =>
@@ -51,7 +44,6 @@ extends DenseNonInputLayer(li, eDim, lt) {
         j += 1
       }
     })    
-    println("Embedding output = " + output)
   }
   
   def forward(w: Mat, b: Vec, training: Boolean = true) = {  
@@ -81,8 +73,7 @@ extends DenseNonInputLayer(li, eDim, lt) {
         grad(j,vocabInd) += delta(j) * v // update gradient for each embedding dim for this vocab item
         j += 1
       }
-    })
-    
+    })    
   }
   
   def getGradientWith(in: Vec, out: Vec, w: Mat, b: Vec) : (Mat, Vec) = 

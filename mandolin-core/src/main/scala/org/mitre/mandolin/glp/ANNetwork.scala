@@ -78,7 +78,6 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
       inLayer.setOutput(inputVec)
       outLayer.setTarget(targetVec)
       for (i <- 0 until numLayers) {      
-        println("Layer i = " + i)
         val (w, b) = glpW.wts.get(i)
         layers(i).forward(w, b, training)
       }
@@ -149,6 +148,7 @@ object ANNetwork {
     val (inLayer, sp) = specs(0).designate match {
       case SparseInputLType => (new SparseInputLayer(specs(0).dim, specs(0).drO), true)
       case InputLType       => (new DenseInputLayer(specs(0).dim, specs(0).drO), false)
+      case SparseSeqInputLType(vs) => (new SparseInputLayer(specs(0).dim), true)
       case _                        => throw new RuntimeException("Invalid input layer specification: " + specs(0))
     }
     val olSp = sp && (lastInd < 2)
@@ -158,10 +158,10 @@ object ANNetwork {
         val lt = specs(i)
         val d = lt.dim
         lt.designate match {
-          case SeqEmbeddingLType =>
+          case SeqEmbeddingLType(sl) =>
             val prev = specs(i-1)
-            prev.designate match {
-              case SparseSeqInputLType(vs) => new SeqEmbeddingLayer(i, d, vs, lt)
+            prev.designate match { // look at previous layer; check that it's sparse sequence input and get vocab size
+              case SparseSeqInputLType(vs) => new SeqEmbeddingLayer(i, d, vs, lt, sl)
               case _ => throw new RuntimeException("Embedding layer must follow SparseSeqInputLType")
             }            
           case TanHLType         => WeightLayer.getTanHLayer(lt, prevDim, i)

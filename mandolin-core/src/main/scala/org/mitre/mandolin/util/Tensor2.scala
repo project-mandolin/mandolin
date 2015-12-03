@@ -142,6 +142,14 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
         }
         i += 1
       }
+    case m: RowSparseTensor2 =>
+      m.forEachRow({(i,row) =>
+        var j = 0; while (j < ncols) {
+          val cv = this(i,j)
+          this(i,j) = cv + row(j)
+          j += 1
+        }
+        })
   }
 
   def mapInto(mm: Tensor2, fn: (Double, Double) => Double) = mm match {
@@ -153,6 +161,13 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
         mr.forEach { (j, v) => this(i, j) = fn(this(i, j), v) }
         i += 1
       }
+    case m: RowSparseTensor2 =>
+      m.forEachRow({(i,row) =>
+        var j = 0; while (j < ncols) {
+          this(i,j) = fn(this(i,j), row(j))
+          j += 1
+        }
+        })
   }
 
   /** Multiply this matrix with a vector `vv`, inserting the result into `res` */
@@ -355,7 +370,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
   }
 
   def copy(): Tensor2 = {
-    val na = Array.tabulate(nrows)(i => a(i))
+    val na = Array.tabulate(nrows)(i => a(i).copy)
     new ColumnSparseTensor2(na, nrows, ncols, dr)
   }
 
@@ -459,6 +474,10 @@ extends Tensor2(dr) with Serializable {
   final def +=(vv: Tensor1) : Unit = throw new RuntimeException("Operation results in non-sparse Matrix") 
   final def rowDot(row: Int, vec: Tensor1) = {
     rows(row) * vec
+  }
+  
+  def forEachRow(fn: (Int, Tensor1) => Unit) = {
+    rows foreach {v => fn(v._1,v._2)}
   }
   
   def asArray = {

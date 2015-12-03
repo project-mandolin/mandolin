@@ -5,7 +5,8 @@ package org.mitre.mandolin.glp
 
 import org.mitre.mandolin.optimize.{ Weights, Updater, LossGradient }
 import org.mitre.mandolin.predict.{ EvalPredictor, DiscreteConfusion }
-import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, ColumnSparseTensor2 => SparseMat, DenseTensor1 => DenseVec, Tensor2 => Mat, Tensor1 => Vec }
+import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, ColumnSparseTensor2 => SparseMat, RowSparseTensor2 => RowSparseMat, 
+  DenseTensor1 => DenseVec, Tensor2 => Mat, Tensor1 => Vec, SparseTensor1 => SparseVec }
 
 abstract class ComposeStrategy
 case object Minimum extends ComposeStrategy
@@ -287,6 +288,26 @@ trait Regularizer {
     }
     }
   }
+  
+  def rescaleWeightsRowSparse(w_w: RowSparseMat, w_b: Vec, d1: Int, maxLayerSumSq: Double) = {    
+    w_w.forEachRow({(i,row) =>
+      var ssq = 0.0
+      var j = 0; while (j < w_w.ncols) {
+        ssq += row(j) * row(j)
+        j += 1
+      }
+      val wbi = w_b(i)
+      ssq += (wbi * wbi)
+      if (ssq > maxLayerSumSq) {
+        val sc = fastSqrt(maxLayerSumSq / ssq)
+        j = 0; while (j < w_w.ncols) {
+          row.update(j, row(j) * sc)
+          j += 1
+        }
+        w_b.update(i, w_b(i) * sc)
+      }
+      })
+  }
 }
 
 sealed abstract class UpdaterSpec
@@ -368,10 +389,10 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
           val (u_w, u_b) = lossGrad.gr.get(l)
           val (w_w, w_b) = weights.wts.get(l)
           val d1 = w_w.getDim1
-          val d2 = w_w.getDim2
-          var i = 0; while (i < d1) {
-            u_w match {
-              case u_w: DenseMat =>
+          val d2 = w_w.getDim2          
+          u_w match {
+            case u_w: DenseMat =>
+              var i = 0; while (i < d1) {
                 var j = 0; while (j < d2) {
                   val ww = w_w(i,j)
                   val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
@@ -380,12 +401,14 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
                   mom1_w.update(i, j, mt)
                   val vt = mom2_w(i, j) * beta2 + (cgr * cgr * beta2Inv)
                   val vt_hat = vt / (1.0 - beta2T)
-                  mom2_w.update(i, j, vt) 
-                  //println("delta = " + (alpha * mt_hat / (fastSqrt(vt_hat) + epsilon)))
+                  mom2_w.update(i, j, vt)
                   w_w.update(i, j, ww + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))
                   j += 1
                 }
-              case u_w: SparseMat =>
+              i += 1
+              }
+            case u_w: SparseMat =>
+              var i = 0; while (i < d1) {
                 val row = u_w(i)
                 row.forEach { (j, cgr_o) =>
                   val ww = w_w(i,j)
@@ -397,23 +420,56 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
                   val vt_hat = vt / (1.0 - beta2T)
                   mom2_w.update(i, j, vt)                  
                   w_w.update(i, j, ww + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))
-                }                
-            }
-            val cgr = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)
-            val mt = mom1_b(i) * beta1 + (cgr * beta1Inv)
-            val mt_hat = mt / (1.0 - beta1T)
-            mom1_b.update(i, mt)
-            val vt = mom2_b(i) * beta2 + (cgr * cgr * beta2Inv)
-            val vt_hat = vt / (1.0 - beta2T)
-            mom2_b.update(i, vt)  
-            //println("bias delta = " + (alpha * mt_hat / (fastSqrt(vt_hat) + epsilon)))
-            w_b.update(i, w_b(i) + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))
-            i += 1
+                }                         
+                i += 1
+              }
+            case u_w: RowSparseMat =>
+              u_w.forEachRow({(i,row) =>
+                val ll = row.getDim
+                var j = 0; while (j < ll) {
+                  val ww = w_w(i,j)
+                  val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
+                  val mt = mom1_w(i, j) * beta1 + (cgr * beta1Inv)
+                  val mt_hat = mt / (1.0 - beta1T)
+                  mom1_w.update(i, j, mt)
+                  val vt = mom2_w(i, j) * beta2 + (cgr * cgr * beta2Inv)
+                  val vt_hat = vt / (1.0 - beta2T)
+                  mom2_w.update(i, j, vt)
+                  w_w.update(i, j, ww + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))
+                  j += 1
+                }
+                })              
           }
-          if (maxNorm > 0.0)
-            w_w match { 
-              case ww: DenseMat => rescaleWeightsDense(ww, w_b, d1, d2, maxNorm) 
-              case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)}
+        u_b match {
+          case u_b: SparseVec =>
+            u_b.forEach({(i,v) =>
+              val cgr = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)
+              val mt = mom1_b(i) * beta1 + (cgr * beta1Inv)
+              val mt_hat = mt / (1.0 - beta1T)
+              mom1_b.update(i, mt)
+              val vt = mom2_b(i) * beta2 + (cgr * cgr * beta2Inv)
+              val vt_hat = vt / (1.0 - beta2T)
+              mom2_b.update(i, vt)  
+              w_b.update(i, w_b(i) + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))            
+              })
+          case _ =>
+            var i = 0; while (i < d1) {
+              val cgr = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)
+              val mt = mom1_b(i) * beta1 + (cgr * beta1Inv)
+              val mt_hat = mt / (1.0 - beta1T)
+              mom1_b.update(i, mt)
+              val vt = mom2_b(i) * beta2 + (cgr * cgr * beta2Inv)
+              val vt_hat = vt / (1.0 - beta2T)
+              mom2_b.update(i, vt)  
+              w_b.update(i, w_b(i) + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))            
+              i += 1
+            }          
+        }
+        if (maxNorm > 0.0)
+          w_w match { 
+            case ww: DenseMat => rescaleWeightsDense(ww, w_b, d1, d2, maxNorm) 
+            case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)
+            case ww: RowSparseMat => rescaleWeightsRowSparse(ww, w_b, d1, maxNorm)}  
       }
     }
   }
@@ -482,9 +538,10 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
           val (w_w, w_b) = weights.wts.get(l)
           val d1 = w_w.getDim1
           val d2 = w_w.getDim2
-          var i = 0; while (i < d1) {
+          
             u_w match {
               case u_w: DenseMat =>
+                var i = 0; while (i < d1) {
                 var j = 0; while (j < d2) {
                   val ww = w_w(i,j)
                   val tv = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
@@ -500,7 +557,10 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
                   }
                   j += 1
                 }
+                i += 1
+                }
               case u_w: SparseMat =>
+                var i = 0; while (i < d1) {
                 val row = u_w(i)
                 row.forEach { (j, tvp) =>
                   val ww = w_w(i,j)
@@ -515,7 +575,29 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
                     mom_w.update(i, j, tv_a)
                   }
                 }
+                i += 1
+                }
+              case u_w: RowSparseMat =>
+                u_w.forEachRow({(i,row) =>
+                  var j = 0; while (j < d2) {
+                  val ww = w_w(i,j)
+                  val tv = if (l1Reg) row(j) - math.signum(ww) * l1 else if (l2Reg) row(j) - ww * l2 else row(j)                    
+                  if (nesterov) {
+                    val nv = (momentumRate * mom_w(i, j)) + tv
+                    mom_w.update(i, j, nv)
+                    w_w.update(i, j, ww + nv * eta_t)
+                  } else {
+                    val tv_a = tv * eta_t
+                    w_w.update(i, j, ww + tv_a + momentumRate * mom_w(i, j))
+                    mom_w.update(i, j, tv_a)
+                  }
+                  j += 1
+                }
+                  })
             }
+        u_b match {
+          case u_b: DenseVec =>  
+          var i = 0; while (i < d1) {
             val tv = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)              
             if (nesterov) {
               val nv = (momentumRate * mom_b(i)) + tv
@@ -528,10 +610,25 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
             }
             i += 1
           }
+          case u_b: SparseVec =>
+            u_b.forEach({(i,v) =>
+              val tv = if (l1Reg) v - math.signum(w_b(i)) * l1 else if (l2Reg) v - w_b(i) * l2 else v              
+              if (nesterov) {
+                val nv = (momentumRate * mom_b(i)) + tv
+                mom_b.update(i, nv)
+                w_b.update(i, w_b(i) + nv * eta_t)
+              } else {
+                val tv_a = tv * eta_t
+                w_b.update(i, w_b(i) + tv_a + momentumRate * mom_b(i))
+                mom_b.update(i, tv_a)
+              } 
+              })
+        }
           if (maxNorm > 0)
             w_w match { 
               case ww: DenseMat => rescaleWeightsDense(ww, w_b, d1, d2, maxNorm) 
-              case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)}
+              case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)
+              case ww: RowSparseMat => rescaleWeightsRowSparse(ww, w_b, d1, maxNorm)}
       }
     }
   }
@@ -569,7 +666,6 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
               th_w.mapInto(ot_w, { math.min })
               th_b.mapInto(ot_b, { math.min })
           }
-
       }
     }
     this
@@ -602,10 +698,9 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
           }
           val d1 = w_w.getDim1
           val d2 = w_w.getDim2
-
-          var i = 0; while (i < d1) {
             u_w match {
               case u_w: DenseMat =>
+                var i = 0; while (i < d1) {
                 var j = 0; while (j < d2) {
                   val ww = w_w(i,j)
                   val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
@@ -615,7 +710,10 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
                   w_w.update(i, j, ww + (eta_t * cgr / rms))
                   j += 1
                 }
+                i += 1
+                }
               case u_w: SparseMat =>
+                var i = 0; while (i < d1) {
                 val row = u_w(i)                 
                 row.forEach { (j, cgr_o) =>
                   val ww = w_w(i,j)
@@ -624,7 +722,32 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
                   sq_w.update(i, j, ss)
                   w_w.update(i, j, ww + (eta_t * cgr / fastSqrt(ss + epsilon)))
                 }
+                i += 1
+                }
+              case u_w: RowSparseMat =>
+                u_w.forEachRow({(i,row) =>
+                  var j = 0; while (j < d2) {
+                  val ww = w_w(i,j)
+                  val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
+                  val ss = sq_w(i, j) * rho + (cgr * cgr * rhoInv)
+                  sq_w.update(i, j, ss)
+                  val rms = fastSqrt(ss + epsilon)
+                  w_w.update(i, j, ww + (eta_t * cgr / rms))
+                  j += 1
+                  }
+               })
             }
+        u_b match {
+          case u_b: SparseVec =>
+            u_b.forEach({(i,v) =>
+              val cgr = if (l1Reg) v - math.signum(w_b(i)) * l1 else if (l2Reg) v - w_b(i) * l2 else v
+              val ss = sq_b(i) * rho + (cgr * cgr * rhoInv)
+              sq_b.update(i, ss)
+              val rms = fastSqrt(ss + epsilon)
+              w_b.update(i, w_b(i) + (eta_t * cgr / rms))
+              })
+          case u_b: DenseVec =>
+            var i = 0; while (i < d1) {
             val cgr = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)
             val ss = sq_b(i) * rho + (cgr * cgr * rhoInv)
             sq_b.update(i, ss)
@@ -632,10 +755,12 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
             w_b.update(i, w_b(i) + (eta_t * cgr / rms))
             i += 1
           }
-          if (maxNorm > 0)
+        }          
+        if (maxNorm > 0)
             w_w match { 
               case ww: DenseMat => rescaleWeightsDense(ww, w_b, d1, d2, maxNorm) 
-              case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm) }
+              case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)
+              case ww: RowSparseMat => rescaleWeightsRowSparse(ww, w_b, d1, maxNorm) }
       }
     }
   }
@@ -699,10 +824,10 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
             u_b *= updaterMass
           }
           val d1 = w_w.getDim1
-          val d2 = w_w.getDim2
-          var i = 0; while (i < d1) {
+          val d2 = w_w.getDim2          
             u_w match {
               case u_w: DenseMat =>
+                var i = 0; while (i < d1) {
                 var j = 0; while (j < d2) {
                   val ww = w_w(i, j)
                   val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j) 
@@ -712,7 +837,10 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
                   w_w.update(i, j, ww + (initialLearningRate * cgr / (initialLearningRate + fastSqrt(nsq))))
                   j += 1
                 }
+                i += 1
+                }
               case u_w: SparseMat =>
+                var i = 0; while (i < d1) {
                 val row = u_w(i)
                 val inds = row.indArray
                 val vls = row.valArray
@@ -728,7 +856,24 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
                   w_w.update(i, j, ww + (initialLearningRate * cgr / (initialLearningRate + fastSqrt(nsq))))
                   o += 1
                 }
+                i += 1
+                }
+              case u_w: RowSparseMat =>
+                u_w.forEachRow({(i,row) =>
+                  var j = 0; while (j < d2) {
+                  val ww = w_w(i,j)
+                  val cgr = if (l1Reg) row(j) - math.signum(ww) * l1 else if (l2Reg) row(j) - ww * l2 else row(j) 
+                  val csq = sq_w(i, j)
+                  val nsq = csq + (cgr * cgr)
+                  sq_w.update(i, j, nsq)                  
+                  w_w.update(i, j, ww + (initialLearningRate * cgr / (initialLearningRate + fastSqrt(nsq))))
+                  j += 1
+                }                
+              })
             }
+          u_b match {
+            case u_b: DenseVec =>
+              var i = 0; while (i < d1) {
             val csq = sq_b(i)
             val cgr = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)
             val nsq = csq + (cgr * cgr)
@@ -737,9 +882,20 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
             w_b.update(i, cw + (initialLearningRate * cgr / (initialLearningRate + fastSqrt(nsq))))
             i += 1
           }
+            case u_b: SparseVec =>
+              u_b.forEach({(i,v) =>
+                val csq = sq_b(i)
+                val cgr = if (l1Reg) v - math.signum(w_b(i)) * l1 else if (l2Reg) v - w_b(i) * l2 else v
+                val nsq = csq + (cgr * cgr)
+                sq_b.update(i, nsq)
+                val cw = w_b(i)
+                w_b.update(i, cw + (initialLearningRate * cgr / (initialLearningRate + fastSqrt(nsq))))                
+              })
+          }
           if (maxNorm > 0.0) w_w match { 
             case ww: DenseMat => rescaleWeightsDense(ww, w_b, d1, d2, maxNorm) 
-            case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm) }
+            case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)
+            case ww: RowSparseMat => rescaleWeightsRowSparse(ww, w_b, d1, maxNorm)}
       }
     }
   }

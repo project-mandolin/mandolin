@@ -16,8 +16,8 @@ class SeqEmbeddingTest extends FlatSpec with Matchers {
     val inSeqLen = 4
     val eDim = 3
     val vocabSize = 10
-    val l0 = new SparseInputLayer(vocabSize, 0.0)
-    val l1 = new SeqEmbeddingLayer(1, eDim, vocabSize, LType(SeqEmbeddingLType, eDim), inSeqLen)
+    val l0 = new SparseInputLayer(vocabSize)
+    val l1 = new SeqEmbeddingLayer(1, eDim, vocabSize, LType(SeqEmbeddingLType(inSeqLen), eDim), inSeqLen)
     // should be a pooling layer here to arrive at fixed number of inputs to last layer
     // for this test, assume sequence will have the correct length
     // here assume length is 4 and with embedding dim = 3, this is 12 outputs from embedding layer
