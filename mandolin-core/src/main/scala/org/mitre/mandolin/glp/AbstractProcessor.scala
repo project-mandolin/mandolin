@@ -61,9 +61,11 @@ abstract class AbstractProcessor extends LineParser {
         case "InputSparse"  => LType(SparseInputLType, dim, dropOut)
         case "SeqInputSparse" => LType(SparseSeqInputLType(dim), dim, dropOut)
         case "SeqEmbedding" => LType(SeqEmbeddingLType(seqLen),dim,dropOut)
+        case "Embedding"    => LType(EmbeddingLType, dim, dropOut)
         case "TanH"         => LType(TanHLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Logistic"     => LType(LogisticLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Linear"       => LType(LinearLType, dim, dropOut, l1Pen, l2Pen, mn)
+        case "LinearNoBias" => LType(LinearNoBiasLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "CrossEntropy" => LType(CrossEntropyLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Relu"         => LType(ReluLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "SoftMax"      => LType(SoftMaxLType, dim, 0.0, l1Pen, l2Pen, mn)
@@ -75,7 +77,8 @@ abstract class AbstractProcessor extends LineParser {
         case "NegSampledSoftMax" => 
           val ss    = l.get("sample-size") match {case Some(ss) => ss.toInt case None => 5}
           val inDim = l.get("input-dim") match {case Some(id) => id.toInt case None => -1}
-          LType(NegSampledSoftMaxLType(inDim, ss), dim, 0.0, l1Pen, l2Pen, mn)
+          val frequencyFile = l.get("frequency-file")
+          LType(NegSampledSoftMaxLType(inDim, ss,frequencyFile.getOrElse("")), dim, 0.0, l1Pen, l2Pen, mn)
         case a              => throw new RuntimeException("Unrecognized layer type: " + a)
       }
     }
@@ -225,7 +228,7 @@ abstract class AbstractProcessor extends LineParser {
     }
     val inDim = appSettings.netspec.head("dim").toInt
     val (evaluator, predictor, outConstructor) = getSubComponents(appSettings.netspec, inDim, la.getSize)
-    val fe = new SequenceOneHotExtractor(la,inDim)
+    val fe = new BagOneHotExtractor(la,inDim)
     // XXX - remove 1000 here and replace with count of number of data points
     GLPComponentSet(evaluator, predictor, outConstructor, fe, la, inDim, 1000)
   }

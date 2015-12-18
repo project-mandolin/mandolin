@@ -51,7 +51,7 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
   /** Update the ''i''th element of the `Tensor1` object */
   def update(i: Int, v: Double): Unit
 
-  def mapInPlace(fn: (Double => Double)): Unit
+  def mapInPlace(fn: ((Int,Double) => Double)): Unit
   
   /** Dot product */
   def *(t: Tensor1) : Double
@@ -256,9 +256,10 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     
   }
 
-  def mapInPlace(fn: Double => Double): Unit = {
-    var i = 0; while (i < dim) { a(i) = fn(a(i)); i += 1 }
+  def mapInPlace(fn: (Int,Double) => Double): Unit = {
+    var i = 0; while (i < dim) { a(i) = fn(i,a(i)); i += 1 }
   }
+   
 
   def map(fn: Double => Double): DenseTensor1 = {
     val na = Array.tabulate(dim) { i => fn(a(i)) }
@@ -384,32 +385,17 @@ object DenseTensor1 {
   }
 }
 
-class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDoubleHashMap) extends Tensor1(dr) with SparseTensor {
+abstract class SparseTensor1(val dim: Int, dr: Double) extends Tensor1(dr) {
   protected val size = dim
   
-  lazy val indArray = {
-    val indA = Array.fill(umap.size())(0)    
-    var i = 0
-    forEach{(ind,v) => indA(i) = ind; i += 1}
-    indA
-  }
+  val indArray: Array[Int]
+  val valArray: Array[Double]
   
-  lazy val valArray = {
-    val valA = Array.fill(umap.size())(0.0)
-    var i = 0
-    forEach{(ind,v) => valA(i) = v; i += 1}
-    valA
-  }
-  
-  def cacheArrays = {
-    val a = indArray
-    val b = valArray
-    ()
-  }
+  def numNonZeros : Int
   
   def getNonZeros : List[Int] = {
     var b : List[Int] = Nil
-    forEach{(i,_) => b = i :: b}
+    forEach{(i,v) => if ((v > 0.0) || (v < 0.0)) b = i :: b}
     b
   }
   
@@ -431,16 +417,169 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
   
   def getSize = dim
   def getDim = dim
+  
+  def norm1: Double = {
+    var n = 0.0
+    forEach { (i, v) => n += math.abs(v) }
+    n
+  }
 
+  def norm2: Double = {
+    var n = 0.0
+    forEach { (i, v) => n += (v * v) }
+    math.sqrt(n)
+  }
+  
+  def argmax = {
+    var m = -1
+    var mv = -Double.MaxValue
+    this.forEach({(k,v) => if (v > mv) { mv = v; m = k}})
+    m
+  }
+
+  final def :=(v: Double) = throw new RuntimeException("Assigning value to all components of a sparse tensor. Not allowed.")
+  
+  def *+=(v: Double, ar: Array[Double]): Unit = {
+    forEach { (k, cv) =>
+      val nv = ar(k) + (cv * v)
+      ar.update(k, nv)
+    }
+  }
+
+  def *-=(v: Double, ar: Array[Double]): Unit = {
+    forEach { (k, cv) =>
+      ar.update(k, (ar(k) - (cv * v)))
+    }
+  }
+
+  def *+=(a1: Array[Double], ar: Array[Double]): Unit = forEach { (k, cv) => ar(k) += cv * a1(k) }
+
+  def *-=(a1: Array[Double], ar: Array[Double]): Unit = forEach { (k, cv) => ar(k) -= cv * a1(k) }
+
+  def convertToDense() = {
+    val ar = Array.fill(dim)(0.0)
+    forEach { (i, v) => ar(i) = v }
+    new DenseTensor1(ar)
+  }
+
+  def copy : SparseTensor1 = deepCopy // new SparseTensor1(dim, dr, umap)
+  def deepCopy : SparseTensor1
+  
+  def asStatic : SparseTensor1
+  
+
+}
+
+class StaticSparseTensor1(_dim: Int, dr: Double, val indArray: Array[Int], val valArray: Array[Double]) 
+extends SparseTensor1(_dim, dr) with SparseTensor {
+  
+  val len = indArray.length
+  
+  def asStatic = this
+  
+  def numNonZeros : Int = indArray.length
+  def deepCopy : SparseTensor1 = {    
+    val ni = Array.tabulate(indArray.length)(i => indArray(i))
+    val nv = Array.tabulate(valArray.length)(i => valArray(i))
+    new StaticSparseTensor1(dim, dr, ni, nv)
+  }
+  
+  def forEach(fn: ((Int, Double) => Unit)): Unit = {
+    var j = 0; while (j < len) {
+      val i = indArray(j)
+      val v = valArray(j)
+      fn(i,v)
+      j += 1
+    }
+  }
+  
+  def apply(i: Int) = {
+    var v = 0.0
+    var notFound = true
+    var j = 0; while (notFound && (j < len)) {
+      if (indArray(j) == i) { v = valArray(j); notFound = false }
+      j += 1
+    }
+    v
+  }
+  
+  def mapInPlace(fn: (Int,Double) => Double): Unit = {
+    var i = 0; while (i < len) { 
+      val vl = valArray(i)
+      valArray(i) = fn(indArray(i),vl)
+      i += 1 }
+  }
+
+  
+  def :=(vv: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def +=(i: Int, v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def -=(i: Int, v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def +=(v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def *=(v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def +=(t: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def -=(t: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def ^=(v: Double): Unit = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def asArray = { 
+    val a = Array.fill(getDim)(0.0)
+    var i = 0; while (i < len) {
+      a(indArray(i)) = valArray(i) 
+      i += 1
+    }
+    a
+  }
+  
+  def ++(t: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def zeroOut() = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def update(i: Int, v: Double): Unit = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  
+  override def toString() = {
+    val sb = new StringBuilder
+    asArray foreach {v => sb append " "; sb append v}
+    sb.toString
+  }
+}
+
+class DynamicSparseTensor1(_dim: Int, dr: Double = 0.1, private val umap: OpenIntDoubleHashMap) 
+extends SparseTensor1(_dim, dr) with SparseTensor {
+  
+  override def toString() = {
+    val sb = new StringBuilder
+    asArray foreach {v => sb append " "; sb append v}
+    sb.toString
+  }
+  
+  def asStatic = new StaticSparseTensor1(_dim, dr, indArray, valArray)
+  
+  lazy val indArray = {
+    val indA = Array.fill(umap.size())(0)    
+    var i = 0
+    forEach{(ind,v) => indA(i) = ind; i += 1}
+    indA
+  }
+  
+  lazy val valArray = {
+    val valA = Array.fill(umap.size())(0.0)
+    var i = 0
+    forEach{(ind,v) => valA(i) = v; i += 1}
+    valA
+  }
+  
+  def cacheArrays = {
+    val a = indArray
+    val b = valArray
+    ()
+  }
+  
+  
   def numNonZeros = umap.size()
 
   def zeroOut() = umap.clear()
 
-  def copy = deepCopy // new SparseTensor1(dim, dr, umap)
-  def deepCopy = {
+  
+  def deepCopy : SparseTensor1 = {
     val cc = new OpenIntDoubleHashMap
     this.forEach((i, v) => cc.put(i, v))
-    new SparseTensor1(dim, dr, cc)
+    new DynamicSparseTensor1(dim, dr, cc)
   }
 
   class ApplyFn(val fn: (Int, Double) => Unit) extends IntDoubleProcedure {
@@ -454,17 +593,10 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
     umap.forEachPair(new ApplyFn(fn))
   }
   
-  def argmax = {
-    var m = -1
-    var mv = -Double.MaxValue
-    this.forEach({(k,v) => if (v > mv) { mv = v; m = k}})
-    m
-  }
-
   def apply(i: Int) = if (umap.containsKey(i)) umap.get(i) else 0.0
 
-  def mapInPlace(fn: Double => Double): Unit = {
-    var i = 0; while (i < dim) { this.update(i, fn(apply(i))); i += 1 }
+  def mapInPlace(fn: (Int, Double) => Double): Unit = {
+    var i = 0; while (i < dim) { this.update(i, fn(i,apply(i))); i += 1 }
   }
 
   def update(i: Int, v: Double): Unit = {
@@ -476,12 +608,15 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
       case v: SparseTensor1 =>
         umap.clear()
         this += v
-      case _: DenseTensor1 => throw new RuntimeException("Assigning dense tensor to sparse tensor variable. Not allowed.")
+      case x: DenseTensor1 => 
+        umap.clear()
+        var i = 0; while (i < x.getDim) {
+          umap.put(i,x(i))
+          i += 1
+        }
     }    
   }
   
-  final def :=(v: Double) = throw new RuntimeException("Assigning value to all components of a sparse tensor. Not allowed.")
-
   def +=(i: Int, v: Double) = {
     val cv = if (umap.containsKey(i)) umap.get(i) else 0.0
     umap.put(i, cv + v)
@@ -509,35 +644,12 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
     case sparse: SparseTensor1 => {
       sparse forEach { (i, v) =>
         val cv = if (umap.containsKey(i)) umap.get(i) else 0.0
-        umap.put(i, v - cv)
+        umap.put(i, cv - v)  
       }
     }
   }
 
   def ^=(v: Double): Unit = forEach { (k, cv) => umap.put(k, Math.pow(cv, v)) }
-
-  def *+=(v: Double, ar: Array[Double]): Unit = {
-    forEach { (k, cv) =>
-      val nv = ar(k) + (cv * v)
-      ar.update(k, nv)
-    }
-  }
-
-  def *-=(v: Double, ar: Array[Double]): Unit = {
-    forEach { (k, cv) =>
-      ar.update(k, (ar(k) - (cv * v)))
-    }
-  }
-
-  def *+=(a1: Array[Double], ar: Array[Double]): Unit = forEach { (k, cv) => ar(k) += cv * a1(k) }
-
-  def *-=(a1: Array[Double], ar: Array[Double]): Unit = forEach { (k, cv) => ar(k) -= cv * a1(k) }
-
-  def convertToDense() = {
-    val ar = Array.fill(dim)(0.0)
-    forEach { (i, v) => ar(i) = v }
-    new DenseTensor1(ar)
-  }
 
   def asArray = convertToDense().asArray
 
@@ -557,24 +669,18 @@ class SparseTensor1(val dim: Int, dr: Double = 0.1, private val umap: OpenIntDou
     }
   }
 
-  def norm1: Double = {
-    var n = 0.0
-    forEach { (i, v) => n += math.abs(v) }
-    n
-  }
-
-  def norm2: Double = {
-    var n = 0.0
-    forEach { (i, v) => n += (v * v) }
-    math.sqrt(n)
-  }
+  
 }
 
 object SparseTensor1 {
-  def apply(dim: Int) = new SparseTensor1(dim, 0.1, new OpenIntDoubleHashMap)
-  def apply(dim: Int, dr: Double) = new SparseTensor1(dim, dr, new OpenIntDoubleHashMap)
-  def apply(dim: Int, um: OpenIntDoubleHashMap) = new SparseTensor1(dim, 0.1, um)
-  def apply(dim: Int, dr: Double, um: OpenIntDoubleHashMap) = new SparseTensor1(dim, dr, um)
+  def apply(dim: Int) = new DynamicSparseTensor1(dim, 0.1, new OpenIntDoubleHashMap)
+  def apply(dim: Int, dr: Double) = new DynamicSparseTensor1(dim, dr, new OpenIntDoubleHashMap)
+  def apply(dim: Int, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, 0.1, um)
+  def apply(dim: Int, dr: Double, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, dr, um)
+  
+  def getOneHot(dim: Int, v: Int) = new StaticSparseTensor1(dim, 0.1, Array(v), Array(1.0))
+  def getOnes(dim: Int, inds: Array[Int]) = new StaticSparseTensor1(dim, 0.1, inds, Array.fill(inds.length)(1.0))
+  def getStaticSparseTensor1(dim: Int, inds: Array[Int], vls: Array[Double]) = new StaticSparseTensor1(dim, 0.1, inds, vls)
 }
 
 

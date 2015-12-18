@@ -43,6 +43,20 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
     }
     (w, b)
   }
+  
+  private def getEmbeddingWeights(curDim: Int, prevDim: Int) : (DenseMat, DenseVec) = {
+    val w = DenseMat.zeros(curDim, prevDim)
+    var i = 0; while (i < curDim) {
+        var j = 0; while (j < prevDim) {
+          val nv = (util.Random.nextDouble - 0.5) / curDim
+          w.update(i, j, nv)
+          j += 1
+        }
+        i += 1
+      }
+    val b = DenseVec.zeros(curDim)
+    (w,b)
+  }
 
   /**
    * Generate a new random set of weights with appropriate layout/dimensions for this particular network structure
@@ -51,8 +65,11 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
   def generateRandomWeights: GLPWeights = {
     val zeroLastLayer = numLayers == 1
     val wts = IndexedSeq.tabulate(numLayers) { i =>
-      if (i == 0) getLayerWeights(layers(i).dim, inLayer.getNumberOfOutputs, layers(i).ltype, zeroLastLayer)
-      else getLayerWeights(layers(i).dim, layers(i-1).getNumberOfOutputs, layers(i).ltype, false)
+      val prevDim = if (i > 0) layers(i-1).getNumberOfOutputs else inLayer.getNumberOfOutputs
+        layers(i).ltype.designate match {
+          case NegSampledSoftMaxLType(_,_,_) => getLayerWeights(layers(i).dim, prevDim, layers(i).ltype, true)
+          case EmbeddingLType =>  getEmbeddingWeights(layers(i).dim, prevDim)
+          case _ => getLayerWeights(layers(i).dim, prevDim, layers(i).ltype, ((i == 0) && zeroLastLayer))}               
     }
     new GLPWeights(new GLPLayout(wts))
   }
@@ -132,10 +149,11 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
  * @author wellner
  */
 object ANNetwork {
-
+  
   /** Construct network from list representation of layer specifications */
   def apply(specs: List[LType]): ANNetwork = apply(specs.toIndexedSeq)
-
+  
+  
   /**
    * Construct network from layer specifications
    * @param aspecs A sequence of layer specifications [[LType]]
@@ -156,26 +174,36 @@ object ANNetwork {
       for (i <- 1 to lastInd) yield {
         var prevDim = specs(i - 1).dim
         val lt = specs(i)
-        val d = lt.dim
+        val d = lt.dim        
         lt.designate match {
           case SeqEmbeddingLType(sl) =>
             val prev = specs(i-1)
-            prev.designate match { // look at previous layer; check that it's sparse sequence input and get vocab size
-              case SparseSeqInputLType(vs) => new SeqEmbeddingLayer(i, d, vs, lt, sl)
+            prev.designate match { // look at previous layer; check that it's sparse sequence input and get vocab size              
+              case SparseSeqInputLType(vs) =>
+                println("Constructing network with input sequence of " + sl)
+                new SeqEmbeddingLayer(i, d, vs, lt, sl)
               case _ => throw new RuntimeException("Embedding layer must follow SparseSeqInputLType")
-            }            
+            }     
+          case EmbeddingLType    => new EmbeddingLayer(i, d, prevDim, lt)                        
           case TanHLType         => WeightLayer.getTanHLayer(lt, prevDim, i)
           case LogisticLType     => WeightLayer.getLogisticLayer(lt, prevDim, (i == lastInd), i)
-          case LinearLType       => WeightLayer.getLinearLayer(lt, prevDim, (i == lastInd), i)
+          case LinearLType       => WeightLayer.getLinearLayer(lt, prevDim, (i == lastInd), i, sp)
+          case LinearNoBiasLType       => WeightLayer.getLinearLayer(lt, prevDim, (i == lastInd), i, sp, true)
           case CrossEntropyLType => WeightLayer.getCELayer(lt, prevDim, (i == lastInd), i)
           case ReluLType         => WeightLayer.getReluLayer(lt, prevDim, i)          
-          case SoftMaxLType           => WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim, i, olSp)
+          case SoftMaxLType           =>
+            specs(i-1).designate match {
+              case SeqEmbeddingLType(sl) =>
+                WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim * sl, i, olSp, true)
+              case EmbeddingLType => WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim, i, olSp, true)
+              case _ => WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim, i, olSp)
+            }            
           case HingeLType(c)          => WeightLayer.getOutputLayer(new HingeLoss(d, c), lt, prevDim, i, olSp)
           case ModHuberLType          => WeightLayer.getOutputLayer(new ModifiedHuberLoss(d), lt, prevDim, i, olSp)
           case RampLType(rl)          => WeightLayer.getOutputLayer(new RampLoss(d,rl), lt, prevDim, i, olSp)
           case TransLogLType          => WeightLayer.getOutputLayer(new TransLogLoss(d), lt, prevDim, i, olSp)
           case TLogisticLType         => WeightLayer.getOutputLayer(new TLogisticLoss(d), lt, prevDim, i, olSp)
-          case NegSampledSoftMaxLType(inDim,ss) => new NegSampledSoftMaxLayer(i, d, inDim, ss)
+          case NegSampledSoftMaxLType(inDim,ss,freqFile) => new NegSampledSoftMaxLayer(i, d, inDim, ss, lt)
           case _                                  => throw new RuntimeException("Invalid non-input layer specification: " + specs(i))
         }
       }

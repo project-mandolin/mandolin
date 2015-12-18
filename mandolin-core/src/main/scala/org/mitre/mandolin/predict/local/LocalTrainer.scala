@@ -42,7 +42,8 @@ class LocalTrainer[IType, Un : ClassTag, W <: Weights[W]](
    */ 
   def extractFeatures(rdd: Vector[IType]) : Vector[Un] = {
     val _fe = fe
-    rdd map { _fe.extractFeatures }    
+    rdd map {v =>
+      _fe.extractFeatures(v) }    
   }
   
   /**

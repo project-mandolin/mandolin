@@ -57,6 +57,8 @@ abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
   }
   
   def asArray : Array[Double]
+  
+  def transpose : Tensor2
 
 }
 
@@ -89,10 +91,37 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
       i += 1
     }
   }
+  
+  override def toString() = {
+    val sb = new StringBuilder
+    var i = 0; while (i < size) {
+      if ((i % ncols) == 0) sb append '\n'
+      sb append a(i)
+      sb append ' '      
+      i += 1
+    }
+    sb append '\n'
+    sb.toString
+  }
  
   def copy(): Tensor2 = {
     val na = Array.tabulate(nrows * ncols)(i => a(i))
     new DenseTensor2(na, nrows, ncols, dr)
+  }
+  
+  def transpose : Tensor2 = {
+    val na = Array.fill(nrows * ncols)(0.0)
+    val nnr = ncols
+    val nnc = nrows
+    val trans = new DenseTensor2(na, nnr, nnc)
+    var i = 0; while (i < nrows) {
+      var j = 0; while (j < ncols) {
+        trans(j,i) = this(i,j)
+        j += 1
+      }
+      i += 1
+    }
+    trans
   }
   
   final def rowDot(row: Int, v: Tensor1) = {
@@ -319,7 +348,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
   @inline final def apply(i: Int, j: Int): Double = a(i)(j)
   @inline final def update(i: Int, j: Int, v: Double) = {
     val row = a(i)
-    row.update(i,v)
+    row.update(j,v)
   }
   @inline final def getRow(i: Int): Tensor1 = a(i)
   @inline final def getCol(i: Int): Tensor1 = throw new RuntimeException("Column extraction for Column Sparse matrix not implemented")
@@ -342,6 +371,8 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
     }
     r
   }
+  
+  def transpose : Tensor2 = throw new RuntimeException("Transpose not supported for column sparse tensors")
   
   def asArray = {
       //throw new RuntimeException("As array not possible with ColumnSparseTensor2 having " + a.length + " rows")
@@ -453,7 +484,7 @@ extends Tensor2(dr) with Serializable {
   def getDim2 = ncols
   
   def trMult(vv: DenseTensor1, res: DenseTensor1): Unit = {
-    throw new RuntimeException("Transpose matrix product inefficient with column-sparse representation")
+    throw new RuntimeException("Transpose matrix product inefficient with row-sparse representation")
   }
   
   @inline final def apply(i: Int, j: Int): Double = rows(i)(j)
@@ -476,13 +507,30 @@ extends Tensor2(dr) with Serializable {
     rows(row) * vec
   }
   
+  override def toString() = {
+    val asList = rows.toList.sortBy(x => x._1)
+    val sb = new StringBuilder
+    asList foreach {case (i,v) =>
+      val aa = v.asArray
+      var j = 0; while (j < aa.length) {
+        if (j > 0) sb append " "
+        sb append (aa(j))
+        j += 1
+      }
+      sb append "\n"
+      }
+    sb.toString
+  }
+  
   def forEachRow(fn: (Int, Tensor1) => Unit) = {
     rows foreach {v => fn(v._1,v._2)}
   }
   
   def asArray = {
-      throw new RuntimeException("As array not possible with ColumnSparseTensor2 having sparse rows")      
+      throw new RuntimeException("As array not possible with RowSparseTensor2 having sparse rows")      
     }
+  
+  def transpose : Tensor2 = throw new RuntimeException("Transpose not supported for row sparse tensors")
 
   /** This performs a SPARSE map into.  Only non-zero elements in THIS matrix are updated */
   def mapInto(mm: Tensor2, fn: (Double, Double) => Double) = mm match {

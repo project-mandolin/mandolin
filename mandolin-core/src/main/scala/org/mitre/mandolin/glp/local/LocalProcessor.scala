@@ -84,7 +84,7 @@ class LocalProcessor extends AbstractProcessor {
     val modelWriter = new LocalGLPModelWriter
     modelWriter.writeModel(io, appSettings.modelFile.get, finalWeights, components.labelAlphabet, ev, fe)
     finalWeights
-  }
+  }  
   
   def processDecode(appSettings: GLPModelSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in decoding mode")

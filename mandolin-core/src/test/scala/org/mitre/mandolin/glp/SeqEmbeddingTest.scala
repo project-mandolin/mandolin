@@ -21,7 +21,7 @@ class SeqEmbeddingTest extends FlatSpec with Matchers {
     // should be a pooling layer here to arrive at fixed number of inputs to last layer
     // for this test, assume sequence will have the correct length
     // here assume length is 4 and with embedding dim = 3, this is 12 outputs from embedding layer
-    val l2 = new NegSampledSoftMaxLayer(2, vocabSize, eDim * inSeqLen, 5)
+    val l2 = new NegSampledSoftMaxLayer(2, vocabSize, eDim * inSeqLen, 5, LType(SeqEmbeddingLType(inSeqLen), eDim))
     l1.setPrevLayer(l0)
     l2.setPrevLayer(l1)
     val layers = IndexedSeq(l1,l2)

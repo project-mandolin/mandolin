@@ -69,11 +69,9 @@ class SparseVecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
       }
     }
     val l_ind = la.ofString(l)
-    val lv = DenseVec.zeros(la.getSize)
-    lv.update(l_ind,1.0) // one-hot encoding
+    val lv = SparseVec.getOneHot(la.getSize, l_ind)
     ind += 1
-    spVec.cacheArrays 
-    new SparseGLPFactor(ind, spVec, lv, id)    
+    new SparseGLPFactor(ind, spVec.asStatic, lv, id)    
   }
   def getNumberOfFeatures = alphabet.getSize
 }
@@ -100,24 +98,53 @@ class StdVectorExtractorWithAlphabet(la: Alphabet, nfs: Int) extends FeatureExtr
   def getNumberOfFeatures = nfs
 }
 
-class SequenceOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
-  
+class BagOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
   def getNumberOfFeatures = nfs
   def getAlphabet = new IdentityAlphabet(nfs)
+  var x = 0
   def extractFeatures(s: String) : GLPFactor = {
+    x += 1
     val line = s.split(" ")
     val ln = line.length
     val lab = line(0)
-    val features = SparseVec(nfs * (ln - 1))
+    var mm = Map[Int,Double]()
+    var i = 1; while (i < ln) {
+      val av = line(i).split(":")
+      val ind = av(0).toInt
+      val vl = if (av.length > 1) av(1).toDouble else 1.0
+      val cv = mm.get(ind).getOrElse(0.0)
+      mm += (ind -> (cv + 1.0))
+      i += 1
+    }
+    val targetVec : Vec = SparseVec.getOneHot(la.getSize, la.ofString(lab))
+    val (inds, vls) = mm.toList.unzip
+    val spv = SparseVec.getStaticSparseTensor1(nfs, inds.toArray, vls.toArray)
+    if ((x % 10000) == 1) println("Processed " + x + " input vectors")
+    new SparseGLPFactor(spv, targetVec)
+  }
+}
+
+class SequenceOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
+
+  var x = 0
+  def getNumberOfFeatures = nfs
+  def getAlphabet = new IdentityAlphabet(nfs)
+  def extractFeatures(s: String) : GLPFactor = {
+    x += 1
+    val line = s.split(" ")
+    val ln = line.length
+    val lab = line(0)
+    var flist : List[(Int,Double)] = Nil
     var i = 1; while (i < ln) {
       val av = line(i).split(":")
       val ind = av(0).toInt + (i - 1) * nfs
       val vl = if (av.length > 1) av(1).toDouble else 1.0
-      features(ind) = vl
+      flist = (ind, vl) :: flist      
       i += 1
     }
-    val targetVec : Vec = SparseVec(la.getSize)
-    targetVec.update(la.ofString(lab), 1.0)
-    new SparseGLPFactor(features, targetVec)
+    val targetVec : Vec = SparseVec.getOneHot(la.getSize, la.ofString(lab))
+    val (inds, vls) = flist.unzip
+    if ((x % 10000) == 1) println("Processed " + x + " input vectors")
+    new SparseGLPFactor(SparseVec.getStaticSparseTensor1(nfs * (ln - 1), inds.toArray, vls.toArray), targetVec)
   }
 }

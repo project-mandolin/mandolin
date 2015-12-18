@@ -18,14 +18,16 @@ case object InputLType extends LayerDesignate
 case object SparseInputLType extends LayerDesignate
 case class SparseSeqInputLType(vocabSize: Int) extends LayerDesignate
 case class SeqEmbeddingLType(seqLen: Int) extends LayerDesignate
+case object EmbeddingLType extends LayerDesignate
 case object DynamicConvLType extends LayerDesignate
 case object TanHLType extends LayerDesignate
 case object LogisticLType extends LayerDesignate
 case object LinearLType extends LayerDesignate
+case object LinearNoBiasLType extends LayerDesignate
 case object CrossEntropyLType extends LayerDesignate
 case object ReluLType extends LayerDesignate
 case object SoftMaxLType extends LayerDesignate
-case class NegSampledSoftMaxLType(inDim: Int, sampleSize: Int) extends LayerDesignate
+case class NegSampledSoftMaxLType(inDim: Int, sampleSize: Int, freqFile: String) extends LayerDesignate
 
 /** @param c The coeficient defining the size of the margin*/
 case class  HingeLType(c: Double = 1.0) extends LayerDesignate
@@ -234,14 +236,21 @@ class WeightLayer(curDim: Int, _prevDim: Int, outputLayer: Boolean, i: Int,
                   costFn: (DenseVec, DenseVec) => Double,
                   costGradFn: (DenseVec, DenseVec) => DenseVec,
                   lt: LType,
-                  dropOut: Double = 0.0)
+                  dropOut: Double = 0.0,
+                  noBias: Boolean = false)
   extends AbstractWeightLayer(curDim, _prevDim, outputLayer, i, actFn, actFnDeriv, costFn, costGradFn, lt, dropOut) {
   
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double, nb: Boolean) =
+    this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, nb)
+    
   def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double) =
-    this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut)
+    this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, false)    
 
-  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType) =
-    this(cd, pd, ol, i, loss, lt, lt.drO)
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, nb: Boolean) =
+    this(cd, pd, ol, i, loss, lt, lt.drO, nb)
+    
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType) = 
+    this(cd, pd, ol, i, loss, lt, lt.drO, false)
   
 
   val grad: Mat = DenseMat.zeros(curDim, prevDim)
@@ -254,8 +263,9 @@ class WeightLayer(curDim: Int, _prevDim: Int, outputLayer: Boolean, i: Int,
     getGradient
   }
   
-  def getGradientWith(in: Vec, out: Vec, w: Mat, b: Vec) : (Mat, Vec) = 
+  def getGradientWith(in: Vec, out: Vec, w: Mat, b: Vec) : (Mat, Vec) = {
     getGradient(w, b)
+  }
   
   def getGradient : (Mat, DenseVec) = (grad, bgrad)
   
@@ -272,10 +282,9 @@ class WeightLayer(curDim: Int, _prevDim: Int, outputLayer: Boolean, i: Int,
         w.trMult(delta, p.delta)
         p.delta *= p.getActFnDeriv
       case _ =>
-    }
-    bgrad := delta
+    }    
+    if (!noBias) bgrad := delta
     grad.outerFill(delta, prev.getOutput(true))
-
   }
 
   def copy() = {
@@ -303,15 +312,21 @@ class SparseGradientWeightLayer(curDim: Int, prevDim: Int, outputLayer: Boolean,
                                 costFn: (DenseVec, DenseVec) => Double,
                                 costGradFn: (DenseVec, DenseVec) => DenseVec,
                                 lt: LType,
-                                dropOut: Double = 0.0) 
+                                dropOut: Double = 0.0,
+                                noBias: Boolean = false) 
                                 extends AbstractWeightLayer(curDim, prevDim, outputLayer, i, actFn, actFnDeriv, costFn, costGradFn, lt, dropOut) {
 
-  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double) =
-    this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut)
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double, nb: Boolean) =
+    this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, nb)
 
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double) =
+    this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, false)
+
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, nb: Boolean) =
+    this(cd, pd, ol, i, loss, lt, lt.drO, nb)
+    
   def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType) =
     this(cd, pd, ol, i, loss, lt, lt.drO)
-    
     
   private var lastCost = 0.0
   
@@ -382,10 +397,12 @@ object WeightLayer {
     new WeightLayer(lt.dim, pd, false, ind, thFn, thDeriv, getSECost _, getStraightCostGrad _, lt, lt.drO)
   }
 
-  def getLinearLayer(lt: LType, pd: Int, isOut: Boolean, ind: Int) = {
+  def getLinearLayer(lt: LType, pd: Int, isOut: Boolean, ind: Int, sp: Boolean = false, nobias: Boolean = false) = {
     val thFn = { v: DenseVec => v }
     val thDeriv = { v: DenseVec => DenseVec.ones(lt.dim) }
-    new WeightLayer(lt.dim, pd, isOut, ind, thFn, thDeriv, getSECost _, getStraightCostGrad _, lt, lt.drO)
+    if (sp)
+      new SparseGradientWeightLayer(lt.dim, pd, isOut, ind, thFn, thDeriv, getSECost _, getStraightCostGrad _, lt, lt.drO, nobias)
+    else new WeightLayer(lt.dim, pd, isOut, ind, thFn, thDeriv, getSECost _, getStraightCostGrad _, lt, lt.drO, nobias)
   }
 
   def getLogisticLayer(lt: LType, pd: Int, isOut: Boolean, ind: Int) = {
@@ -402,10 +419,10 @@ object WeightLayer {
     new WeightLayer(lt.dim, pd, isOut, ind, thFn, thDeriv, getCECost _, getStraightCostGrad _, lt, lt.drO)
   }
 
-  def getOutputLayer(loss: LossFunction, lt: LType, pd: Int, ind: Int, sp: Boolean) : AbstractWeightLayer =
+  def getOutputLayer(loss: LossFunction, lt: LType, pd: Int, ind: Int, sp: Boolean, noBias: Boolean = false) : AbstractWeightLayer =
     if (sp)
-      new SparseGradientWeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0)
-    else new WeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0)
+      new SparseGradientWeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0, noBias)
+    else new WeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0, noBias)
   
 }
 

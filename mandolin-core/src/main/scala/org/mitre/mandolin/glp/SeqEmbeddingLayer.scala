@@ -25,6 +25,8 @@ extends DenseNonInputLayer(li, eDim, lt) {
   
   override def getNumberOfOutputs = if (fixedSeqLen > 0) fixedSeqLen * eDim else eDim 
   
+  override val delta = DenseVec.zeros(fixedSeqLen * eDim)
+  
   var sequenceLength = 0
   
   /** Input representation dimension is seqLen*vobabSize with seqLen non-zero values 
@@ -44,6 +46,8 @@ extends DenseNonInputLayer(li, eDim, lt) {
         j += 1
       }
     })    
+    println("Finished embedding without output = ")
+    println(output)
   }
   
   def forward(w: Mat, b: Vec, training: Boolean = true) = {  
@@ -66,11 +70,17 @@ extends DenseNonInputLayer(li, eDim, lt) {
     // assume this is always the layer just after the input layer, so no need to backprop deltas
     grad.clear() // clear gradient
     val in = prev.getOutput(true)
+    println("Delta = " + delta)
     in.forEach({(i,v) =>
       val vocabInd    = i % vocabSize  // index into vocabulary space
       val seqPosition = i / vocabSize  // item within input sequence
-      var j = 0; while (j < eDim) {   
-        grad(j,vocabInd) += delta(j) * v // update gradient for each embedding dim for this vocab item
+      val offset = seqPosition * eDim
+      println("input i = " + i + " v = " + v)
+      var j = 0; while (j < eDim) {
+        val cv = grad(j,vocabInd)
+        grad.update(j,vocabInd, cv + (delta(j+offset) * v))
+        println("cv = " + cv + " update = " + (delta(j+offset) * v))
+        println("Setting grad " + j + ", " + vocabInd + " to " + grad(j,vocabInd))
         j += 1
       }
     })    
@@ -83,7 +93,7 @@ extends DenseNonInputLayer(li, eDim, lt) {
   
   def copy() = {
     val cur = this
-    val nl = new SeqEmbeddingLayer(li, eDim, vocabSize, lt) {
+    val nl = new SeqEmbeddingLayer(li, eDim, vocabSize, lt, fixedSeqLen) {
       override val grad = cur.grad.copy
       override val bgrad = cur.bgrad.copy
     }
@@ -92,7 +102,7 @@ extends DenseNonInputLayer(li, eDim, lt) {
 
   def sharedWeightCopy() = {
     val cur = this
-    val nl = new SeqEmbeddingLayer(li, eDim, vocabSize, lt) {
+    val nl = new SeqEmbeddingLayer(li, eDim, vocabSize, lt, fixedSeqLen) {
       override val grad = cur.grad.copy
       override val bgrad = cur.bgrad.copy
     }
