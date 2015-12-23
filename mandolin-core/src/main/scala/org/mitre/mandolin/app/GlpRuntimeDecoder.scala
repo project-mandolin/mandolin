@@ -6,7 +6,7 @@ package org.mitre.mandolin.app
 import org.mitre.mandolin.glp.{StdGLPFactor, GLPPredictor, GLPPosteriorOutputConstructor}
 import org.mitre.mandolin.glp.local.LocalGLPModelReader
 import org.mitre.mandolin.gm.NonUnitFeature
-import org.mitre.mandolin.util.{IOAssistant, DenseTensor1 => DenseVec, LocalIOAssistant}
+import org.mitre.mandolin.util.{IOAssistant, DenseTensor1 => DenseVec, LocalIOAssistant, Tensor2 => Mat}
 import scala.collection.JavaConversions._
 
 case class StringDoublePair(val str: String, val value: Double)
@@ -39,6 +39,21 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
   val evalDecoder = new org.mitre.mandolin.predict.local.LocalPosteriorDecoder(fe, predictor, new GLPPosteriorOutputConstructor)
 
   fa.ensureFixed // make sure the feature alphabet is fixed
+  
+  def topMatrixEntriesForRow(m: Mat, r: Int) : List[(String,Double)] = {
+    val invFa = fa.getInverseMapping
+    var best : List[(Int,Double)] = Nil
+    for (j <- 0 until m.getDim2) best = (j, m(r,j)) :: best
+    best.sortBy(_._2).reverse map {e => (invFa(e._1), e._2)}
+  } 
+  
+  val orderedFeatures = {
+    val hm = new collection.mutable.HashMap[String,Vector[(String,Double)]]
+    invLa foreach {case (i,l) =>
+      hm.put(l, topMatrixEntriesForRow(model.wts.wts.get(0)._1, i).toVector)
+      }
+    hm
+  }
   
   var unknownFeatures = Set[String]()
   
@@ -129,5 +144,29 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
   def decodePairsMPEWithScore(li: java.util.List[StringDoublePair]) : StringDoublePair = {
     val scalaList : scala.collection.mutable.Buffer[StringDoublePair] = li
     decodePairsMPEWithScore(scalaList.toList)
+  }
+  
+  def decodePairsMPEWithScoreForLabel(li: java.util.List[StringDoublePair], label: String) : Double = {
+    val ind = model.la.ofString(label)
+    val scalaList : scala.collection.mutable.Buffer[StringDoublePair] = li
+    val res = decodePairs(scalaList.toList)
+    val sc = res.find{case (_,i) => i == ind}
+    sc.get._1
+  }
+  
+  def getTopKScoringFeaturesForLabel(li: java.util.List[StringDoublePair], la: String, k: Int) : java.util.List[StringDoublePair] = {
+    val orderedFeaturesForLabel = orderedFeatures(la)
+    val scalaList : scala.collection.mutable.Buffer[StringDoublePair] = li
+    val buf = new collection.mutable.ArrayBuffer[StringDoublePair]()
+    val fscores = scalaList map {sdp => 
+      val fscore = orderedFeaturesForLabel.find{ case (s,d) => s.equals(sdp.str)}
+      val sc = fscore match {case None => 0.0 case Some(s) => s._2}
+      (sdp.str, sc)      
+    }
+    val sortedByScore = fscores.sortBy(_._2).reverse.toVector
+    for (i <- 0 until math.min(k, sortedByScore.length)) {
+      buf append (new StringDoublePair(sortedByScore(i)._1, sortedByScore(i)._2))
+    }
+    buf
   }
 }

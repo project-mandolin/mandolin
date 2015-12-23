@@ -4,26 +4,39 @@ import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, LocalIOAssistant}
 import org.mitre.mandolin.optimize.{TrainingUnitEvaluator}
 import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
+import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings, DecoderSettings}
+
+class CBOWModelSettings(args: Array[String]) extends LearnerSettings(args) with OnlineLearnerSettings with DecoderSettings {
+  
+  val eDim        = asInt("mandolin.embed.dim")
+  val contextSize = asInt("mandolin.embed.window")
+  val minCnt      = asInt("mandolin.embed.min-cnt")
+  val negSample   = asInt("mandolin.embed.neg-sample")
+
+}
+  
 
 object ContinuousBagOfWords {
   
   def main(args: Array[String]) = {
-    val prep = new PreProcess(1)
-    val nthreads = 8
-    val inFile = args(0)
-    val eDim   = args(1).toInt
-    val (mapping, freqs) = prep.getMappingAndFreqs(new java.io.File(inFile))
+    val appSettings = new CBOWModelSettings(args)
+    val prep = new PreProcess(appSettings.contextSize)
+    val nthreads = appSettings.numThreads
+    val epochs = appSettings.numEpochs
+    val inFile = appSettings.trainFile
+    val eDim   = appSettings.eDim
+    val (mapping, freqs, logisticTable) = prep.getMappingAndFreqs(new java.io.File(inFile.get))
     val vocabSize = mapping.getSize  
     val wts = EmbedWeights(eDim, vocabSize)     
     val fe = new SeqInstanceExtractor(mapping)
     val up = new NullUpdater
-    val ev = new CBOWEvaluator(wts,5,10,freqs, up)
-    val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,10,1,nthreads,None)
+    val ev = new CBOWEvaluator(wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, up)    
+    val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,epochs,1,nthreads,None)
     val trainer = new LocalTrainer(fe, optimizer)
     val io = new LocalIOAssistant
-    val lines = io.readLines(inFile).toVector
+    val lines = io.readLines(inFile.get).toVector
     val (finalWeights,_) = trainer.trainWeights(lines)
-    finalWeights.exportWithMapping(mapping, new java.io.File(args(2)))
+    finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
   }
 }
 
@@ -32,7 +45,7 @@ object ContinuousBagOfWords {
 /**
  * @author wellner
  */
-class CBOWEvaluator(val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, freqTable: Array[Int], up: NullUpdater)
+class CBOWEvaluator(val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, freqTable: Array[Int], logisticTable: Array[Double], up: NullUpdater)
 extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Serializable {
   
   val initialLearnRate = 0.1
@@ -43,14 +56,14 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
   val h = Array.fill(hlSize)(0.0)
   val d = Array.fill(hlSize)(0.0)
   val maxDp = 6.0
-  
+  val logisticTableSize = logisticTable.length
   
   @inline
   private final def set(a: Array[Double], v: Double) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
   @inline
   private final def timesEq(a: Array[Double], v: Double) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
   @inline
-  private final def logisticFn(x: Double) = 1.0 / (1.0 + math.exp(x))
+  private final def logisticFn(x: Double) = logisticTable(((x + maxDp) * logisticTableSize / maxDp / 2.0).toInt) // 1.0 / (1.0 + math.exp(-x)) 
   
   private final def isNaN(x: Double) = !(x > 0.0) && !(x <= 0.0)
   
@@ -149,6 +162,6 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
   
   def copy() = {
     // this copy will share weights but have separate layer data members
-    new CBOWEvaluator(emb.sharedWeightCopy(), wSize, negSampleSize, freqTable, up) 
+    new CBOWEvaluator(emb.sharedWeightCopy(), wSize, negSampleSize, freqTable, logisticTable, up) 
   }
 }

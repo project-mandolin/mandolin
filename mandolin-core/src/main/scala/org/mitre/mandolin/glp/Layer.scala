@@ -347,14 +347,15 @@ class SparseGradientWeightLayer(curDim: Int, prevDim: Int, outputLayer: Boolean,
   def getGradient(w: Mat, b: Vec) = getGradientWith(prev.getOutput(true), output, w, b)
   
   def getGradientWith(in: Vec, t: Vec, w: Mat, b: Vec) = {
-    val target : DenseVec = t.asInstanceOf[DenseVec] 
+    val target : Vec = t 
     val deriv: DenseVec = actFnDeriv(output)
-    val d = target.copy
-    d -= output
-    d *= deriv
+    val d = output.copy
+    d *= (-1.0) // (-output)
+    d += t  // add target .. amounts to (target - output)
+    d *= deriv 
     val grad : Mat = SparseMat.zeros(curDim, prevDim)
     grad.outerFill(d, in)
-    lastCost = costFn(target, output)
+    //lastCost = costFn(target, output)
     (grad, d)
   }
   
@@ -420,9 +421,9 @@ object WeightLayer {
   }
 
   def getOutputLayer(loss: LossFunction, lt: LType, pd: Int, ind: Int, sp: Boolean, noBias: Boolean = false) : AbstractWeightLayer =
-    if (sp)
+    if (sp) {
       new SparseGradientWeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0, noBias)
-    else new WeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0, noBias)
+    } else new WeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0, noBias)
   
 }
 

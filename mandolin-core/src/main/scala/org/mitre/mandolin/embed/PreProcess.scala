@@ -14,6 +14,20 @@ class PreProcess(minCnt: Int) {
   val unigramTableSize : Int = 1000000
   val smoothFactor : Double = 0.75
   
+  val expTableSize = 1000
+  
+  /**
+   * @param mxSize The max exponent value/magnitude
+   * @return Array of size `expTableSize` that approximates e / (1.0 + e)
+   */
+  def constructLogisticTable(mxVal: Double) : Array[Double] = {
+    val ar = Array.tabulate(1000){i =>
+      val e = math.exp((i.toDouble / 1000 * 2.0 - 1.0) * mxVal)
+      e / (1.0 + e)      
+      }
+    ar
+  }
+  
   def computeFrequencyTable(hist: HashMap[String,Int], mapping: StdAlphabet) : Array[Int] = {
     val ut = Array.fill(unigramTableSize)(0)
     val ft = new collection.mutable.HashMap[Int, Int]()
@@ -40,15 +54,16 @@ class PreProcess(minCnt: Int) {
     ut
   }
 
-  def getMappingAndFreqs(dirOrFile: java.io.File) = {
+  def getMappingAndFreqs(dirOrFile: java.io.File, mxVal: Double = 6.0) = {
     val hist = new HashMap[String,Int]
     if (dirOrFile.isDirectory()) dirOrFile.listFiles() foreach {f => updateTermHistogram(f,hist)}
     else updateTermHistogram(dirOrFile,hist)
     val mapping = new StdAlphabet
     hist foreach {case (s,c) => if (c >= minCnt) mapping.ofString(s) }
     mapping.ensureFixed
-    val ft = computeFrequencyTable(hist, mapping)
-    (mapping, ft)
+    val ft = computeFrequencyTable(hist, mapping)    
+    (mapping, ft, constructLogisticTable(mxVal))
+    //(mapping, ft)
   }
   
   val numRe = "^[0-9.,]+$".r

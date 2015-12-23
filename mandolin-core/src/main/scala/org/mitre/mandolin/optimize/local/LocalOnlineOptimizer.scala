@@ -28,10 +28,9 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
   optimizationDetails: Option[String],
   modelWriterOpt: Option[ModelWriter[W]] = None,
   synchronous: Boolean = false,
-  ensureSparse: Boolean = true,
   skipProb: Double = 0.0,
   miniBatchSize : Int = 1,
-  shuffle: Boolean = false) extends LocalOptimizerEstimator[T, W] {
+  shuffle: Boolean = true) extends LocalOptimizerEstimator[T, W] {
   
   def this(_iw: W, _ev: TrainingUnitEvaluator[T,W,LG], _u: U, _as: OnlineLearnerSettings) = {
     this(_iw, _ev, _u, _as.numEpochs, _as.numSubEpochs,

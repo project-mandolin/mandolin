@@ -34,8 +34,6 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
 
   def getDimSizes = collection.immutable.IndexedSeq(getDim)
   
-  
-  
   /** Assign values in tensor `v` to this `Tensor1` */
   def :=(v: Tensor1) : Unit
   

@@ -169,6 +169,7 @@ object ANNetwork {
       case SparseSeqInputLType(vs) => (new SparseInputLayer(specs(0).dim), true)
       case _                        => throw new RuntimeException("Invalid input layer specification: " + specs(0))
     }
+
     val olSp = sp && (lastInd < 2)
     val layers: IndexedSeq[NonInputLayer] =
       for (i <- 1 to lastInd) yield {
@@ -180,7 +181,6 @@ object ANNetwork {
             val prev = specs(i-1)
             prev.designate match { // look at previous layer; check that it's sparse sequence input and get vocab size              
               case SparseSeqInputLType(vs) =>
-                println("Constructing network with input sequence of " + sl)
                 new SeqEmbeddingLayer(i, d, vs, lt, sl)
               case _ => throw new RuntimeException("Embedding layer must follow SparseSeqInputLType")
             }     
