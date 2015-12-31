@@ -23,7 +23,7 @@ import org.mitre.mandolin.predict.{Predictor, OutputConstructor, EvalPredictor, 
 class TrainDecoder[IType, U: ClassTag, W <: Weights[W]: ClassTag, R: ClassTag](
     val trainer: Trainer[IType, U, W],
   val predictor: Predictor[U, W, R],
-  val outputConstructor: OutputConstructor[IType,Seq[(Double,R)],String],
+  val outputConstructor: OutputConstructor[IType,Seq[(Float,R)],String],
   val totalEpochs: Int,
   sc: SparkContext,
   persistLevel: StorageLevel = StorageLevel.MEMORY_ONLY) {

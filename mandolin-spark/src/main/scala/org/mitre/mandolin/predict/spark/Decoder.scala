@@ -69,7 +69,7 @@ class Decoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, OType : ClassT
 class PosteriorDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, OType : ClassTag](
     _fe: FeatureExtractor[IType,U],
     val pr: Predictor[U, W, R],
-    val oc: OutputConstructor[IType, Seq[(Double,R)], OType]
+    val oc: OutputConstructor[IType, Seq[(Float,R)], OType]
     ) extends AbstractDecoder[IType, U, W, R](_fe) {
   
   def run(inputs: RDD[IType], wBc: Broadcast[W]) : RDD[(OType, U)] = {

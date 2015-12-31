@@ -35,5 +35,7 @@ trait MandolinRegistrator {
     kryo.register(classOf[org.mitre.mandolin.util.StdAlphabet])
     kryo.register(classOf[org.mitre.mandolin.util.RandomAlphabet])
     kryo.register(classOf[org.mitre.mandolin.util.IdentityAlphabet])
+    kryo.register(classOf[org.mitre.mandolin.embed.EmbedWeights])
+    kryo.register(classOf[org.mitre.mandolin.embed.NullUpdater])
   }
 }

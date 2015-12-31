@@ -12,7 +12,7 @@ import collection.mutable.ArrayBuffer
  */
 abstract class Predictor[U, W <: Weights[W], +R] {
   def getPrediction(unit: U, weights: W): R
-  def getScoredPredictions(unit: U, weights: W) : Seq[(Double,R)]
+  def getScoredPredictions(unit: U, weights: W) : Seq[(Float,R)]
 }
 
 /**
@@ -51,14 +51,14 @@ class RegressionConfusion(var error: Double) extends Confusion[RegressionConfusi
   def getAreaUnderROC(i: Int) = 0.0
   def getTotalAreaUnderROC() = 0.0
   def getAccuracyAtThroughPut(th: Double) = 0.0
-  def getMatrix = new ConfusionMatrix(error)
+  def getMatrix = new ConfusionMatrix(error.toFloat)
   def getROCofIndex(i: Int) = throw new RuntimeException("Unsupported method")
 }
 
-class DiscreteConfusion(val dim: Int, val matrix: Array[Array[Double]], val scoreVals: ArrayBuffer[(Array[Double], Int)], var weight: Int = -1) extends Confusion[DiscreteConfusion] {
+class DiscreteConfusion(val dim: Int, val matrix: Array[Array[Float]], val scoreVals: ArrayBuffer[(Array[Float], Int)], var weight: Int = -1) extends Confusion[DiscreteConfusion] {
 
-  def this(dim: Int) = this(dim, Array.tabulate(dim) { _ => Array.fill(dim)(0.0) }, new ArrayBuffer[(Array[Double], Int)]())
-  def this(dim: Int, m: Array[Array[Double]]) = this(dim, m, new ArrayBuffer[(Array[Double], Int)]())
+  def this(dim: Int) = this(dim, Array.tabulate(dim) { _ => Array.fill(dim)(0.0f) }, new ArrayBuffer[(Array[Float], Int)]())
+  def this(dim: Int, m: Array[Array[Float]]) = this(dim, m, new ArrayBuffer[(Array[Float], Int)]())
   
   override def toString() = {
     val sbuf = new StringBuilder
@@ -84,7 +84,7 @@ class DiscreteConfusion(val dim: Int, val matrix: Array[Array[Double]], val scor
     } else {
       val nweight = weight + other.weight
       val curSc = matrix(0)(0)
-      val sc = ((weight * curSc) + (other.matrix(0)(0) * other.weight)) / nweight.toDouble
+      val sc = ((weight * curSc) + (other.matrix(0)(0) * other.weight)) / nweight.toFloat
       matrix(0)(0) = sc
       weight = nweight
       this
@@ -153,7 +153,7 @@ class DiscreteConfusion(val dim: Int, val matrix: Array[Array[Double]], val scor
       tot += pw
       sum += area * pw
     }
-    if (tot > 0.0) sum / tot else 0.0
+    if (tot > 0.0f) sum / tot else 0.0
   }
 
   def getMatrix = new ConfusionMatrix(matrix)
@@ -163,12 +163,12 @@ class DiscreteConfusion(val dim: Int, val matrix: Array[Array[Double]], val scor
 object DiscreteConfusion {
   def apply(dim: Int, pairs: Vector[(Int, Int)]) = {
     if (dim < 100) {
-      val m = Array.tabulate(dim)(_ => Array.fill(dim)(0.0))
+      val m = Array.tabulate(dim)(_ => Array.fill(dim)(0.0f))
       pairs foreach { case (p, g) => m(p)(g) += 1 }
       new DiscreteConfusion(dim, m)
     } else {
-      var sc = 0.0
-      pairs foreach {case (p,g) => if (p == g) sc += 1.0}
+      var sc = 0.0f
+      pairs foreach {case (p,g) => if (p == g) sc += 1.0f}
       val n = pairs.length
       new DiscreteConfusion(dim, Array(Array(sc/n)), ArrayBuffer(), n)
     }
@@ -176,30 +176,30 @@ object DiscreteConfusion {
 
   def apply(dim: Int, pred: Int, gold: Int) = {
     if (dim < 100) {
-      val m = Array.tabulate(dim)(_ => Array.fill(dim)(0.0))
-      m(pred)(gold) = 1
+      val m = Array.tabulate(dim)(_ => Array.fill(dim)(0.0f))
+      m(pred)(gold) = 1.0f
       new DiscreteConfusion(dim, m)
     } else {
-      val sc = if (pred == gold) 1.0 else 0.0
+      val sc = if (pred == gold) 1.0f else 0.0f
       new DiscreteConfusion(dim, Array(Array(sc)), ArrayBuffer(), 1)
     }
   }
 
-  def apply(dim: Int, pred: Int, gold: Int, scores: Array[Double]) = {
+  def apply(dim: Int, pred: Int, gold: Int, scores: Array[Float]) = {
     if (dim < 100) {
-      val m = Array.tabulate(dim)(_ => Array.fill(dim)(0.0))
-      m(pred)(gold) = 1.0      
+      val m = Array.tabulate(dim)(_ => Array.fill(dim)(0.0f))
+      m(pred)(gold) = 1.0f      
       new DiscreteConfusion(dim, m, ArrayBuffer((scores, gold)))
     } else {
-      val sc = if (pred == gold) 1.0 else 0.0
+      val sc = if (pred == gold) 1.0f else 0.0f
       new DiscreteConfusion(dim, Array(Array(sc)), ArrayBuffer(), 1)
     }
   }
 }
 
-class ConfusionMatrix(val m: Array[Array[Double]]) {
+class ConfusionMatrix(val m: Array[Array[Float]]) {
 
-  def this(v: Double) = this(Array(Array(v)))
+  def this(v: Float) = this(Array(Array(v)))
 
   val dim = m.length
 

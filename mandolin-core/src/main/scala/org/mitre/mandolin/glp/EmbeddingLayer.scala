@@ -15,14 +15,13 @@ extends DenseNonInputLayer(li, eDim, _ll) with Serializable {
   
   def setTarget(vv: Vec) : Unit = throw new RuntimeException("Embedding layer has no target")
   
-  override val delta = DenseVec.zeros(eDim)
   
   def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {    
     var j = 0; while (j < eDim) {
-      output(j) = 0.0
+      output(j) = 0.0f
       j += 1
     }
-    var ss = 0.0
+    var ss = 0.0f
     in match {
       case inV: StaticSparseTensor1 => 
         var i = 0; while (i < inV.len) {
@@ -38,7 +37,7 @@ extends DenseNonInputLayer(li, eDim, _ll) with Serializable {
         }
       case _ => throw new RuntimeException("Embedding layer requires static sparse input vectors")
     }
-    output *= (1.0 / ss)    
+    output *= (1.0f / ss)    
   }
   
   def forward(w: Mat, b: Vec, training: Boolean = true) = {  

@@ -49,12 +49,12 @@ abstract class AbstractProcessor extends LineParser {
             l("dim").toInt
           else throw new RuntimeException("Expected 'dim' provided in layer specification for non-input layer " + i)
         }
-      val dropOut = l.get("dropout-ratio") match { case Some(v) => v.toDouble case None => 0.0 }
-      val l1Pen = l.get("l1-pen") match { case Some(v) => v.toDouble case None => 0.0 }
-      val l2Pen = l.get("l2-pen") match { case Some(v) => v.toDouble case None => 0.0 }
-      val mn = l.get("max-norm") match { case Some(v) => v.toDouble case None => 0.0 }
-      val cval = l.get("margin-size") match { case Some(v) => v.toDouble case None => 1.0 }
-      val rlen = l.get("ramp-width") match { case Some(v) => v.toDouble case None => 2.0 }
+      val dropOut = l.get("dropout-ratio") match { case Some(v) => v.toFloat case None => 0.0f }
+      val l1Pen = l.get("l1-pen") match { case Some(v) => v.toFloat case None => 0.0f }
+      val l2Pen = l.get("l2-pen") match { case Some(v) => v.toFloat case None => 0.0f }
+      val mn = l.get("max-norm") match { case Some(v) => v.toFloat case None => 0.0f }
+      val cval = l.get("margin-size") match { case Some(v) => v.toFloat case None => 1.0f }
+      val rlen = l.get("ramp-width") match { case Some(v) => v.toFloat case None => 2.0f }
       val seqLen = l.get("seq-len") match {case Some(v) => v.toInt case None => 0}
       ltype match {
         case "Input"        => LType(InputLType, dim, dropOut)
@@ -68,17 +68,17 @@ abstract class AbstractProcessor extends LineParser {
         case "LinearNoBias" => LType(LinearNoBiasLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "CrossEntropy" => LType(CrossEntropyLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Relu"         => LType(ReluLType, dim, dropOut, l1Pen, l2Pen, mn)
-        case "SoftMax"      => LType(SoftMaxLType, dim, 0.0, l1Pen, l2Pen, mn)
-        case "Hinge"        => LType(HingeLType(cval), dim, 0.0, l1Pen, l2Pen, mn)
-        case "ModHuber"     => LType(ModHuberLType, dim, 0.0, l1Pen, l2Pen, mn)
-        case "Ramp"         => LType(RampLType(rlen), dim, 0.0, l1Pen, l2Pen, mn)
-        case "TransLog"     => LType(TransLogLType, dim, 0.0, l1Pen, l2Pen, mn)
-        case "TLogistic"    => LType(TLogisticLType, dim, 0.0, l1Pen, l2Pen, mn)
+        case "SoftMax"      => LType(SoftMaxLType, dim, 0.0f, l1Pen, l2Pen, mn)
+        case "Hinge"        => LType(HingeLType(cval), dim, 0.0f, l1Pen, l2Pen, mn)
+        case "ModHuber"     => LType(ModHuberLType, dim, 0.0f, l1Pen, l2Pen, mn)
+        case "Ramp"         => LType(RampLType(rlen), dim, 0.0f, l1Pen, l2Pen, mn)
+        case "TransLog"     => LType(TransLogLType, dim, 0.0f, l1Pen, l2Pen, mn)
+        case "TLogistic"    => LType(TLogisticLType, dim, 0.0f, l1Pen, l2Pen, mn)
         case "NegSampledSoftMax" => 
           val ss    = l.get("sample-size") match {case Some(ss) => ss.toInt case None => 5}
           val inDim = l.get("input-dim") match {case Some(id) => id.toInt case None => -1}
           val frequencyFile = l.get("frequency-file")
-          LType(NegSampledSoftMaxLType(inDim, ss,frequencyFile.getOrElse("")), dim, 0.0, l1Pen, l2Pen, mn)
+          LType(NegSampledSoftMaxLType(inDim, ss,frequencyFile.getOrElse("")), dim, 0.0f, l1Pen, l2Pen, mn)
         case a              => throw new RuntimeException("Unrecognized layer type: " + a)
       }
     }

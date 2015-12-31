@@ -12,7 +12,7 @@ import org.mitre.mandolin.predict.{Confusion, EvalPredictor, Predictor, OutputCo
 class LocalTrainDecoder[IType, U: ClassTag, W <: Weights[W]: ClassTag, R: ClassTag](
     val trainer: LocalTrainer[IType, U, W],
   val predictor: Predictor[U, W, R],
-  val outputConstructor: OutputConstructor[IType,Seq[(Double,R)],String],
+  val outputConstructor: OutputConstructor[IType,Seq[(Float,R)],String],
   val totalEpochs: Int) {
   
   var elapsedTrainingTime = 0.0

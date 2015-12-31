@@ -8,13 +8,13 @@ class DynamicCNNTest extends FlatSpec with Matchers {
   import org.mitre.mandolin.glp._
   
   val thFn = { v: DenseVec => v }
-  val thDeriv = { v: DenseVec => DenseVec.ones(9) }
+  val thDeriv = { v: DenseVec => DenseVec.ones(v.getDim) }
     
   "An Embedding NN" should "proceed with FF pass without error" in {
-    val l0 = new SparseInputLayer(10, 0.0)
-    val l1 = new SeqEmbeddingLayer(1, 3, 10, LType(SeqEmbeddingLType(5), 3))
-    val l2 = new DynamicConvLayer(2, 3, 3, 3, LType(DynamicConvLType, 3), thFn, thDeriv, {(_,_) => 0.0})
-    val l2OutDim = 3 * 3  // embedding dimension * k (k-pooling)
+    val l0 = new SparseInputLayer(10, 0.0f)
+    val l1 = new SeqEmbeddingLayer(1, 4, 10, LType(SeqEmbeddingLType(0), 4))
+    val l2 = new DynamicConvLayer(2, 3, 3, 4, LType(DynamicConvLType, 4), thFn, thDeriv, {(_,_) => 0.0})
+    val l2OutDim = 4 * 3  // embedding dimension * k (k-pooling)
     val l3 = WeightLayer.getOutputLayer(new SoftMaxLoss(2), LType(SoftMaxLType, 2) , l2OutDim, 2, false)
     l1.setPrevLayer(l0)
     l2.setPrevLayer(l1)
@@ -32,7 +32,7 @@ class DynamicCNNTest extends FlatSpec with Matchers {
     println("output = " + ann.outLayer.getOutput(false))
     val revGrads = for (i <- 2 to 0 by -1) yield {
       println("Backprop gradients for layer " + i)
-      //println("l2 delta size = " + l2.delta.getDim)
+      println("l " + i + " delta size = " + layers(i).delta.getDim)
       val (w, b) = glpW.wts.get(i)
       layers(i).getGradient(w, b) // backward pass and return gradient at that layer
     }

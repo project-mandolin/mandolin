@@ -43,14 +43,14 @@ class GLPLayout(val w: IndexedSeq[(Mat, Vec)]) extends Serializable {
     }
   }
 
-  def addEquals(other: GLPLayout, sc: Double = 1.0): Unit = {
+  def addEquals(other: GLPLayout, sc: Float = 1.0f): Unit = {
     val o: GLPLayout = other
     assert(this.length == other.length)
     for (i <- 0 until length) {
       other.get(i) match {
         case (w, b) =>
           val (thisW, thisB) = this.get(i)
-          if (sc != 1.0) {
+          if (sc != 1.0f) {
             w *= sc
             thisW += w
             b *= sc
@@ -63,7 +63,7 @@ class GLPLayout(val w: IndexedSeq[(Mat, Vec)]) extends Serializable {
     }
   }
 
-  def addEquals(v: Double): Unit = {
+  def addEquals(v: Float): Unit = {
     for (i <- 0 until length) {
       get(i) match {
         case (w, b) =>
@@ -74,7 +74,7 @@ class GLPLayout(val w: IndexedSeq[(Mat, Vec)]) extends Serializable {
   }
 
   
-  def set(v: Double): Unit = {
+  def set(v: Float): Unit = {
     for (i <- 0 until length) {
       get(i) match {
         case (w, b) =>
@@ -84,7 +84,7 @@ class GLPLayout(val w: IndexedSeq[(Mat, Vec)]) extends Serializable {
     }
   }
   
-  def timesEquals(v: Double): Unit = {
+  def timesEquals(v: Float): Unit = {
     for (i <- 0 until length) {
       get(i) match {
         case (w, b) =>
@@ -137,8 +137,8 @@ object GLPLayout {
  * GLP weights implements Mandolin Weight class, just wraps GLPLayout
  * @author wellner
  */
-class GLPWeights(val wts: GLPLayout, m: Double) extends Weights[GLPWeights](m) with Serializable {
-  def this(wts: GLPLayout) = this(wts, 1.0)
+class GLPWeights(val wts: GLPLayout, m: Float) extends Weights[GLPWeights](m) with Serializable {
+  def this(wts: GLPLayout) = this(wts, 1.0f)
 
   val nlayers = wts.length
   def compress(): Unit = {}
@@ -159,7 +159,7 @@ class GLPWeights(val wts: GLPLayout, m: Double) extends Weights[GLPWeights](m) w
     otherWeights *= otherWeights.mass
     this ++ otherWeights
     val nmass = mass + otherWeights.mass
-    this *= (1.0 / nmass)
+    this *= (1.0f / nmass)
     new GLPWeights(this.wts, nmass)
   }
 
@@ -170,11 +170,11 @@ class GLPWeights(val wts: GLPLayout, m: Double) extends Weights[GLPWeights](m) w
 
   def addEquals(otherWeights: GLPWeights): Unit = wts addEquals otherWeights.wts
 
-  def timesEquals(v: Double) = { wts.timesEquals(v) }
+  def timesEquals(v: Float) = { wts.timesEquals(v) }
 
   def l2norm = throw new RuntimeException("Norm not implemented yet")
 
-  def updateFromArray(ar: Array[Double]) = {
+  def updateFromArray(ar: Array[Float]) = {
     if (wts.length > 1) throw new RuntimeException("array update for NN not implemented")
     else {
       val (m,b) = wts.get(0)      
@@ -182,6 +182,10 @@ class GLPWeights(val wts: GLPLayout, m: Double) extends Weights[GLPWeights](m) w
       System.arraycopy(ar, m.getSize, b.asArray, 0, b.getSize)
       this
     }
+  }
+  
+  def updateFromArray(ar: Array[Double]) = {
+    throw new RuntimeException("array update for NN not implemented")
   }
 
   def copy() = new GLPWeights(wts.copy(), m)
@@ -191,7 +195,7 @@ class GLPWeights(val wts: GLPLayout, m: Double) extends Weights[GLPWeights](m) w
     else {
       val (m,b) = wts.get(0)
       val ma = m.asArray
-      val ar = Array.fill(m.getSize + b.getSize)(0.0)
+      val ar = Array.fill(m.getSize + b.getSize)(0.0f)
       System.arraycopy(m.asArray, 0, ar, 0, m.getSize)
       System.arraycopy(b.asArray, 0, ar, m.getSize, b.getSize)
       ar
@@ -220,11 +224,11 @@ class BasicGLPSgdUpdater(val initialLearningRate: Double = 0.2, lambda: Double =
     sgd.numIterations = this.numIterations
     sgd
   }
-  def resetLearningRates(v: Double) = {}
+  def resetLearningRates(v: Float) = {}
   def compose(u: BasicGLPSgdUpdater) = this
   def updateWeights(lossGrad: GLPLossGradient, weights: GLPWeights): Unit = {
     val eta_t = initialLearningRate / (1.0 + (initialLearningRate * numIterations * lambda))
-    weights.wts.addEquals(lossGrad.gr, eta_t)
+    weights.wts.addEquals(lossGrad.gr, eta_t.toFloat)
     numIterations += 1
   }
 }
@@ -238,7 +242,7 @@ class GLPLossGradient(l: Double, val gr: GLPLayout) extends LossGradient[GLPLoss
     if (gr.length == 1) {
       val pa = gr.get(0)._1.asArray
       val bias = gr.get(0)._2.asArray
-      val ar = Array.fill(pa.length + bias.length)(0.0)
+      val ar = Array.fill(pa.length + bias.length)(0.0f)
       System.arraycopy(pa, 0, ar, 0, pa.length)
       System.arraycopy(bias, 0, ar, pa.length, bias.length)
       ar
@@ -250,10 +254,15 @@ trait Regularizer {
   final private def fastSqrt(x: Double) =
     java.lang.Double.longBitsToDouble(((java.lang.Double.doubleToLongBits(x) >> 32) + 1072632448) << 31)
 
+    
+  @inline
+  final private def fastSqrt(x: Float) : Float = 
+    java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
+    
    /** implementation of scaling - cf. Hinton et al "Improving neural networks by preventing co-adaptation of feature detectors" */
-  def rescaleWeightsDense(w_w: DenseMat, w_b: Vec, d1: Int, d2: Int, maxLayerSumSq: Double) = {              
+  def rescaleWeightsDense(w_w: DenseMat, w_b: Vec, d1: Int, d2: Int, maxLayerSumSq: Float) = {              
     var i = 0; while (i < d1) {
-      var ssq = 0.0
+      var ssq = 0.0f
       var j = 0; while (j < d2) {
         ssq += w_w(i, j) * w_w(i, j)
         j += 1
@@ -272,10 +281,10 @@ trait Regularizer {
   }
   
      /** implementation of scaling - cf. Hinton et al "Improving neural networks by preventing co-adaptation of feature detectors" */
-  def rescaleWeightsSparse(w_w: SparseMat, w_b: Vec, d1: Int, maxLayerSumSq: Double) = {              
-    if (maxLayerSumSq > 0.0) {
+  def rescaleWeightsSparse(w_w: SparseMat, w_b: Vec, d1: Int, maxLayerSumSq: Float) = {              
+    if (maxLayerSumSq > 0.0f) {
     var i = 0; while (i < d1) {
-      var ssq = 0.0
+      var ssq = 0.0f
       val row = w_w(i)
       row.forEach((i,v) => ssq += v * v)
       ssq += (w_b(i) * w_b(i))
@@ -289,9 +298,9 @@ trait Regularizer {
     }
   }
   
-  def rescaleWeightsRowSparse(w_w: RowSparseMat, w_b: Vec, d1: Int, maxLayerSumSq: Double) = {    
+  def rescaleWeightsRowSparse(w_w: RowSparseMat, w_b: Vec, d1: Int, maxLayerSumSq: Float) = {    
     w_w.forEachRow({(i,row) =>
-      var ssq = 0.0
+      var ssq = 0.0f
       var j = 0; while (j < w_w.ncols) {
         ssq += row(j) * row(j)
         j += 1
@@ -317,14 +326,14 @@ case class NesterovSgdSpec(learnRate: Double = 0.1) extends UpdaterSpec
 case class RMSPropSpec(learnRate: Double = 0.001) extends UpdaterSpec
 case object AdaDeltaSpec extends UpdaterSpec
 
-class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: GLPLayout, val mom2: GLPLayout, 
+class GLPAdamUpdater(val alpha: Float, beta1: Float, beta2: Float, val mom1: GLPLayout, val mom2: GLPLayout, 
     composeSt: ComposeStrategy = Minimum, 
-    maxNormArray: Option[Array[Double]] = None, l1Array: Option[Array[Double]] = None, l2Array: Option[Array[Double]] = None)
+    maxNormArray: Option[Array[Float]] = None, l1Array: Option[Array[Float]] = None, l2Array: Option[Array[Float]] = None)
   extends Updater[GLPWeights, GLPLossGradient, GLPAdamUpdater] with Regularizer {
 
-  val beta1Inv = 1.0 - beta1
-  val beta2Inv = 1.0 - beta2
-  val epsilon = 1E-8
+  val beta1Inv : Float = (1.0f - beta1)
+  val beta2Inv : Float = (1.0f - beta2)
+  val epsilon = 1E-8f
   
   var numIterations = 0
   var beta1T = beta1
@@ -338,7 +347,7 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
     sgd.beta2T = this.beta2T
     sgd
   }
-  def resetLearningRates(v: Double) = {}
+  def resetLearningRates(v: Float) = {}
   
   def compose(u: GLPAdamUpdater) = {
     for (i <- 0 until nLayers) {      
@@ -373,16 +382,21 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
   @inline
   final private def fastSqrt(x: Double) =
     java.lang.Double.longBitsToDouble(((java.lang.Double.doubleToLongBits(x) >> 32) + 1072632448) << 31)
+    
+  @inline
+  final private def fastSqrt(x: Float) : Float = 
+    java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
+      
 
   def updateWeights(lossGrad: GLPLossGradient, weights: GLPWeights): Unit = {
     beta1T *= beta1
     beta2T *= beta2
     for (l <- 0 until nLayers) {           
-      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0}
-      val l2 = l2Array match {case Some(ar) => ar(l) case None => 0.0}
-      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0}
-      val l1Reg = (l1 > 0.0)
-      val l2Reg = (l2 > 0.0)
+      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val l2 = l2Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0f}
+      val l1Reg = (l1 > 0.0f)
+      val l2Reg = (l2 > 0.0f)
 
       (mom1.get(l), mom2.get(l)) match {
         case ((mom1_w, mom1_b), (mom2_w, mom2_b)) =>
@@ -397,10 +411,10 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
                   val ww = w_w(i,j)
                   val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
                   val mt = mom1_w(i, j) * beta1 + (cgr * beta1Inv)
-                  val mt_hat = mt / (1.0 - beta1T)
+                  val mt_hat = mt / (1.0f - beta1T)
                   mom1_w.update(i, j, mt)
                   val vt = mom2_w(i, j) * beta2 + (cgr * cgr * beta2Inv)
-                  val vt_hat = vt / (1.0 - beta2T)
+                  val vt_hat = vt / (1.0f - beta2T)
                   mom2_w.update(i, j, vt)
                   w_w.update(i, j, ww + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))
                   j += 1
@@ -414,10 +428,10 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
                   val ww = w_w(i,j)
                   val cgr = if (l1Reg) cgr_o - math.signum(ww) * l1 else if (l2Reg) cgr_o - ww * l2 else cgr_o 
                   val mt = mom1_w(i, j) * beta1 + (cgr * beta1Inv)
-                  val mt_hat = mt / (1.0 - beta1T)
+                  val mt_hat = mt / (1.0f - beta1T)
                   mom1_w.update(i, j, mt)
                   val vt = mom2_w(i, j) * beta2 + (cgr * cgr * beta2Inv)
-                  val vt_hat = vt / (1.0 - beta2T)
+                  val vt_hat = vt / (1.0f - beta2T)
                   mom2_w.update(i, j, vt)                  
                   w_w.update(i, j, ww + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))
                 }                         
@@ -430,10 +444,10 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
                   val ww = w_w(i,j)
                   val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
                   val mt = mom1_w(i, j) * beta1 + (cgr * beta1Inv)
-                  val mt_hat = mt / (1.0 - beta1T)
+                  val mt_hat = mt / (1.0f - beta1T)
                   mom1_w.update(i, j, mt)
                   val vt = mom2_w(i, j) * beta2 + (cgr * cgr * beta2Inv)
-                  val vt_hat = vt / (1.0 - beta2T)
+                  val vt_hat = vt / (1.0f - beta2T)
                   mom2_w.update(i, j, vt)
                   w_w.update(i, j, ww + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))
                   j += 1
@@ -445,10 +459,10 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
             u_b.forEach({(i,v) =>
               val cgr = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)
               val mt = mom1_b(i) * beta1 + (cgr * beta1Inv)
-              val mt_hat = mt / (1.0 - beta1T)
+              val mt_hat = mt / (1.0f - beta1T)
               mom1_b.update(i, mt)
               val vt = mom2_b(i) * beta2 + (cgr * cgr * beta2Inv)
-              val vt_hat = vt / (1.0 - beta2T)
+              val vt_hat = vt / (1.0f - beta2T)
               mom2_b.update(i, vt)  
               w_b.update(i, w_b(i) + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))            
               })
@@ -456,10 +470,10 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
             var i = 0; while (i < d1) {
               val cgr = if (l1Reg) u_b(i) - math.signum(w_b(i)) * l1 else if (l2Reg) u_b(i) - w_b(i) * l2 else u_b(i)
               val mt = mom1_b(i) * beta1 + (cgr * beta1Inv)
-              val mt_hat = mt / (1.0 - beta1T)
+              val mt_hat = mt / (1.0f - beta1T)
               mom1_b.update(i, mt)
               val vt = mom2_b(i) * beta2 + (cgr * cgr * beta2Inv)
-              val vt_hat = vt / (1.0 - beta2T)
+              val vt_hat = vt / (1.0f - beta2T)
               mom2_b.update(i, vt)  
               w_b.update(i, w_b(i) + (alpha * mt_hat / (fastSqrt(vt_hat) + alpha)))            
               i += 1
@@ -485,10 +499,10 @@ class GLPAdamUpdater(val alpha: Double, beta1: Double, beta2: Double, val mom1: 
  * @author wellner
  */
 class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
-                    val initialLearningRate: Double = 0.05,
-                    maxNormArray: Option[Array[Double]] = None, 
-                    l1Array: Option[Array[Double]] = None, 
-                    l2Array: Option[Array[Double]] = None, numPoints: Double = 500.0, compose: ComposeStrategy = Minimum)
+                    val initialLearningRate: Float = 0.05f,
+                    maxNormArray: Option[Array[Float]] = None, 
+                    l1Array: Option[Array[Float]] = None, 
+                    l2Array: Option[Array[Float]] = None, numPoints: Float = 500.0f, compose: ComposeStrategy = Minimum)
   extends Updater[GLPWeights, GLPLossGradient, GLPSgdUpdater] with Regularizer {
 
   var numIterations = 0
@@ -499,7 +513,7 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
     sgd.numIterations = this.numIterations
     sgd
   }
-  def resetLearningRates(v: Double) = {}
+  def resetLearningRates(v: Float) = {}
 
   def compose(u: GLPSgdUpdater) = {
     for (i <- 0 until nLayers) {
@@ -522,14 +536,14 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
   def updateWeights(lossGrad: GLPLossGradient, weights: GLPWeights): Unit = {
     val eta_t = initialLearningRate // / (1.0 + (initialLearningRate * numIterations * lambda))    
     numIterations += 1
-    val momentumRate = 1.0 - (3.0 / (5.0 + (numIterations.toDouble / numPoints))) // cf. Sutsekver et al. for additional momentum schedules such as:
+    val momentumRate = 1.0f - (3.0f / (5.0f + (numIterations.toFloat / numPoints))) // cf. Sutsekver et al. for additional momentum schedules such as:
     // val momentumRate = math.min(0.9, (1.0 - math.pow(2.0,(-1.0 - math.log(math.floor(numIterations * 250 + 1))))))
     for (l <- 0 until nLayers) {
-      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0}
-      val l2 = l1Array match {case Some(ar) => ar(l) case None => 0.0}
-      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0}
-      val l1Reg = (l1 > 0.0)
-      val l2Reg = (l2 > 0.0)
+      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val l2 = l1Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0f}
+      val l1Reg = (l1 > 0.0f)
+      val l2Reg = (l2 > 0.0f)
       
       
       momentum.get(l) match {
@@ -634,9 +648,9 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
   }
 }
 
-class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Double = 0.9, lambda: Double = 0.001,
-                        rho: Double = 0.95, epsilon: Double = 0.003, maxNormArray: Option[Array[Double]] = None,
-                        l1Array: Option[Array[Double]] = None, l2Array: Option[Array[Double]] = None, 
+class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Float = 0.9f, lambda: Float = 0.001f,
+                        rho: Float = 0.95f, epsilon: Float = 0.003f, maxNormArray: Option[Array[Float]] = None,
+                        l1Array: Option[Array[Float]] = None, l2Array: Option[Array[Float]] = None, 
                         compose: ComposeStrategy = Minimum)
   extends Updater[GLPWeights, GLPLossGradient, GLPRMSPropUpdater] with Regularizer {
 
@@ -644,14 +658,14 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
 
   val nLayers = sumSquared.length
   var numIterations = 0
-  val rhoInv = 1.0 - rho
+  val rhoInv = 1.0f - rho
   
   /*
    * A <i>shallow</i> copy so learning rates are shared across threads/partitions on same machine
    */
   def copy() = new GLPRMSPropUpdater(sumSquared, initialLearningRate)
 
-  def resetLearningRates(v: Double) = sumSquared.timesEquals(initialLearningRate * v)
+  def resetLearningRates(v: Float) = sumSquared.timesEquals(initialLearningRate * v)
 
   def compose(u: GLPRMSPropUpdater) = {
     for (i <- 0 until nLayers) {
@@ -674,17 +688,22 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
   @inline
   final private def fastSqrt(x: Double) =
     java.lang.Double.longBitsToDouble(((java.lang.Double.doubleToLongBits(x) >> 32) + 1072632448) << 31)
+    
+  @inline
+  final private def fastSqrt(x: Float) : Float = 
+    java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
+      
 
   def updateWeights(lossGrad: GLPLossGradient, weights: GLPWeights): Unit = {
     // won't decay the learning rate since this is controled for via RMS update
     val eta_t = initialLearningRate // / (1.0 + (initialLearningRate * numIterations * lambda))
     numIterations += 1
     for (l <- 0 until nLayers) {
-      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0}
-      val l2 = l2Array match {case Some(ar) => ar(l) case None => 0.0}
-      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0}
-      val l1Reg = (l1 > 0.0)
-      val l2Reg = (l2 > 0.0)
+      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val l2 = l2Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0f}
+      val l1Reg = (l1 > 0.0f)
+      val l2Reg = (l2 > 0.0f)
   
       sumSquared.get(l) match {
         case (sq_w, sq_b) =>
@@ -692,7 +711,7 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
           val (w_w, w_b) = weights.wts.get(l)
           // updater mass gives an additional scalar weight/avg to gradient
           // this is used for mini-batch training
-          if (updaterMass != 1.0) {
+          if (updaterMass != 1.0f) {
             u_w *= updaterMass
             u_b *= updaterMass
           }
@@ -703,7 +722,7 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
                 var i = 0; while (i < d1) {
                 var j = 0; while (j < d2) {
                   val ww = w_w(i,j)
-                  val cgr = if (l1Reg) u_w(i, j) - math.signum(ww) * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
+                  val cgr = if (l1Reg) u_w(i, j) - math.signum(ww).toFloat * l1 else if (l2Reg) u_w(i,j) - ww * l2 else u_w(i,j)
                   val ss = sq_w(i, j) * rho + (cgr * cgr * rhoInv)
                   sq_w.update(i, j, ss)
                   val rms = fastSqrt(ss + epsilon)
@@ -717,7 +736,7 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
                 val row = u_w(i)                 
                 row.forEach { (j, cgr_o) =>
                   val ww = w_w(i,j)
-                  val cgr = if (l1Reg) cgr_o - math.signum(ww) * l1 else if (l2Reg) cgr_o - ww * l2 else cgr_o
+                  val cgr = if (l1Reg) cgr_o - math.signum(ww).toFloat * l1 else if (l2Reg) cgr_o - ww * l2 else cgr_o
                   val ss = sq_w(i, j) * rho + (cgr * cgr * rhoInv)
                   sq_w.update(i, j, ss)
                   w_w.update(i, j, ww + (eta_t * cgr / fastSqrt(ss + epsilon)))
@@ -766,8 +785,8 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
   }
 }
 
-class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Double = 0.9, maxNormArray: Option[Array[Double]] = None,
-    l1Array: Option[Array[Double]] = None, l2Array: Option[Array[Double]] = None,
+class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Float = 0.9f, maxNormArray: Option[Array[Float]] = None,
+    l1Array: Option[Array[Float]] = None, l2Array: Option[Array[Float]] = None,
     compose: ComposeStrategy = Minimum)
   extends Updater[GLPWeights, GLPLossGradient, GLPAdaGradUpdater] with Regularizer {
 
@@ -780,7 +799,7 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
    */
   def copy() = new GLPAdaGradUpdater(sumSquared.copy(), initialLearningRate, maxNormArray, l1Array, l2Array, compose)
 
-  def resetLearningRates(v: Double) = sumSquared.timesEquals(initialLearningRate * v)
+  def resetLearningRates(v: Float) = sumSquared.timesEquals(initialLearningRate * v)
 
   def compose(u: GLPAdaGradUpdater) = {
     for (i <- 0 until nLayers) {
@@ -805,11 +824,16 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
   final private def fastSqrt(x: Double) =
     java.lang.Double.longBitsToDouble(((java.lang.Double.doubleToLongBits(x) >> 32) + 1072632448) << 31)
 
+    
+  @inline
+  final private def fastSqrt(x: Float) : Float = 
+    java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
+      
   def updateWeights(lossGrad: GLPLossGradient, weights: GLPWeights): Unit = {
     for (l <- 0 until nLayers) {
-      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0}
-      val l2 = l2Array match {case Some(ar) => ar(l) case None => 0.0}
-      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0}
+      val l1 = l1Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val l2 = l2Array match {case Some(ar) => ar(l) case None => 0.0f}
+      val maxNorm = maxNormArray match {case Some(ar) => ar(l) case None => 0.0f}
       val l1Reg = (l1 > 0.0)
       val l2Reg = (l2 > 0.0)
   
@@ -901,25 +925,30 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Doub
   }
 }
 
-class GLPAdaDeltaUpdater(val sumSquared: GLPLayout, val prevUpdates: GLPLayout, val epsilon: Double = 0.001, val rho: Double = 0.95,
-                         maxLayerSumSq: Double = 10.0, compose: ComposeStrategy = Minimum, maxNorm: Boolean = true)
+class GLPAdaDeltaUpdater(val sumSquared: GLPLayout, val prevUpdates: GLPLayout, val epsilon: Float = 0.001f, val rho: Float = 0.95f,
+                         maxLayerSumSq: Float = 10.0f, compose: ComposeStrategy = Minimum, maxNorm: Boolean = true)
   extends Updater[GLPWeights, GLPLossGradient, GLPAdaDeltaUpdater] with Regularizer {
 
   sumSquared set epsilon // set sum squared to epsilon
 
   val nLayers = sumSquared.length
-  val rhoInv = 1.0 - rho
+  val rhoInv = 1.0f - rho
 
   @inline
   final private def fastSqrt(x: Double) =
     java.lang.Double.longBitsToDouble(((java.lang.Double.doubleToLongBits(x) >> 32) + 1072632448) << 31)
+    
+  @inline
+  final private def fastSqrt(x: Float) : Float = 
+    java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
+      
 
   /*
    * A <i>shallow</i> copy so learning rates are shared across threads/partitions
    */
   def copy() = new GLPAdaDeltaUpdater(sumSquared, prevUpdates, epsilon, rho)
 
-  def resetLearningRates(v: Double) = throw new RuntimeException("not clear how to reset adadelta")
+  def resetLearningRates(v: Float) = throw new RuntimeException("not clear how to reset adadelta")
 
   def compose(u: GLPAdaDeltaUpdater) = {
     for (i <- 0 until nLayers) {
@@ -993,7 +1022,7 @@ class GLPPredictor(network: ANNetwork, getScores: Boolean = false)
     uscores.argmax
   }
 
-  def getScoredPredictions(u: GLPFactor, w: GLPWeights): Seq[(Double, Int)] = {
+  def getScoredPredictions(u: GLPFactor, w: GLPWeights): Seq[(Float, Int)] = {
     network.forwardPass(u.getInput, u.getOutput, w, false)
     val uscores = network.outLayer.getOutput(false) // always softmax these scores
     uscores.asArray.toSeq.zipWithIndex

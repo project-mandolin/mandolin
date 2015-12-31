@@ -8,7 +8,7 @@ import cern.colt.function.IntDoubleProcedure
 
 /**
  * Abstract top-level class for all tensor objects - sparse or dense.
- * Note that entries are always assumed to be Double types.
+ * Note that entries are always assumed to be Float types.
  * The class member densityRatio indicates the ratio at which sparse
  * representations are converted to dense (and possibly vice-versa).
  * A value of 1.0 indicates that sparse tensors will never be converted to 
@@ -18,7 +18,7 @@ import cern.colt.function.IntDoubleProcedure
  * @param densityRatio The ratio of non-zero entries to the size of the Tensor at 
  * which the `Tensor` will automatically switch to a dense representation.
  */
-abstract class Tensor(val densityRatio: Double) extends Serializable {
+abstract class Tensor(val densityRatio: Float) extends Serializable {
 
   protected val size: Int
   def getSize: Int
@@ -30,7 +30,7 @@ abstract class Tensor(val densityRatio: Double) extends Serializable {
 /**
  *  Represents a 1-dimensional vector
  */
-abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
+abstract class Tensor1(dr: Float = 1.0f) extends Tensor(dr) {
 
   def getDimSizes = collection.immutable.IndexedSeq(getDim)
   
@@ -38,39 +38,39 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
   def :=(v: Tensor1) : Unit
   
   /** Assign value `v` to each component in `Tensor1` */
-  def :=(v: Double) : Unit
+  def :=(v: Float) : Unit
   
   /** Gets the number of dimensions for this `Tensor1` - i.e. vector */
   def getDim: Int
 
   /** Access the ''i''th element of the `Tensor1` object */
-  def apply(i: Int): Double
+  def apply(i: Int): Float
 
   /** Update the ''i''th element of the `Tensor1` object */
-  def update(i: Int, v: Double): Unit
+  def update(i: Int, v: Float): Unit
 
-  def mapInPlace(fn: ((Int,Double) => Double)): Unit
+  def mapInPlace(fn: ((Int,Float) => Float)): Unit
   
   /** Dot product */
-  def *(t: Tensor1) : Double
+  def *(t: Tensor1) : Float
   
   /** Matrix-scalar product. Returns new `Tensor1` */
-  def *(v: Double) : Tensor1
+  def *(v: Float) : Tensor1
 
   /** Add the value `v` to the ''i''th element of the Tensor */
-  def +=(i: Int, v: Double): Unit
+  def +=(i: Int, v: Float): Unit
 
   /** Add the value `v` to the ''i''th element of the Tensor */
-  def -=(i: Int, v: Double): Unit
+  def -=(i: Int, v: Float): Unit
 
   /** Adds the value `v` to all */
-  def +=(v: Double): Unit
+  def +=(v: Float): Unit
 
   /** Multiply each component of the Tensor by `v` */
-  def *=(v: Double): Unit
+  def *=(v: Float): Unit
 
   /** Divide each component of the Tensor by `v` */
-  def /=(v: Double): Unit = *=(1.0 / v)
+  def /=(v: Float): Unit = *=(1.0f / v)
 
   /** Component-wise addition */
   def +=(t: Tensor1): Unit
@@ -79,54 +79,54 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
   def -=(t: Tensor1): Unit
   
   /** Raise each element of this tensor to a power */
-  def ^=(v: Double): Unit
+  def ^=(v: Float): Unit
 
   /**
    * Multiplies each component of '''this''' Tensor by `v` and adds it to the corresponding component
    *  in the provided array `ar`
    */
-  def *+=(v: Double, ar: Array[Double]): Unit
+  def *+=(v: Float, ar: Array[Float]): Unit
 
   /**
    * Takes each component of '''this''' Tensor and adds it to the corresponding component
    *  in the provided array `ar`
    */
-  def +=(ar: Array[Double]): Unit = *+=(1.0, ar)
+  def +=(ar: Array[Float]): Unit = *+=(1.0f, ar)
 
   /**
    * Multiplies each component of '''this''' Tensor by `v` and subtracts it from the corresponding component
    *  in the provided array `ar`
    */
-  def *-=(v: Double, ar: Array[Double]): Unit
+  def *-=(v: Float, ar: Array[Float]): Unit
 
   /**
    * Multiplies each component of '''this''' Tensor by the corresponding component in `a1`
    *  and adds the result to the corresponding component in the provided array `ar`
    */
-  def *+=(a1: Array[Double], ar: Array[Double]): Unit
+  def *+=(a1: Array[Float], ar: Array[Float]): Unit
 
   /**
    * Multiplies each component of '''this''' Tensor by the corresponding component in `a1`
    *  and subtracts the result from the corresponding component in the provided array `ar`
    */
-  def *-=(a1: Array[Double], ar: Array[Double]): Unit
+  def *-=(a1: Array[Float], ar: Array[Float]): Unit
 
   /** Returns the result of component-wise addition of '''this''' Tensor with `t`*/
   def ++(t: Tensor1): Tensor1
 
   /** Apply the function `fn` to each component, passing its index and its value */
-  def forEach(fn: (Int, Double) => Unit): Unit
+  def forEach(fn: (Int, Float) => Unit): Unit
 
-  /** Returns this tensor as an Array of Doubles */
-  def asArray: Array[Double]
+  /** Returns this tensor as an Array of Floats */
+  def asArray: Array[Float]
   
   def argmax: Int
 
   /** Returns the 1-norm of the Tensor1 */
-  def norm1: Double
+  def norm1: Float
 
   /** Returns the 2-norm of the Tensor1 */
-  def norm2: Double
+  def norm2: Float
   
   /** Map this tensor to an order-2 tensor with `r` rows */
   def toTensor2(r: Int) : Tensor2
@@ -137,7 +137,7 @@ abstract class Tensor1(dr: Double = 1.0) extends Tensor(dr) {
 
   def zeroOut(): Unit
   
-  def mapInto(vv: Tensor1, fn: (Double, Double) => Double) =  {
+  def mapInto(vv: Tensor1, fn: (Float, Float) => Float) =  {
     var i = 0; while (i < getDim) { update(i, fn(this(i), vv(i))); i += 1 }
   }
 }
@@ -147,14 +147,15 @@ trait SparseTensor {
 }
 
 /**
- * Simple dense vector representation, wrapping a primitive `Array[Double]` but conforming 
+ * Simple dense vector representation, wrapping a primitive `Array[Float]` but conforming 
  * to the `Tensor1` interface.
  * @param a Underlying array representing a dense vector
  * @param dr Density ratio
  * @author wellner
  */
-class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) with Serializable {
-  def this(nfs: Int) = this(Array.fill(nfs)(0.0))
+class DenseTensor1(val a: Array[Float], dr: Float = 1.0f) extends Tensor1(dr) with Serializable {
+  def this(nfs: Int) = this(Array.fill(nfs)(0.0f))
+  def this(a: Array[Double]) = this(a map {_.toFloat})
 
   protected val size = a.length
   protected val dim = size
@@ -166,23 +167,23 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
   final def apply(i: Int) = a(i)
 
   @inline
-  final def update(i: Int, v: Double) = { a(i) = v }
+  final def update(i: Int, v: Float) = { a(i) = v }
 
   def zeroOut() = {
 	  var i = 0; while (i < size) {
-		  a(i) = 0.0
+		  a(i) = 0.0f
 			i += 1
 	  }
   }
   
-  def *(v: Double) : Tensor1 = {
+  def *(v: Float) : Tensor1 = {
     new DenseTensor1(Array.tabulate(size)(i => a(i) * v))
   }
   
-  def *(tt: Tensor1) : Double = {
+  def *(tt: Tensor1) : Float = {
 	  tt match {
 	  case t: DenseTensor1 =>
-	    var r = 0.0
+	    var r = 0.0f
 	    var i = 0; while (i < dim) {
 		    r += a(i) * t(i)
 				i += 1
@@ -208,8 +209,8 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
 
   def copy = deepCopy
 
-  def maxVal: Double = {
-    var m = -Double.MaxValue
+  def maxVal: Float = {
+    var m = -Float.MaxValue
     var i = 0; while (i < dim) {
       if (a(i) > m) m = a(i)
       i += 1
@@ -218,7 +219,7 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
   }
 
   def argmax: Int = {
-    var m = -Double.MaxValue
+    var m = -Float.MaxValue
     var mi = 0
     var i = 0; while (i < dim) {
       if (a(i) > m) {
@@ -254,12 +255,12 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     
   }
 
-  def mapInPlace(fn: (Int,Double) => Double): Unit = {
+  def mapInPlace(fn: (Int,Float) => Float): Unit = {
     var i = 0; while (i < dim) { a(i) = fn(i,a(i)); i += 1 }
   }
    
 
-  def map(fn: Double => Double): DenseTensor1 = {
+  def map(fn: Float => Float): DenseTensor1 = {
     val na = Array.tabulate(dim) { i => fn(a(i)) }
     new DenseTensor1(na, dr)
   }
@@ -270,13 +271,13 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
   final def :*(t: DenseTensor1) = new DenseTensor1(Array.tabulate(dim) { i => a(i) * t(i) })
   final def :/(t: DenseTensor1) = new DenseTensor1(Array.tabulate(dim) { i => a(i) / t(i) })
 
-  final def +=(i: Int, v: Double) = a(i) += v
-  final def -=(i: Int, v: Double) = a(i) -= v
+  final def +=(i: Int, v: Float) = a(i) += v
+  final def -=(i: Int, v: Float) = a(i) -= v
 
-  final def +=(v: Double) = { var i = 0; while (i < size) { a(i) += v; i += 1 } }
-  final def *=(v: Double) = { var i = 0; while (i < size) { a(i) *= v; i += 1 } }
-  final def -=(v: Double) = { var i = 0; while (i < size) { a(i) -= v; i += 1 } }
-  final def :=(v: Double) = { var i = 0; while (i < size) { a(i) = v; i += 1 } }
+  final def +=(v: Float) = { var i = 0; while (i < size) { a(i) += v; i += 1 } }
+  final def *=(v: Float) = { var i = 0; while (i < size) { a(i) *= v; i += 1 } }
+  final def -=(v: Float) = { var i = 0; while (i < size) { a(i) -= v; i += 1 } }
+  final def :=(v: Float) = { var i = 0; while (i < size) { a(i) = v; i += 1 } }
 
   final def +=(t: Tensor1) = {
     t match {
@@ -305,9 +306,9 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     }
   }
 
-  final def ^=(v: Double): Unit = { var i = 0; while (i < size) { Math.pow(a(i), v); i += 1 } }
+  final def ^=(v: Float): Unit = { var i = 0; while (i < size) { Math.pow(a(i), v); i += 1 } }
 
-  final def *+=(v: Double, ar: Array[Double]): Unit = {
+  final def *+=(v: Float, ar: Array[Float]): Unit = {
     var i = 0; while (i < size) {
       ar(i) += a(i) * v
       i += 1
@@ -319,16 +320,16 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     var i = 0; while (i < size) { a(i) *= dense(i); i += 1 }
   }
 
-  final def *-=(v: Double, ar: Array[Double]): Unit = *+=(-v, ar)
+  final def *-=(v: Float, ar: Array[Float]): Unit = *+=(-v, ar)
 
-  final def *+=(a1: Array[Double], ar: Array[Double]): Unit = {
+  final def *+=(a1: Array[Float], ar: Array[Float]): Unit = {
     var i = 0; while (i < size) {
       ar(i) += a(i) * a1(i)
       i += 1
     }
   }
 
-  def *-=(a1: Array[Double], ar: Array[Double]): Unit = {
+  def *-=(a1: Array[Float], ar: Array[Float]): Unit = {
     var i = 0; while (i < size) {
       ar(i) -= a(i) * a1(i)
       i += 1
@@ -340,7 +341,7 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     this
   }
 
-  def forEach(fn: (Int, Double) => Unit): Unit = {
+  def forEach(fn: (Int, Float) => Unit): Unit = {
     var i = 0; while (i < size) {
       fn(i, a(i))
       i += 1
@@ -349,8 +350,8 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
 
   def asArray = a
 
-  def norm1: Double = {
-    var n = 0.0
+  def norm1: Float = {
+    var n = 0.0f
     var i = 0; while (i < size) {
       n += math.abs(a(i))
       i += 1
@@ -358,36 +359,36 @@ class DenseTensor1(val a: Array[Double], dr: Double = 1.0) extends Tensor1(dr) w
     n
   }
 
-  def norm2: Double = {
+  def norm2: Float = {
     var n = 0.0
     var i = 0; while (i < size) { n += (a(i) * a(i)); i += 1 }
-    math.sqrt(n)
+    math.sqrt(n.toDouble).toFloat
   }
 
-  def addMaskNoise(v: Double) = {
-    var i = 0; while (i < size) { if (util.Random.nextDouble() < v) a(i) = 0.0; i += 1 }
+  def addMaskNoise(v: Float) = {
+    var i = 0; while (i < size) { if (util.Random.nextFloat() < v) a(i) = 0.0f; i += 1 }
   }
 
 }
 
 object DenseTensor1 {
   def zeros(i: Int) = new DenseTensor1(i)
-  def rand(i: Int) = tabulate(i) { _ => util.Random.nextDouble }
+  def rand(i: Int) = tabulate(i) { _ => util.Random.nextFloat }
   def ones(i: Int) = {
-    val a = Array.fill(i)(1.0)
+    val a = Array.fill(i)(1.0f)
     new DenseTensor1(a)
   }
-  def tabulate(i: Int)(fn: Int => Double) = {
+  def tabulate(i: Int)(fn: Int => Float) = {
     val a = Array.tabulate(i)(fn)
     new DenseTensor1(a)
   }
 }
 
-abstract class SparseTensor1(val dim: Int, dr: Double) extends Tensor1(dr) {
+abstract class SparseTensor1(val dim: Int, dr: Float) extends Tensor1(dr) {
   protected val size = dim
   
   val indArray: Array[Int]
-  val valArray: Array[Double]
+  val valArray: Array[Float]
   
   def numNonZeros : Int
   
@@ -401,14 +402,14 @@ abstract class SparseTensor1(val dim: Int, dr: Double) extends Tensor1(dr) {
     throw new RuntimeException("UNIMPLEMENTED Conversion to Sparse order-2 tensor")
   }
   
-  def *(t: Double) : Tensor1 = {
+  def *(t: Float) : Tensor1 = {
     val nt = deepCopy
     nt.forEach({(i,v) => nt.update(i, v * t)})
     nt
   }
   
-  def *(t: Tensor1) : Double = {
-    var r = 0.0
+  def *(t: Tensor1) : Float = {
+    var r = 0.0f
     forEach({(i,v) => r += v * t(i)})
     r
   }
@@ -416,46 +417,46 @@ abstract class SparseTensor1(val dim: Int, dr: Double) extends Tensor1(dr) {
   def getSize = dim
   def getDim = dim
   
-  def norm1: Double = {
-    var n = 0.0
+  def norm1: Float = {
+    var n = 0.0f
     forEach { (i, v) => n += math.abs(v) }
     n
   }
 
-  def norm2: Double = {
-    var n = 0.0
+  def norm2: Float = {
+    var n = 0.0f
     forEach { (i, v) => n += (v * v) }
-    math.sqrt(n)
+    math.sqrt(n.toDouble).toFloat
   }
   
   def argmax = {
     var m = -1
-    var mv = -Double.MaxValue
+    var mv = -Float.MaxValue
     this.forEach({(k,v) => if (v > mv) { mv = v; m = k}})
     m
   }
 
-  final def :=(v: Double) = throw new RuntimeException("Assigning value to all components of a sparse tensor. Not allowed.")
+  final def :=(v: Float) = throw new RuntimeException("Assigning value to all components of a sparse tensor. Not allowed.")
   
-  def *+=(v: Double, ar: Array[Double]): Unit = {
+  def *+=(v: Float, ar: Array[Float]): Unit = {
     forEach { (k, cv) =>
       val nv = ar(k) + (cv * v)
       ar.update(k, nv)
     }
   }
 
-  def *-=(v: Double, ar: Array[Double]): Unit = {
+  def *-=(v: Float, ar: Array[Float]): Unit = {
     forEach { (k, cv) =>
       ar.update(k, (ar(k) - (cv * v)))
     }
   }
 
-  def *+=(a1: Array[Double], ar: Array[Double]): Unit = forEach { (k, cv) => ar(k) += cv * a1(k) }
+  def *+=(a1: Array[Float], ar: Array[Float]): Unit = forEach { (k, cv) => ar(k) += cv * a1(k) }
 
-  def *-=(a1: Array[Double], ar: Array[Double]): Unit = forEach { (k, cv) => ar(k) -= cv * a1(k) }
+  def *-=(a1: Array[Float], ar: Array[Float]): Unit = forEach { (k, cv) => ar(k) -= cv * a1(k) }
 
   def convertToDense() = {
-    val ar = Array.fill(dim)(0.0)
+    val ar = Array.fill(dim)(0.0f)
     forEach { (i, v) => ar(i) = v }
     new DenseTensor1(ar)
   }
@@ -468,7 +469,7 @@ abstract class SparseTensor1(val dim: Int, dr: Double) extends Tensor1(dr) {
 
 }
 
-class StaticSparseTensor1(_dim: Int, dr: Double, val indArray: Array[Int], val valArray: Array[Double]) 
+class StaticSparseTensor1(_dim: Int, dr: Float, val indArray: Array[Int], val valArray: Array[Float]) 
 extends SparseTensor1(_dim, dr) with SparseTensor {
   
   val len = indArray.length
@@ -482,7 +483,7 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
     new StaticSparseTensor1(dim, dr, ni, nv)
   }
   
-  def forEach(fn: ((Int, Double) => Unit)): Unit = {
+  def forEach(fn: ((Int, Float) => Unit)): Unit = {
     var j = 0; while (j < len) {
       val i = indArray(j)
       val v = valArray(j)
@@ -492,7 +493,7 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
   }
   
   def apply(i: Int) = {
-    var v = 0.0
+    var v = 0.0f
     var notFound = true
     var j = 0; while (notFound && (j < len)) {
       if (indArray(j) == i) { v = valArray(j); notFound = false }
@@ -501,7 +502,7 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
     v
   }
   
-  def mapInPlace(fn: (Int,Double) => Double): Unit = {
+  def mapInPlace(fn: (Int,Float) => Float): Unit = {
     var i = 0; while (i < len) { 
       val vl = valArray(i)
       valArray(i) = fn(indArray(i),vl)
@@ -510,15 +511,15 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
 
   
   def :=(vv: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
-  def +=(i: Int, v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
-  def -=(i: Int, v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
-  def +=(v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
-  def *=(v: Double) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def +=(i: Int, v: Float) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def -=(i: Int, v: Float) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def +=(v: Float) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def *=(v: Float) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
   def +=(t: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
   def -=(t: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
-  def ^=(v: Double): Unit = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def ^=(v: Float): Unit = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
   def asArray = { 
-    val a = Array.fill(getDim)(0.0)
+    val a = Array.fill(getDim)(0.0f)
     var i = 0; while (i < len) {
       a(indArray(i)) = valArray(i) 
       i += 1
@@ -528,7 +529,7 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
   
   def ++(t: Tensor1) = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
   def zeroOut() = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
-  def update(i: Int, v: Double): Unit = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
+  def update(i: Int, v: Float): Unit = { throw new RuntimeException("Complex assignment not allowed with read-only SparseTensor1") }
   
   override def toString() = {
     val sb = new StringBuilder
@@ -537,7 +538,7 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
   }
 }
 
-class DynamicSparseTensor1(_dim: Int, dr: Double = 0.1, private val umap: OpenIntDoubleHashMap) 
+class DynamicSparseTensor1(_dim: Int, dr: Float = 0.1f, private val umap: OpenIntDoubleHashMap) 
 extends SparseTensor1(_dim, dr) with SparseTensor {
   
   override def toString() = {
@@ -555,8 +556,8 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
     indA
   }
   
-  lazy val valArray = {
-    val valA = Array.fill(umap.size())(0.0)
+  lazy val valArray : Array[Float] = {
+    val valA = Array.fill(umap.size())(0.0f)
     var i = 0
     forEach{(ind,v) => valA(i) = v; i += 1}
     valA
@@ -580,24 +581,26 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
     new DynamicSparseTensor1(dim, dr, cc)
   }
 
-  class ApplyFn(val fn: (Int, Double) => Unit) extends IntDoubleProcedure {
-    def apply(k: Int, v: Double) = {
+  class ApplyFn(val fn: (Int, Float) => Unit) extends IntDoubleProcedure {
+    def apply(k: Int, v: Float) = {
       fn(k, v)
       true
     }
+    
+    def apply(k: Int, v: Double) = apply(k, v.toFloat)
   }
 
-  def forEach(fn: ((Int, Double) => Unit)): Unit = {
+  def forEach(fn: ((Int, Float) => Unit)): Unit = {
     umap.forEachPair(new ApplyFn(fn))
   }
   
-  def apply(i: Int) = if (umap.containsKey(i)) umap.get(i) else 0.0
+  def apply(i: Int) = if (umap.containsKey(i)) umap.get(i).toFloat else 0.0f
 
-  def mapInPlace(fn: (Int, Double) => Double): Unit = {
+  def mapInPlace(fn: (Int, Float) => Float): Unit = {
     var i = 0; while (i < dim) { this.update(i, fn(i,apply(i))); i += 1 }
   }
 
-  def update(i: Int, v: Double): Unit = {
+  def update(i: Int, v: Float): Unit = {
     umap.put(i, v)
   }
 
@@ -615,16 +618,16 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
     }    
   }
   
-  def +=(i: Int, v: Double) = {
+  def +=(i: Int, v: Float) = {
     val cv = if (umap.containsKey(i)) umap.get(i) else 0.0
     umap.put(i, cv + v)
   }
 
-  def -=(i: Int, v: Double) = this += (i, -v)
+  def -=(i: Int, v: Float) = this += (i, -v)
 
-  def +=(v: Double) = forEach { (k, cv) => umap.put(k, cv + v) }
+  def +=(v: Float) = forEach { (k, cv) => umap.put(k, cv + v) }
 
-  def *=(v: Double) = forEach { (k, cv) => umap.put(k, cv * v) }
+  def *=(v: Float) = forEach { (k, cv) => umap.put(k, cv * v) }
   
 
   def +=(t: Tensor1) = t match {
@@ -647,7 +650,7 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
     }
   }
 
-  def ^=(v: Double): Unit = forEach { (k, cv) => umap.put(k, Math.pow(cv, v)) }
+  def ^=(v: Float): Unit = forEach { (k, cv) => umap.put(k, Math.pow(cv, v)) }
 
   def asArray = convertToDense().asArray
 
@@ -660,7 +663,7 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
       case sparse: SparseTensor1 =>
         val (larger, smaller) = if (sparse.numNonZeros > this.numNonZeros) (sparse, this) else (this, sparse)
         larger += smaller
-        if ((densityRatio < 1.0) && ((larger.numNonZeros.toDouble / larger.getDim) > densityRatio))
+        if ((densityRatio < 1.0) && ((larger.numNonZeros.toFloat / larger.getDim) > densityRatio))
           larger.convertToDense()
         else larger
 
@@ -671,14 +674,14 @@ extends SparseTensor1(_dim, dr) with SparseTensor {
 }
 
 object SparseTensor1 {
-  def apply(dim: Int) = new DynamicSparseTensor1(dim, 0.1, new OpenIntDoubleHashMap)
-  def apply(dim: Int, dr: Double) = new DynamicSparseTensor1(dim, dr, new OpenIntDoubleHashMap)
-  def apply(dim: Int, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, 0.1, um)
-  def apply(dim: Int, dr: Double, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, dr, um)
+  def apply(dim: Int) = new DynamicSparseTensor1(dim, 0.1f, new OpenIntDoubleHashMap)
+  def apply(dim: Int, dr: Float) = new DynamicSparseTensor1(dim, dr, new OpenIntDoubleHashMap)
+  def apply(dim: Int, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, 0.1f, um)
+  def apply(dim: Int, dr: Float, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, dr, um)
   
-  def getOneHot(dim: Int, v: Int) = new StaticSparseTensor1(dim, 0.1, Array(v), Array(1.0))
-  def getOnes(dim: Int, inds: Array[Int]) = new StaticSparseTensor1(dim, 0.1, inds, Array.fill(inds.length)(1.0))
-  def getStaticSparseTensor1(dim: Int, inds: Array[Int], vls: Array[Double]) = new StaticSparseTensor1(dim, 0.1, inds, vls)
+  def getOneHot(dim: Int, v: Int) = new StaticSparseTensor1(dim, 0.1f, Array(v), Array(1.0f))
+  def getOnes(dim: Int, inds: Array[Int]) = new StaticSparseTensor1(dim, 0.1f, inds, Array.fill(inds.length)(1.0f))
+  def getStaticSparseTensor1(dim: Int, inds: Array[Int], vls: Array[Float]) = new StaticSparseTensor1(dim, 0.1f, inds, vls)
 }
 
 

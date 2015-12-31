@@ -11,22 +11,22 @@ import collection.mutable.HashMap
  * @param dr - density ratio used to switch representation between sparse and dense
  * @author wellner
  */
-abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
+abstract class Tensor2(dr: Float = 1.0f) extends Tensor(dr) with Serializable {
   def getDim1: Int
   def getDim2: Int
-  def apply(i: Int, j: Int): Double
-  def update(i: Int, j: Int, v: Double): Unit
+  def apply(i: Int, j: Int): Float
+  def update(i: Int, j: Int, v: Float): Unit
   def getRow(i: Int): Tensor1
   def getCol(i: Int): Tensor1
-  def *=(v: Double): Unit
-  def +=(v: Double): Unit
-  def -=(v: Double): Unit
-  def /=(v: Double): Unit
-  def :=(v: Double): Unit
+  def *=(v: Float): Unit
+  def +=(v: Float): Unit
+  def -=(v: Float): Unit
+  def /=(v: Float): Unit
+  def :=(v: Float): Unit
   def +=(m: Tensor2): Unit
   
   /** take a row from this matrix and compute dot product with provided vector */
-  def rowDot(row: Int, v: Tensor1) : Double
+  def rowDot(row: Int, v: Tensor1) : Float
   
   /** Zero out matrix */
   def clear() : Unit
@@ -45,7 +45,7 @@ abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
 
   def copy(): Tensor2
 
-  def mapInto(m: Tensor2, fn: (Double, Double) => Double): Unit
+  def mapInto(m: Tensor2, fn: (Float, Float) => Float): Unit
 
   def outerFill(v1: DenseTensor1, v2: SparseTensor1): Unit
   def outerFill(v1: DenseTensor1, v2: DenseTensor1): Unit
@@ -56,7 +56,7 @@ abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
       case x: DenseTensor1 => outerFill(v1, x) }
   }
   
-  def asArray : Array[Double]
+  def asArray : Array[Float]
   
   def transpose : Tensor2
 
@@ -69,8 +69,8 @@ abstract class Tensor2(dr: Double = 1.0) extends Tensor(dr) with Serializable {
  * @param dr - density ratio 
  * @author 
  */
-class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Double = 1.0) extends Tensor2(dr) with Serializable {
-  def this(r: Int, c: Int) = this(Array.fill(r * c)(0.0), r, c)
+class DenseTensor2(val a: Array[Float], val nrows: Int, val ncols: Int, dr: Float = 1.0f) extends Tensor2(dr) with Serializable {
+  def this(r: Int, c: Int) = this(Array.fill(r * c)(0.0f), r, c)
 
   protected val size = a.length
   
@@ -78,8 +78,8 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   def getDim1 = nrows
   def getDim2 = ncols
 
-  @inline final def apply(i: Int, j: Int): Double = a(i * ncols + j)
-  @inline final def update(i: Int, j: Int, v: Double) = a(i * ncols + j) = v
+  @inline final def apply(i: Int, j: Int): Float = a(i * ncols + j)
+  @inline final def update(i: Int, j: Int, v: Float) = a(i * ncols + j) = v
   @inline final def getRow(i: Int): Tensor1 = new DenseTensor1(Array.tabulate(ncols)(j => a(i * ncols + j)))
   @inline final def getCol(i: Int): Tensor1 = new DenseTensor1(Array.tabulate(nrows)(j => a(j * ncols + i)))
   
@@ -87,7 +87,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   
   def clear() = {
     var i = 0; while (i < size) {
-      a(i) = 0.0
+      a(i) = 0.0f
       i += 1
     }
   }
@@ -110,7 +110,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   }
   
   def transpose : Tensor2 = {
-    val na = Array.fill(nrows * ncols)(0.0)
+    val na = Array.fill(nrows * ncols)(0.0f)
     val nnr = ncols
     val nnc = nrows
     val trans = new DenseTensor2(na, nnr, nnc)
@@ -125,7 +125,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
   }
   
   final def rowDot(row: Int, v: Tensor1) = {
-    var r = 0.0
+    var r = 0.0f
     v match {
       case x: DenseTensor1 =>
         val l = x.getDim
@@ -139,11 +139,11 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
     r
   }
 
-  final def *=(v: Double) = { var i = 0; while (i < size) { a(i) *= v; i += 1 } }
-  final def +=(v: Double) = { var i = 0; while (i < size) { a(i) += v; i += 1 } }
-  final def -=(v: Double) = { var i = 0; while (i < size) { a(i) -= v; i += 1 } }
-  final def /=(v: Double) = { var i = 0; while (i < size) { a(i) /= v; i += 1 } }
-  final def :=(v: Double) = { var i = 0; while (i < size) { a(i) = v; i += 1 } }
+  final def *=(v: Float) = { var i = 0; while (i < size) { a(i) *= v; i += 1 } }
+  final def +=(v: Float) = { var i = 0; while (i < size) { a(i) += v; i += 1 } }
+  final def -=(v: Float) = { var i = 0; while (i < size) { a(i) -= v; i += 1 } }
+  final def /=(v: Float) = { var i = 0; while (i < size) { a(i) /= v; i += 1 } }
+  final def :=(v: Float) = { var i = 0; while (i < size) { a(i) = v; i += 1 } }
   final def :=(dm: DenseTensor2) = {
     System.arraycopy(dm, 0, a, 0, size)
   }
@@ -181,7 +181,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
         })
   }
 
-  def mapInto(mm: Tensor2, fn: (Double, Double) => Double) = mm match {
+  def mapInto(mm: Tensor2, fn: (Float, Float) => Float) = mm match {
     case m: DenseTensor2 =>
       var i = 0; while (i < size) { a(i) = fn(a(i), m.a(i)); i += 1 }
     case m: ColumnSparseTensor2 =>
@@ -223,7 +223,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
     val r = res.a
     while (i < nrows) {
       // get dot product
-      var dp = 0.0
+      var dp = 0.0f
       var j = 0
       val offset = ncols * i
       while (j < ncols) {
@@ -240,7 +240,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
     var i = 0 // iterate over rows
     val r = res.a
     while (i < nrows) {
-      var dp = 0.0
+      var dp = 0.0f
       val offset = ncols * i
       vv.forEach({ (j, v) => dp += v * a(offset + j) })
       r(i) = dp
@@ -255,11 +255,11 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
     val r = res.a
     while (i < nrows) {
       if (mask(i)) {
-        var dp = 0.0
+        var dp = 0.0f
         val offset = ncols * i
         vv.forEach({ (j, v) => dp += v * a(offset + j) })
         r(i) = dp
-      } else res(i) = 0.0
+      } else res(i) = 0.0f
       i += 1
     }
   }
@@ -272,7 +272,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
     val r = res.a
     while (i < nrows) {
       if (mask(i)) {
-        var dp = 0.0
+        var dp = 0.0f
         var j = 0
         val offset = ncols * i
         while (j < ncols) {
@@ -280,7 +280,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
           j += 1
         }
         r(i) = dp
-      } else res(i) = 0.0
+      } else res(i) = 0.0f
       i += 1
     }
   }
@@ -291,7 +291,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
     val v = vv.a
     val r = res.a
     while (i < ncols) {
-      var dp = 0.0
+      var dp = 0.0f
       var j = 0
       while (j < nrows) {
         dp += a(ncols * j + i) * v(j)
@@ -334,7 +334,7 @@ class DenseTensor2(val a: Array[Double], val nrows: Int, val ncols: Int, dr: Dou
  * @param ncols - number of columns
  * @param dr - density ratio (if density exceeds this ratio, tensor should convert to dense representation)
  */
-class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols: Int, dr: Double = 1.0) extends Tensor2(dr) with Serializable {
+class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols: Int, dr: Float = 1.0f) extends Tensor2(dr) with Serializable {
   def this(r: Int, c: Int) = this(Array.tabulate(r)(ri => SparseTensor1(c)), r, c)
 
   protected val size = a(0).getDim * a.length
@@ -345,24 +345,24 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
   
   @inline final def apply(i: Int) = a(i)
 
-  @inline final def apply(i: Int, j: Int): Double = a(i)(j)
-  @inline final def update(i: Int, j: Int, v: Double) = {
+  @inline final def apply(i: Int, j: Int): Float = a(i)(j)
+  @inline final def update(i: Int, j: Int, v: Float) = {
     val row = a(i)
     row.update(j,v)
   }
   @inline final def getRow(i: Int): Tensor1 = a(i)
   @inline final def getCol(i: Int): Tensor1 = throw new RuntimeException("Column extraction for Column Sparse matrix not implemented")
-  @inline final def :=(v: Double) =
+  @inline final def :=(v: Float) =
     if (v == 0.0) {
       var i = 0; while (i < nrows) { a(i).zeroOut(); i += 1 }
     } else throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
 
-  final def -=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
-  final def +=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+  final def -=(v: Float) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+  final def +=(v: Float) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
   
   final def +=(vv: Tensor1) : Unit = throw new RuntimeException("Operation results in non-sparse Matrix") 
   final def rowDot(row: Int, vec: Tensor1) = {
-    var r = 0.0
+    var r = 0.0f
     vec match {
       case x: DenseTensor1 => 
         val spRow = a(row)
@@ -376,7 +376,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
   
   def asArray = {
       //throw new RuntimeException("As array not possible with ColumnSparseTensor2 having " + a.length + " rows")
-      val ar = Array.fill(size)(0.0)
+      val ar = Array.fill(size)(0.0f)
       var r = 0; while (r < a.length) {
         val row = a(r)
         row.forEach((c,v) => ar(c + (ncols * r)) = v)
@@ -386,7 +386,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
     }
 
   /** This performs a SPARSE map into.  Only non-zero elements in THIS matrix are updated */
-  def mapInto(mm: Tensor2, fn: (Double, Double) => Double) = mm match {
+  def mapInto(mm: Tensor2, fn: (Float, Float) => Float) = mm match {
     case m: ColumnSparseTensor2 =>
       var i = 0; while (i < nrows) {
         val row = a(i)
@@ -405,8 +405,8 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
     new ColumnSparseTensor2(na, nrows, ncols, dr)
   }
 
-  final def *=(v: Double) = { var i = 0; while (i < nrows) { a(i) *= v; i += 1 } }
-  final def /=(v: Double) = { var i = 0; while (i < nrows) { a(i) /= v; i += 1 } }
+  final def *=(v: Float) = { var i = 0; while (i < nrows) { a(i) *= v; i += 1 } }
+  final def /=(v: Float) = { var i = 0; while (i < nrows) { a(i) /= v; i += 1 } }
   final def +=(mm: Tensor2) = mm match {
     case m: DenseTensor2 => throw new RuntimeException("Adding dense tensor to sparse .. failure")
     case m: ColumnSparseTensor2 =>
@@ -432,7 +432,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
     while (i < nrows) {
       if (mask(i)) {
         r(i) = a(i) * vv
-      } else r(i) = 0.0
+      } else r(i) = 0.0f
       i += 1
     }
   }
@@ -475,7 +475,7 @@ class ColumnSparseTensor2(val a: Array[SparseTensor1], val nrows: Int, val ncols
  * @param ncols - number of columns
  * @param dr - density ratio (if density exceeds this ratio, tensor should convert to dense representation)
  */
-class RowSparseTensor2(val rows: HashMap[Int,Tensor1], val nrows: Int, val ncols: Int, dr: Double = 1.0) 
+class RowSparseTensor2(val rows: HashMap[Int,Tensor1], val nrows: Int, val ncols: Int, dr: Float = 1.0f) 
 extends Tensor2(dr) with Serializable {
 
   protected val size = nrows * ncols
@@ -487,20 +487,20 @@ extends Tensor2(dr) with Serializable {
     throw new RuntimeException("Transpose matrix product inefficient with row-sparse representation")
   }
   
-  @inline final def apply(i: Int, j: Int): Double = rows(i)(j)
-  @inline final def update(i: Int, j: Int, v: Double) = {
+  @inline final def apply(i: Int, j: Int): Float = rows(i)(j)
+  @inline final def update(i: Int, j: Int, v: Float) = {
     val row = rows(i)
     row.update(i,v)
   }
   @inline final def getRow(i: Int): Tensor1 = rows(i)
   @inline final def getCol(i: Int): Tensor1 = throw new RuntimeException("Column extraction for Column Sparse matrix not implemented")
-  @inline final def :=(v: Double) =
+  @inline final def :=(v: Float) =
     if (v == 0.0) {
       var i = 0; while (i < nrows) { rows(i).zeroOut(); i += 1 }
     } else throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
 
-  final def -=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
-  final def +=(v: Double) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+  final def -=(v: Float) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
+  final def +=(v: Float) = throw new RuntimeException("Non-zero value assigned to entire sparse matrix. Not allowed.")
   
   final def +=(vv: Tensor1) : Unit = throw new RuntimeException("Operation results in non-sparse Matrix") 
   final def rowDot(row: Int, vec: Tensor1) = {
@@ -533,7 +533,7 @@ extends Tensor2(dr) with Serializable {
   def transpose : Tensor2 = throw new RuntimeException("Transpose not supported for row sparse tensors")
 
   /** This performs a SPARSE map into.  Only non-zero elements in THIS matrix are updated */
-  def mapInto(mm: Tensor2, fn: (Double, Double) => Double) = mm match {
+  def mapInto(mm: Tensor2, fn: (Float, Float) => Float) = mm match {
     case _ => throw new RuntimeException("Sparse/dense matrix incompatibility")
   }
   
@@ -542,8 +542,8 @@ extends Tensor2(dr) with Serializable {
     new RowSparseTensor2(na, nrows, ncols)
   }
 
-  final def *=(v: Double) = rows foreach {case (i,r) => r *= v}
-  final def /=(v: Double) = rows foreach {case (i,r) => r /= v}
+  final def *=(v: Float) = rows foreach {case (i,r) => r *= v}
+  final def /=(v: Float) = rows foreach {case (i,r) => r /= v}
   final def +=(mm: Tensor2) = mm match {
     case _ => throw new RuntimeException("Adding dense tensor to sparse .. failure")    
   }
@@ -602,7 +602,7 @@ object DenseTensor2 {
   def zeros(r: Int, c: Int) = { new DenseTensor2(r, c) }
   
   /** Initialize matrix with values according to function `fn` */
-  def tabulate(r: Int, c: Int)(fn: (Int, Int) => Double) = {
+  def tabulate(r: Int, c: Int)(fn: (Int, Int) => Float) = {
     val m = zeros(r, c)
     var i = 0; while (i < r) {
       var j = 0; while (j < c) {
@@ -615,5 +615,5 @@ object DenseTensor2 {
   }
   
   /** Initialize with random values in [0,1] */
-  def rand(r: Int, c: Int) = { tabulate(r, c) { case _ => util.Random.nextDouble } }
+  def rand(r: Int, c: Int) = { tabulate(r, c) { case _ => util.Random.nextFloat } }
 }

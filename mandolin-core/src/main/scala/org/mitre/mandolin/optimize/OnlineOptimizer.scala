@@ -23,7 +23,8 @@ import org.mitre.mandolin.config.{ LearnerSettings, OnlineLearnerSettings }
  * @author Ben Wellner, Karthik Prakhya
  */
 class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W, LG, U]](evaluator: TrainingUnitEvaluator[T, W, LG],
-  val workersPerPartition: Int = 16, synchronous: Boolean = false, numSubEpochs: Int = 1, skipProb: Double = 0.0, miniBatchSize: Int = 1)
+  val workersPerPartition: Int = 16, synchronous: Boolean = false, numSubEpochs: Int = 1, skipProb: Double = 0.0, 
+  miniBatchSize: Int = 1, concurrentBatch: Int = 0)
   extends Serializable {
 
   /*
@@ -32,6 +33,15 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
   def getThreadProcessor(data: Vector[T], w: W, updater: U, rwLock: Option[ReentrantReadWriteLock]) = rwLock match {
     case Some(rwL) => new SynchronousThreadProcessor(data, w, evaluator.copy(), updater, rwL, skipProb, miniBatchSize)
     case None => new AsynchronousThreadProcessor(data, w, evaluator.copy(), updater, skipProb, miniBatchSize)
+  }
+  
+  // this may better handle very large datasets
+  def processPartitionsConcurrently(data: Iterator[T], w: W, updater: U) : Double = {
+    if (concurrentBatch > 0)      
+      data.grouped(concurrentBatch).foldLeft(0.0){case (ac, seq) =>
+        ac + processPartitionWithinEpoch(0,seq.toVector, w, updater) }
+    else
+      processPartitionWithinEpoch(0,data.toVector,w,updater)
   }
 
   def processPartitionWithinEpoch(curEpoch: Int, partitionInsts: Vector[T], w: W, updater: U): Double = {
@@ -73,7 +83,7 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
           val items = math.min(miniBatchSize + i, n) - i
           val lossGrads = for (jj <- i until math.min(miniBatchSize + i, n)) yield evaluator.evaluateTrainingUnit(data(jj), weights)
           i += items
-          updater.resetMass(1.0 / items.toDouble) // set the update mass in updater to the number if 1.0/items to take average of gradient
+          updater.resetMass(1.0f / items.toFloat) // set the update mass in updater to the number if 1.0/items to take average of gradient
           lossGrads reduce { _ ++ _ }
         } else {
           val r = evaluator.evaluateTrainingUnit(data(i), weights)

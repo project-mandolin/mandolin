@@ -20,10 +20,10 @@ class PreProcess(minCnt: Int) {
    * @param mxSize The max exponent value/magnitude
    * @return Array of size `expTableSize` that approximates e / (1.0 + e)
    */
-  def constructLogisticTable(mxVal: Double) : Array[Double] = {
+  def constructLogisticTable(mxVal: Float) : Array[Float] = {
     val ar = Array.tabulate(1000){i =>
       val e = math.exp((i.toDouble / 1000 * 2.0 - 1.0) * mxVal)
-      e / (1.0 + e)      
+      (e / (1.0 + e)).toFloat     
       }
     ar
   }
@@ -54,7 +54,7 @@ class PreProcess(minCnt: Int) {
     ut
   }
 
-  def getMappingAndFreqs(dirOrFile: java.io.File, mxVal: Double = 6.0) = {
+  def getMappingAndFreqs(dirOrFile: java.io.File, mxVal: Float = 6.0f) = {
     val hist = new HashMap[String,Int]
     if (dirOrFile.isDirectory()) dirOrFile.listFiles() foreach {f => updateTermHistogram(f,hist)}
     else updateTermHistogram(dirOrFile,hist)

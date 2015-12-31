@@ -8,7 +8,7 @@ import org.mitre.mandolin.util.{Alphabet, Tensor1 => Vec, Tensor2 => Mat, DenseT
  * That is, dim(W) = (l-1, l) has dim(l-1) rows and dim(l) columns where dim(l-1) is the number of inputs and dim(l)
  * is the number of outputs/dimensions of current layer
  */
-class EmbedWeights(val embW: Mat, val outW: Mat, m: Double) extends Weights[EmbedWeights](m) with Serializable {
+class EmbedWeights(val embW: Mat, val outW: Mat, m: Float) extends Weights[EmbedWeights](m) with Serializable {
 
   val numWeights = embW.getSize + outW.getSize
   def compress(): Unit = {}
@@ -20,7 +20,7 @@ class EmbedWeights(val embW: Mat, val outW: Mat, m: Double) extends Weights[Embe
     otherWeights *= otherWeights.mass
     this ++ otherWeights
     val nmass = mass + otherWeights.mass
-    this *= (1.0 / nmass)
+    this *= (1.0f / nmass)
     new EmbedWeights(this.embW, this.outW, nmass)
   }
   
@@ -34,11 +34,12 @@ class EmbedWeights(val embW: Mat, val outW: Mat, m: Double) extends Weights[Embe
     outW += otherWeights.outW
   }
 
-  def timesEquals(v: Double) = { 
+  def timesEquals(v: Float) = { 
     embW *= v
     outW *= v
     }
   
+  def updateFromArray(ar: Array[Float]) = { throw new RuntimeException("array update for NN not implemented") }
   def updateFromArray(ar: Array[Double]) = { throw new RuntimeException("array update for NN not implemented") }
   def asArray = { throw new RuntimeException("array update for NN not implemented") }
 
@@ -81,9 +82,32 @@ class NullUpdater extends Updater[EmbedWeights, EmbedGradient, NullUpdater] with
   
   // these are null ops
   def updateWeights(g: EmbedGradient, w: EmbedWeights): Unit = {}
-  def resetLearningRates(v: Double): Unit = {}
+  def resetLearningRates(v: Float): Unit = {}
   def copy() : NullUpdater = new NullUpdater
   def compose(u: NullUpdater) : NullUpdater = this
+}
+
+class EmbedAdaGradUpdater(initialLearningRate: Float, val embSqG: Array[Float], val outSqG: Array[Float]) 
+extends Updater[EmbedWeights, EmbedGradient, EmbedAdaGradUpdater] with Serializable {
+  def updateWeights(g: EmbedGradient, w: EmbedWeights): Unit = {}
+  def resetLearningRates(v: Float): Unit = {}
+  def copy() : EmbedAdaGradUpdater = new EmbedAdaGradUpdater(initialLearningRate,embSqG, outSqG)
+  def compose(u: EmbedAdaGradUpdater) : EmbedAdaGradUpdater = this
+  
+  @inline
+  final private def fastSqrt(x: Float) : Float = 
+    java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
+    
+  def updateEmbeddingSqG(i: Int, wArr: Array[Float], g: Float) = {    
+    embSqG(i) += g * g
+    wArr(i) += (initialLearningRate * g / (initialLearningRate + fastSqrt(embSqG(i))))
+  }
+  
+  def updateOutputSqG(i: Int, wArr: Array[Float], g: Float) = {
+    outSqG(i) += g * g
+    wArr(i) += (initialLearningRate * g / (initialLearningRate + fastSqrt(outSqG(i))))
+  }
+  
 }
 
 object EmbedWeights {
@@ -93,12 +117,12 @@ object EmbedWeights {
      val outW = DenseMat.zeros(vDim, eDim)
      var i = 0; while (i < vDim) {
        var j = 0; while (j < eDim) {
-         val nv = (util.Random.nextDouble - 0.5) / eDim
+         val nv = (util.Random.nextFloat - 0.5f) / eDim
          embW.update(i, j, nv)
          j += 1
        }
        i += 1
      }
-     new EmbedWeights(embW, outW, 1.0)
+     new EmbedWeights(embW, outW, 1.0f)
   }
 }

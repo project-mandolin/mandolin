@@ -20,8 +20,8 @@ class GLPModelSettings(args: Array[String]) extends LearnerSettings(args)
  * can be linked back to the data from which they came.
  * @author wellner
  */
-class GLPPosteriorOutputConstructor extends OutputConstructor[String, Seq[(Double, Int)], String] {
-  def constructOutput(i: String, r: Seq[(Double, Int)], s: String): String = {
+class GLPPosteriorOutputConstructor extends OutputConstructor[String, Seq[(Float, Int)], String] {
+  def constructOutput(i: String, r: Seq[(Float, Int)], s: String): String = {
     val (vec, id) = i.split('#').toList match {
       case a :: b :: Nil => (a, Some(b))
       case a :: _        => (a, None)
@@ -35,7 +35,7 @@ class GLPPosteriorOutputConstructor extends OutputConstructor[String, Seq[(Doubl
     sbuf.toString
   }
 
-  def responseString(r: Seq[(Double, Int)]): String = {
+  def responseString(r: Seq[(Float, Int)]): String = {
     val sortedByY = r.sortWith((a, b) => a._2 < b._2)
     val sbuf = new StringBuilder
     sortedByY foreach {

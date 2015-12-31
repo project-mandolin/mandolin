@@ -20,8 +20,8 @@ import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, Tensor1 => Vec, Sparse
  */
 abstract class LossFunction(dim: Int) extends Serializable {
   @inline
-  final def getMax(scores: DenseVec, y: Int) : (Double,Int) = {
-    var mx = -Double.MaxValue    
+  final def getMax(scores: DenseVec, y: Int) : (Float,Int) = {
+    var mx = -Float.MaxValue    
     var maxI = 0
     var i = 0; while (i < dim) {
       val cs = scores(i)
@@ -40,13 +40,13 @@ abstract class LossFunction(dim: Int) extends Serializable {
    */
   final def softMax(v: DenseVec) : DenseVec = {
     val mx = v.maxVal
-    var s = 0.0
+    var s = 0.0f
     val na = new DenseVec(Array.tabulate(v.getDim){i => 
-      val n = math.exp(v(i) - mx)
+      val n = math.exp(v(i) - mx).toFloat
       s += n
       n
       })
-    na *= (1.0 / s)
+    na *= (1.0f / s)
     na
   }
   
@@ -99,8 +99,8 @@ class HingeLoss(d: Int, val coef: Double = 1.0) extends LossFunction(d) {
     val dim = o.getDim
     val gr = DenseVec.zeros(dim)
     if ((mx - trueScore) > -coef) { // if outside margin coef1
-      gr(mxI) = -1.0
-      gr(y) = 1.0
+      gr(mxI) = -1.0f
+      gr(y) = 1.0f
     }
     gr
   }  
@@ -178,15 +178,15 @@ class ModifiedHuberLoss(d: Int) extends LossFunction(d) {
     val trueScore = scores(y)
     val (mx, mxI) = getMax(scores, y)
     var i = 0; while (i < scores.getDim) {
-      scores.update(i, 0.0)
+      scores.update(i, 0.0f)
       i += 1
     }
     val nsc = mx - trueScore
     val d =
-      if (nsc > -1.0) {
-        if (nsc < 1.0) 2 * nsc
-        else 4.0
-      } else 0.0
+      if (nsc > -1.0f) {
+        if (nsc < 1.0f) 2.0f * nsc
+        else 4.0f
+      } else 0.0f
     scores(mxI) -= d
     scores(y) += d
     scores
@@ -223,8 +223,8 @@ class RampLoss(d: Int, val beta: Double = 2.0) extends LossFunction(d) {
     val gr = DenseVec.zeros(dim)
     val diff = mx - trueScore 
     if ((diff > -1.0) && (diff < beta)) { // if outside margin coef1
-      gr(mxI) = -1.0
-      gr(y) = 1.0
+      gr(mxI) = -1.0f
+      gr(y) = 1.0f
     }
     gr
   }
@@ -238,17 +238,17 @@ class RampLoss(d: Int, val beta: Double = 2.0) extends LossFunction(d) {
 class TransLogLoss(d: Int) extends LossFunction(d) {
   val ones = DenseVec.ones(d)
 
-  val q : Double = 1.0 // controls shape of arcsignh; closer to linear as q -> 0.0 
+  val q : Float = 1.0f // controls shape of arcsignh; closer to linear as q -> 0.0 
   def linkGrad(o: DenseVec) = ones
   
-  private final def arcSinH(v: Double) = {
+  private final def arcSinH(v: Float) = {
     val qv = q*v
-    math.log(qv + math.sqrt(1.0 + qv*qv)) / q
+    math.log(qv + math.sqrt(1.0 + qv*qv)).toFloat / q
   }
   
-  private final def derivArcSinH(v: Double) = {
+  private final def derivArcSinH(v: Float) = {
     val qv = q*v
-    1.0 / math.sqrt(1.0 + qv * qv)
+    1.0f / math.sqrt(1.0f + qv * qv).toFloat
   }
   
   private final def getWeights(scores: DenseVec) = {
@@ -292,29 +292,29 @@ class TransLogLoss(d: Int) extends LossFunction(d) {
  * @author wellner
  */
 class TLogisticLoss(d: Int) extends LossFunction(d) {
-  val t : Double = 1.0
+  val t : Float = 1.0f
   
-  val eps: Double = 0.1
+  val eps: Float = 0.1f
   val mxEpochs = 10
   val ones = DenseVec.ones(d)
   
-  private def tExp(v: Double) = {
-    if (t == 1) math.exp(v) else {
-      val base = 1.0 + (1.0 - t) * v
-      if (base <= 0.0) 0.0
-      else math.pow(base,(1.0 / (1.0 - t)))
+  private def tExp(v: Float) : Float = {
+    if (t == 1) math.exp(v).toFloat else {
+      val base = 1.0f + (1.0f - t) * v
+      if (base <= 0.0) 0.0f
+      else math.pow(base,(1.0f / (1.0f - t))).toFloat
     }
   }
   
-  private def logt(v: Double) : Double = {
-    if (t == 1) math.log(v)
+  private def logt(v: Float) : Float = {
+    if (t == 1) math.log(v).toFloat
     else {
-      math.pow(v,(1.0 - t) / (1.0 - t))
+      math.pow(v,(1.0f - t) / (1.0f - t)).toFloat
     }
   }
   
-  private final def getPartition(scores: Array[Double]) : Double = {
-    var mx = -Double.MaxValue
+  private final def getPartition(scores: Array[Float]) : Float = {
+    var mx = -Float.MaxValue
     val ln = scores.length
     var i = 0; while (i < ln) {
       if (scores(i) > mx) mx = scores(i)
@@ -329,14 +329,14 @@ class TLogisticLoss(d: Int) extends LossFunction(d) {
     var converged = false
     var l2Norm = 0.0
     var epochs = 1
-    var z = 0.0
+    var z = 0.0f
     while (!converged) {
-      z = 0.0
+      z = 0.0f
       i = 0; while (i < ln) {
         z += tExp(uhat(i))
         i += 1
       }
-      val zp = math.pow(z,(1.0 - t))
+      val zp = math.pow(z,(1.0 - t)).toFloat
       l2Norm = 0.0
       i = 0; while (i < ln) {
         uhatTmp(i) = zp * scores(i)
@@ -353,14 +353,14 @@ class TLogisticLoss(d: Int) extends LossFunction(d) {
       }
       epochs += 1
     }
-    mx - logt(1.0 / z)
+    mx - logt(1.0f / z)
   }
   
-  private final def escortDistrib(dist: Array[Double], t: Double) = {
-    var s = 0.0
+  private final def escortDistrib(dist: Array[Float], t: Float) = {
+    var s = 0.0f
     val ln = dist.length
     var i = 0; while (i < ln) {
-      dist(i) = math.pow(dist(i), t)
+      dist(i) = math.pow(dist(i), t).toFloat
       s += dist(i)
       i += 1
     }
@@ -370,8 +370,8 @@ class TLogisticLoss(d: Int) extends LossFunction(d) {
     }
   }
   
-  private final def getWeights(scores: DenseVec, t: Double) = {
-    new DenseVec(Array.tabulate(scores.getDim){i => -math.pow(scores(i),(t - 1.0))})
+  private final def getWeights(scores: DenseVec, t: Float) = {
+    new DenseVec(Array.tabulate(scores.getDim){i => -math.pow(scores(i),(t - 1.0f)).toFloat})
   }
   
   private final def tSoftMax(scores: DenseVec) : DenseVec = {

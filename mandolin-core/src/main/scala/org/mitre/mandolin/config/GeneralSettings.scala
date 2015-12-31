@@ -52,6 +52,10 @@ abstract class GeneralSettings(args: Seq[String]) {
     config.getDouble(key)        
   }
   
+  protected def asFloat(key: String) = { 
+    config.getDouble(key).toFloat        
+  }
+  
   protected def asBoolean(key: String) = {
     config.getBoolean(key)        
   }
@@ -181,14 +185,14 @@ trait BatchLearnerSettings extends LearnerSettings {
  */ 
 trait OnlineLearnerSettings extends LearnerSettings {
   val numThreads       =     asInt("mandolin.trainer.threads")
-  val skipProb : Double = asDouble("mandolin.trainer.skip-probability")
+  val skipProb : Double = asFloat("mandolin.trainer.skip-probability")
   val miniBatchSize    =     asInt("mandolin.trainer.mini-batch-size")
   val synchronous      = asBoolean("mandolin.trainer.synchronous")
-  val sgdLambda        =  asDouble("mandolin.trainer.optimizer.lambda")  
-  val epsilon          =  asDouble("mandolin.trainer.optimizer.epsilon")
-  val rho              =  asDouble("mandolin.trainer.optimizer.rho")
+  val sgdLambda        =  asFloat("mandolin.trainer.optimizer.lambda")  
+  val epsilon          =  asFloat("mandolin.trainer.optimizer.epsilon")
+  val rho              =  asFloat("mandolin.trainer.optimizer.rho")
   val method           =     asStr("mandolin.trainer.optimizer.method")
-  val initialLearnRate =  asDouble("mandolin.trainer.optimizer.initial-learning-rate")
+  val initialLearnRate =  asFloat("mandolin.trainer.optimizer.initial-learning-rate")
     
 }
 

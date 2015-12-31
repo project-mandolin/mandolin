@@ -22,12 +22,14 @@ trait GLPDataFrames {
   import org.apache.spark.mllib.linalg.{VectorUDT, Vectors}
   import org.apache.spark.sql.DataFrame
   
+  private def toDouble(x: Array[Float]) = x map {_.toDouble}
+  
   def mapGLPFactorsToDf(sqlSc: SQLContext, fvs: RDD[GLPFactor], dim: Int) = {
     val im = (0 to dim).toArray
     val rows = fvs map {f =>
       val label = f.getOneHot.toDouble // label as the one-hot output index
       val fv = f.getInput
-      val rseq = (label, Vectors.dense(fv.asArray))
+      val rseq = (label, Vectors.dense(toDouble(fv.asArray)))
       org.apache.spark.sql.Row.fromTuple(rseq)
       }
     val schema = StructType(Seq(StructField("label",DoubleType,true), StructField("features", new org.apache.spark.mllib.linalg.VectorUDT, true))) 
@@ -42,7 +44,7 @@ trait GLPDataFrames {
     val rows = fvs map {f =>
       val label = f.getOneHot.toDouble // label as the one-hot output index
       val fv = f.getInput
-      val rseq = (label, Vectors.dense(fv.asArray))
+      val rseq = (label, Vectors.dense(toDouble(fv.asArray)))
       org.apache.spark.sql.Row.fromTuple(rseq)
       }
     val schema = StructType(Seq(StructField("label",DoubleType,true), StructField("features", new org.apache.spark.mllib.linalg.VectorUDT, true)))
@@ -111,13 +113,13 @@ class GlpModel extends GLPDataFrames {
     val glp = components.evaluator.glp
     val layout = glp.generateZeroedLayout
     upSpec match {
-      case AdaGradSpec(lr)     => estimate(components, trdata, modelSpec, new GLPAdaGradUpdater(layout, lr), epochs, threads)
-      case RMSPropSpec(lr)     => estimate(components, trdata, modelSpec, new GLPRMSPropUpdater(layout, lr), epochs, threads)
-      case SgdSpec(lr)         => estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, false, lr), epochs, threads)
+      case AdaGradSpec(lr)     => estimate(components, trdata, modelSpec, new GLPAdaGradUpdater(layout, lr.toFloat), epochs, threads)
+      case RMSPropSpec(lr)     => estimate(components, trdata, modelSpec, new GLPRMSPropUpdater(layout, lr.toFloat), epochs, threads)
+      case SgdSpec(lr)         => estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, false, lr.toFloat), epochs, threads)
       case AdaDeltaSpec        => estimate(components, trdata, modelSpec, new GLPAdaDeltaUpdater(layout, layout.copy()), epochs, threads)
       case NesterovSgdSpec(lr) =>
         val np = trdata.count().toInt // get total number of training points to scale momentum in Nesterov accelerated SGD
-        estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, true, lr, numPoints = np), epochs, threads)
+        estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, true, lr.toFloat, numPoints = np), epochs, threads)
     }    
   }
   

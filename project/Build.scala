@@ -31,7 +31,7 @@ object MandolinBuild extends Build {
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre.mandolin",
-    version := "0.3.1-SNAPSHOT",
+    version := "0.3.2-SNAPSHOT",
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
     publishTo := {

@@ -40,15 +40,15 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
 
   fa.ensureFixed // make sure the feature alphabet is fixed
   
-  def topMatrixEntriesForRow(m: Mat, r: Int) : List[(String,Double)] = {
+  def topMatrixEntriesForRow(m: Mat, r: Int) : List[(String,Float)] = {
     val invFa = fa.getInverseMapping
-    var best : List[(Int,Double)] = Nil
+    var best : List[(Int,Float)] = Nil
     for (j <- 0 until m.getDim2) best = (j, m(r,j)) :: best
     best.sortBy(_._2).reverse map {e => (invFa(e._1), e._2)}
   } 
   
   val orderedFeatures = {
-    val hm = new collection.mutable.HashMap[String,Vector[(String,Double)]]
+    val hm = new collection.mutable.HashMap[String,Vector[(String,Float)]]
     invLa foreach {case (i,l) =>
       hm.put(l, topMatrixEntriesForRow(model.wts.wts.get(0)._1, i).toVector)
       }
@@ -96,7 +96,7 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
     val dVec : DenseVec = DenseVec.zeros(fa.getSize)
     li foreach {s =>
       val fid = fa.ofString(s)
-      if (fid >= 0) dVec(fa.ofString(s)) = 1.0 else unknownFeatures += s}
+      if (fid >= 0) dVec(fa.ofString(s)) = 1.0f else unknownFeatures += s}
     val lv = DenseVec.zeros(laSize)
     val factor = new StdGLPFactor(-1, dVec, lv, None)
     predictor.getScoredPredictions(factor, model.wts)    
@@ -106,15 +106,15 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
     val dVec : DenseVec = DenseVec.zeros(fa.getSize)
     li foreach {s =>
       val fid = fa.ofString(s.str)
-      if ((fid >= 0) && (fid < fa.getSize)) dVec(fa.ofString(s.str)) = s.value else unknownFeatures += s.str}
+      if ((fid >= 0) && (fid < fa.getSize)) dVec(fa.ofString(s.str)) = s.value.toFloat else unknownFeatures += s.str}
     val lv = DenseVec.zeros(laSize)
     val factor = new StdGLPFactor(-1, dVec, lv, None)
     predictor.getScoredPredictions(factor, model.wts)
   }
   
-  private def getBest(r: Seq[(Double,Int)]) : (Int,Double) = {
+  private def getBest(r: Seq[(Float,Int)]) : (Int,Double) = {
     var bi = 0
-    var bv = 0.0
+    var bv = 0.0f
     r foreach {case (v,i) => if (v > bv) {bv = v; bi = i}}
     (bi,bv)
   }

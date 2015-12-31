@@ -17,6 +17,7 @@ import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, DenseTensor1 => Dense
 class SeqEmbeddingLayer(li: Int, eDim: Int, vocabSize: Int, lt: LType, fixedSeqLen: Int = 0) 
 extends DenseNonInputLayer(li, eDim, lt) {
  
+  
   def getActFnDeriv = output
   def setPrevLayer(l: Layer) = { prevLayer_=(Some(l)) }
   def getCost = throw new RuntimeException("Cost fn not available for embedding layer")
@@ -24,29 +25,33 @@ extends DenseNonInputLayer(li, eDim, lt) {
   def setTarget(vv: Vec) : Unit = throw new RuntimeException("Embedding layer has no target")
   
   override def getNumberOfOutputs = if (fixedSeqLen > 0) fixedSeqLen * eDim else eDim 
-  
-  override val delta = DenseVec.zeros(fixedSeqLen * eDim)
+    
   
   var sequenceLength = 0
   
   /** Input representation dimension is seqLen*vobabSize with seqLen non-zero values 
    *  Output should be eDim * seqLen laid out column-wise
-   *  Weights here would be eDim x vocabSize, representing the embedding
+   *  Thus:
+   *     1 2 3 4 5
+   *     6 7 8 9 10 
+   *  is the layout with just two embedding dimensions and 5 sequence positions
+   *  Weights here would be vocabSize x eDim, representing the embedding
    */
   def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {
     val seqLen = in.getDim / vocabSize
     sequenceLength = seqLen // set this to reuse during backprop step
     output = DenseVec.zeros(eDim * seqLen)
+    delta  = DenseVec.zeros(eDim * seqLen) // set delta at start of forward pass
+    val outMat = new DenseMat(output.a, eDim, seqLen)
     in.forEach({(i,v) =>
       val vocabInd    = i % vocabSize  // index into vocabulary space
       val seqPosition = i / vocabSize  // item within input sequence
-      var j = 0; while (j < eDim) {    // obtain embedding as the output
-        val oi = (seqPosition * eDim) + j       // output index which is embedding index + position in sequence
-        output(oi) = w(j,vocabInd) * v
+      var j = 0; while (j < eDim) {    // obtain embedding as the output        
+        outMat(j,seqPosition) = w(j, vocabInd) * v
         j += 1
       }
     })    
-    println("Finished embedding without output = ")
+    println("Finished sequence embedding without output = ")
     println(output)
   }
   
@@ -70,16 +75,16 @@ extends DenseNonInputLayer(li, eDim, lt) {
     // assume this is always the layer just after the input layer, so no need to backprop deltas
     grad.clear() // clear gradient
     val in = prev.getOutput(true)
-    println("Delta = " + delta)
+    val deltaMat = delta.toTensor2(eDim)
+    println("Delta = " + deltaMat)
     in.forEach({(i,v) =>
       val vocabInd    = i % vocabSize  // index into vocabulary space
       val seqPosition = i / vocabSize  // item within input sequence
       val offset = seqPosition * eDim
-      println("input i = " + i + " v = " + v)
       var j = 0; while (j < eDim) {
         val cv = grad(j,vocabInd)
-        grad.update(j,vocabInd, cv + (delta(j+offset) * v))
-        println("cv = " + cv + " update = " + (delta(j+offset) * v))
+        grad.update(j,vocabInd, cv + (deltaMat(j, seqPosition) * v))
+        println("cv = " + cv + " update = " + (deltaMat(j, seqPosition) * v))
         println("Setting grad " + j + ", " + vocabInd + " to " + grad(j,vocabInd))
         j += 1
       }

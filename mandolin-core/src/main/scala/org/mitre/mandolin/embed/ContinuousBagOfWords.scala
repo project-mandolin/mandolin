@@ -20,7 +20,7 @@ object ContinuousBagOfWords {
   
   def main(args: Array[String]) = {
     val appSettings = new CBOWModelSettings(args)
-    val prep = new PreProcess(appSettings.contextSize)
+    val prep = new PreProcess(appSettings.minCnt)
     val nthreads = appSettings.numThreads
     val epochs = appSettings.numEpochs
     val inFile = appSettings.trainFile
@@ -45,7 +45,7 @@ object ContinuousBagOfWords {
 /**
  * @author wellner
  */
-class CBOWEvaluator(val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, freqTable: Array[Int], logisticTable: Array[Double], up: NullUpdater)
+class CBOWEvaluator(val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, freqTable: Array[Int], logisticTable: Array[Float], up: NullUpdater)
 extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Serializable {
   
   val initialLearnRate = 0.1
@@ -53,26 +53,41 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
   val ftLen = freqTable.length
   val hlSize = emb.embW.getDim2
   val vocabSize = emb.embW.getDim1
-  val h = Array.fill(hlSize)(0.0)
-  val d = Array.fill(hlSize)(0.0)
-  val maxDp = 6.0
-  val logisticTableSize = logisticTable.length
+  val h = Array.fill(hlSize)(0.0f)
+  val d = Array.fill(hlSize)(0.0f)
+  val maxDp = 6.0f
+  val logisticTableSizeCoef = logisticTable.length.toFloat / maxDp / 2.0f
+  val eDp = 5.999f
+  
+  // xorshift generator with period 2^128 - 1
+  var seed0 = util.Random.nextInt(Integer.MAX_VALUE)
+  var seed1 = util.Random.nextInt(Integer.MAX_VALUE)
   
   @inline
-  private final def set(a: Array[Double], v: Double) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
-  @inline
-  private final def timesEq(a: Array[Double], v: Double) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
-  @inline
-  private final def logisticFn(x: Double) = logisticTable(((x + maxDp) * logisticTableSize / maxDp / 2.0).toInt) // 1.0 / (1.0 + math.exp(-x)) 
+  private final def nextInt(m : Int) : Int = {
+    var s1 = seed0
+    val s0 = seed1
+    seed0 = s0
+    s1 ^= s1 << 23
+    seed1 = s1 ^ s0 ^ (s1 >> 18) ^ (s0 >> 5)
+    ((seed1 + s0) >>> 1) % m
+  }
   
-  private final def isNaN(x: Double) = !(x > 0.0) && !(x <= 0.0)
+  
+  @inline
+  private final def set(a: Array[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
+  @inline
+  private final def timesEq(a: Array[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
+  @inline
+  private final def logisticFn(x: Float) = logisticTable(((x + maxDp) * logisticTableSizeCoef).toInt) // 1.0 / (1.0 + math.exp(-x)) 
+  
   
   //workhorse function that updates weights directly without returning explicit gradient
   def trainWeightsOnSequence(in: SeqInstance, w: EmbedWeights) : Unit = {
     var spos = 0
     val seq = in.seq
     var bagSize = 0
-    val b = util.Random.nextInt(wSize)
+    
     var con_i = 0
     val l1Ar = w.embW.asArray // array layout of matrix
     val l2Ar = w.outW.asArray // array layout of matrix
@@ -81,11 +96,12 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
     while (spos < in.ln) {
       bagSize = 0
       up.totalProcessed += 1
-      val learningRate = initialLearnRate / (1.0 + initialLearnRate * up.totalProcessed * decay)
-      if ((up.totalProcessed % 10000) == 0) printf("\r%d instances procssed .. learning rate %f ", up.totalProcessed, learningRate)    
+      val learningRate = initialLearnRate.toFloat / (1.0f + initialLearnRate.toFloat * up.totalProcessed * decay.toFloat)
+      //if ((up.totalProcessed % 10000) == 0) printf("\r%d instances procssed .. learning rate %f ", up.totalProcessed, learningRate)    
       val curWord = seq(spos)
-      set(h,0.0)
-      set(d,0.0)
+      set(h,0.0f)
+      set(d,0.0f)
+      val b = nextInt(wSize)
       // forward hidden outputs
       var a = b; while (a < wSize * 2 + 1 - b) {
     		con_i = spos - wSize + a
@@ -98,44 +114,31 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
     		}
         a += 1
       }
-      timesEq(h,(1.0/bagSize)) // normalize h by size of input bag
+      timesEq(h,(1.0f/bagSize)) // normalize h by size of input bag
       var outIndex = curWord 
-      var label = 1.0
+      var label = 1.0f
       var s = 0; while (s < negSampleSize + 1) {
         if (s > 0) {
-          val ri = util.Random.nextInt(ftLen)
+          val ri = nextInt(ftLen)
           outIndex = freqTable(ri)
           if (outIndex == curWord) {
-            outIndex = (outIndex + util.Random.nextInt(vocabSize)) % vocabSize
+            outIndex = (outIndex + nextInt(vocabSize)) % vocabSize
           }
-          //outIndex = (curWord + 1) % vocabSize
-          label = 0.0
+          label = 0.0f
         }        
         val offset = outIndex * hlSize
-        var dp = 0.0
+        var dp = 0.0f
         var i = 0; while (i < hlSize) {
-          val cc = h(i) * l2Ar(offset + i)
-          if (isNaN(cc)) println("comp is NaN with h(i) = " + h(i) + " and w=" + l2Ar(offset + i))
-          dp += cc          
+          dp += h(i) * l2Ar(offset + i)         
           i += 1 } 
-        val out = if (dp > maxDp) 1.0 else if (dp < -maxDp) 0.0 else logisticFn(dp)
-        val o_err = (label - out) * learningRate          
-        //println("o_err = " + o_err)
-        if (!(o_err > 0.0) && !(o_err <= 0.0)) {
-          println("o_err = " + o_err + " with dp = " + dp)
-          throw new RuntimeException("NaN reached")
-        }
+        val out = if (dp >= eDp) 1.0f else if (dp <= -eDp) 0.0f else logisticFn(dp)
+        val o_err = (label - out) * learningRate // XXX - AdaGrad update here         
         i = 0; while (i < hlSize) { 
           d(i) += o_err * l2Ar(offset + i)
-          //println("\tDelta to " + i + " by " + (o_err * l2Ar(offset + i)) + " resulting in " + d(i))
           i += 1}
         i = 0; while (i < hlSize) { 
           l2Ar(offset + i) += o_err * h(i)
-          //println("=> Update o " + i + " by " + (o_err * h(i)) + " resulting in " + l2Ar(i + offset))
           i += 1}
-        //print("o_err = " + o_err)
-        //i = 0; while (i < hlSize) {print(" " + d(i)); i += 1}
-        //println
         s += 1
       }
       a = b; while (a < wSize * 2 + 1 - b) {

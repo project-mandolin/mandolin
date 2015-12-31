@@ -4,7 +4,7 @@ import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, DenseTensor1 => Dense
 object DynamicConvLayer {
   def apply(k: Int, width: Int, eDim: Int) = {
     val ones = DenseVec.ones(k*eDim)
-    val thFn = { v: DenseVec => v map { v => 1.0 / (1.0 + math.exp(-v)) } }
+    val thFn = { v: DenseVec => v map { v => 1.0f / (1.0f + math.exp(-v).toFloat) } }
     val thDeriv = { v: DenseVec => v :* (ones :- v) }
     def cf(x: DenseVec, y: DenseVec) = 0.0
     new DynamicConvLayer(1, k, width, eDim, new LType(LogisticLType,k*eDim), thFn, thDeriv, cf _)
@@ -36,6 +36,8 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
   
   def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {
     val wideConv = convolve(w, in, width)
+    println("Convolution output ==>")
+    println(wideConv.toString())
     val (kMax, kaMax) = kmax(wideConv,eDim)
     kMax += b // assumes each b[i] is added to each entry in kMax[i,:]
     val flattened = new DenseVec(kMax.a) // flatten matrix to vector to conform to GLP data flow
@@ -62,7 +64,7 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
   }
   
   private def backward(w: Mat, b: Vec) = {
-    // update bias gradients
+    // update bias gradients - handled somewhat specially here; single bias per dimension, not K
     var i = 0; while (i < dim) {
       val bind = i / k
       bgrad(bind) += delta(i)      
@@ -78,8 +80,8 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     i = 0; while (i < k * eDim) {      
       val dd = delta(i)        
       val convInd = kArgMax(i)
-      val rowId = convInd % eDim // this is the input 'row'
-      val colId = convInd / eDim // col id in convolution matrix
+      val rowId = i / k // this is the input 'row'
+      val colId = convInd // col id in convolution matrix
       j = 0; while (j < width) {
         val inCol = colId - j
         if ((inCol >= 0) && (inCol < ncols)) {
@@ -93,15 +95,20 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     prev match {
       // XXX - this really assumes an Embedding Layer as the previous layer
       case p: DenseNonInputLayer =>
+        val deltaMat = p.delta.toTensor2(eDim)
         i = 0; while (i < k * eDim) {      
         val dd = delta(i)        
         val convInd = kArgMax(i)
-        val rowId = convInd % eDim // this is the input 'row'
-        val colId = convInd / eDim // col id in convolution matrix
+        val rowId = i / k // this is the input 'row'
+        val colId = convInd // col id in convolution matrix
+        //println("rowId = " + rowId)
+        //println("colId = " + colId)
         j = 0; while (j < width) {
           val inCol = colId - j
+          //println("\t input col = " + inCol)
           if ((inCol >= 0) && (inCol < ncols)) {
-            p.delta(rowId) += dd * w(rowId, j)
+            val cv = deltaMat(rowId, inCol)
+            deltaMat.update(rowId, inCol, cv + dd * w(rowId, j))
           }        
           j += 1
         }
@@ -145,7 +152,8 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
         if ((i >= 0) && (i < ninputs)) { // element-wise product if 'i' not out-of bounds
           var x = 0; while (x < eDim) {
             val inputInd = i * eDim + x // index within original flat input representation
-            output(x,j) += (filter(x, y) * input(inputInd))
+            val cv = output(x,j)
+            output.update(x,j, cv + (filter(x, y) * input(inputInd)))
             x += 1
           }
         }
@@ -156,7 +164,7 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
     output
   }
   
-  def shift(mat: Mat, inds: Array[Int], d: Int, nv: Double, ni: Int, curMin: Int) = {
+  def shift(mat: Mat, inds: Array[Int], d: Int, nv: Float, ni: Int, curMin: Int) = {
     val end = mat.getDim2 - 1
     val offset = d * mat.getDim2
     for (i <- 0 to end) {      
@@ -176,6 +184,17 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
       }
     }    
     (newMin, positionMin)
+  }
+  
+  def prettyPrintArgMaxes(r: Int, c: Int, ar: Array[Int]) = {
+    var i = 0; while (i < r) {
+      var j = 0; while (j < c) {
+        print(" " + ar(i*c + j))        
+        j += 1
+      }
+      println
+      i += 1
+    }
   }
   
   def kmax(convolution: Mat, dim: Int) : (DenseMat,Array[Int]) = {
@@ -204,6 +223,7 @@ class DynamicConvLayer(li: Int, k: Int, width: Int, eDim: Int, lt: LType,
         }
       }
     }
+    prettyPrintArgMaxes(dim, k, argmaxes)
     (output,argmaxes)
   }
 }

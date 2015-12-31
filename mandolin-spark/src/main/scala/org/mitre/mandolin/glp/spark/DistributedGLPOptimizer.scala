@@ -46,7 +46,7 @@ object DistributedGLPOptimizer {
       case "adam" =>
         val mom1 = network.generateZeroedLayout
         val mom2 = network.generateZeroedLayout
-        val uu = new GLPAdamUpdater(0.001, 0.9, 0.999, mom1, mom2, maxNormArray=maxNormArray, l1Array = l1Array, l2Array = l2Array,
+        val uu = new GLPAdamUpdater(0.001f, 0.9f, 0.999f, mom1, mom2, maxNormArray=maxNormArray, l1Array = l1Array, l2Array = l2Array,
             composeSt = composeStrategy)
         new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdamUpdater](sc, weights, evaluator, uu, appSettings)
       case "sgd" =>

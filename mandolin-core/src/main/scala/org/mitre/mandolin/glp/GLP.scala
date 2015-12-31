@@ -32,13 +32,13 @@ class VecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
     val dVec : DenseVec = DenseVec.zeros(alphabet.getSize)    
     spv foreach { f =>
       if (f.fid >= 0) {
-        val fv = alphabet.getValue(f.fid, f.value)
+        val fv = alphabet.getValue(f.fid, f.value).toFloat
         dVec.update(f.fid, fv)
       }
     }
     val l_ind = la.ofString(l)
     val lv = DenseVec.zeros(la.getSize)
-    lv.update(l_ind,1.0) // one-hot encoding
+    lv.update(l_ind,1.0f) // one-hot encoding
     ind += 1
     new StdGLPFactor(ind, dVec, lv, id)    
   }
@@ -64,7 +64,7 @@ class SparseVecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
     val spVec : SparseVec = SparseVec(alphabet.getSize)    
     spv foreach { f =>
       if (f.fid >= 0) {
-        val fv = alphabet.getValue(f.fid, f.value)
+        val fv = alphabet.getValue(f.fid, f.value).toFloat
         spVec.update(f.fid, fv)
       }
     }
@@ -92,7 +92,7 @@ class StdVectorExtractorWithAlphabet(la: Alphabet, nfs: Int) extends FeatureExtr
   def extractFeatures(s: String) : GLPFactor = {
     val (lab, features) = reader.getLabeledLine(s)
     val targetVec = DenseVec.zeros(la.getSize)
-    targetVec.update(la.ofString(lab), 1.0) // set one-hot
+    targetVec.update(la.ofString(lab), 1.0f) // set one-hot
     new StdGLPFactor(features, targetVec)
   }
   def getNumberOfFeatures = nfs
@@ -107,13 +107,13 @@ class BagOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String
     val line = s.split(" ")
     val ln = line.length
     val lab = line(0)
-    var mm = Map[Int,Double]()
+    var mm = Map[Int,Float]()
     var i = 1; while (i < ln) {
       val av = line(i).split(":")
       val ind = av(0).toInt
       val vl = if (av.length > 1) av(1).toDouble else 1.0
-      val cv = mm.get(ind).getOrElse(0.0)
-      mm += (ind -> (cv + 1.0))
+      val cv = mm.get(ind).getOrElse(0.0f)
+      mm += (ind -> (cv + 1.0f))
       i += 1
     }
     val targetVec : Vec = SparseVec.getOneHot(la.getSize, la.ofString(lab))
@@ -134,11 +134,11 @@ class SequenceOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[S
     val line = s.split(" ")
     val ln = line.length
     val lab = line(0)
-    var flist : List[(Int,Double)] = Nil
+    var flist : List[(Int,Float)] = Nil
     var i = 1; while (i < ln) {
       val av = line(i).split(":")
       val ind = av(0).toInt + (i - 1) * nfs
-      val vl = if (av.length > 1) av(1).toDouble else 1.0
+      val vl = if (av.length > 1) av(1).toFloat else 1.0f
       flist = (ind, vl) :: flist      
       i += 1
     }

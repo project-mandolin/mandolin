@@ -48,7 +48,7 @@ object LocalGLPOptimizer {
       case "adam" =>
         val mom1 = network.generateZeroedLayout
         val mom2 = network.generateZeroedLayout
-        val uu = new GLPAdamUpdater(0.001, 0.9, 0.999, mom1, mom2, maxNormArray=maxNormArray, l1Array = l1Array, l2Array = l2Array,
+        val uu = new GLPAdamUpdater(0.001f, 0.9f, 0.999f, mom1, mom2, maxNormArray=maxNormArray, l1Array = l1Array, l2Array = l2Array,
             composeSt = composeStrategy)
         new LocalOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdamUpdater](weights, evaluator, uu, appSettings)
       case "lbfgs" => throw new RuntimeException("Batch training not supported without Spark")

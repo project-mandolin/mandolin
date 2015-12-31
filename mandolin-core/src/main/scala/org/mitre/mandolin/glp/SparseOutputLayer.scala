@@ -65,7 +65,7 @@ extends SparseOutputLayer(i, curDim, lt) {
     }
   }
   
-  def logisticFn(x: Double) = 1.0 / (1.0 + math.exp(-x))
+  def logisticFn(x: Float) = 1.0f / (1.0f + math.exp(-x)).toFloat
   
   
   def setOutput(t: Vec) = t match {
@@ -119,7 +119,7 @@ extends SparseOutputLayer(i, curDim, lt) {
     prev match {
       case p: DenseNonInputLayer =>
         var i = 0; while (i < p.delta.getDim) {
-          p.delta(i) = 0.0
+          p.delta(i) = 0.0f
           d.forEach{(j,v) =>
             val cv = p.delta(i)
             p.delta.update(i, cv + w(j,i) * v)

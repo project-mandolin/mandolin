@@ -119,7 +119,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
       currentWeights.compress()
       currentUpdater.compress()
     }
-    currentWeights.resetMass(1.0) // ensure the masses on weights are reset
+    currentWeights.resetMass(1.0f) // ensure the masses on weights are reset
     val bc = sc.broadcast(currentWeights)
     val bcUpdater = sc.broadcast(currentUpdater)
     val ep = new EpochProcessor[T, W, LG, U](evaluator, workersPerPartition = workersPerPartition,
@@ -137,8 +137,8 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
       val parameterSet = trainRDD.mapPartitions({ insts =>
         val w = bc.value
         val u = bcUpdater.value
-        w.resetMass(1.0)
-        u.resetMass(1.0)
+        w.resetMass(1.0f)
+        u.resetMass(1.0f)
         val partitionInsts = insts.toVector // pull in data points to a vector -- note this duplicates between here and local cache
         w.decompress()
         u.decompress()
@@ -149,7 +149,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
         }
         Seq((loss, w, u)).toIterator
       }, true)
-      parameterSet treeReduce {
+      parameterSet reduce {
         case (l, r) =>
           ((l._1 + r._1), l._2 compose r._2, l._3 compose r._3)
       }

@@ -36,7 +36,7 @@ class LocalDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, OType : C
 class LocalPosteriorDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, OType : ClassTag](
     fe: FeatureExtractor[IType,U],
     val pr: Predictor[U, W, R],
-    val oc: OutputConstructor[IType, Seq[(Double,R)], OType]
+    val oc: OutputConstructor[IType, Seq[(Float,R)], OType]
     ) {
   
   def run(inputs: Vector[IType], w: W) : Vector[(OType, U)] = {

@@ -100,6 +100,11 @@ trait Numerical {
   @inline
   final def vec2normInv(x: Array[Double]) = 1.0 / math.sqrt(vecDot(x, x))
 
+  def toDouble(x: Array[Float]) = {
+    Array.tabulate(x.length)(i => x(i).toDouble)
+  }
+  
+  
 }
 
 class Params(
@@ -135,7 +140,7 @@ abstract class BatchOptimizer[T, W <: Weights[W], G <: LossGradient[G]](val dim:
   var result: Option[Result] = None
   case class IterationData(var alpha: Double, val s: Array[Double], val y: Array[Double], var ys: Double)
 
-  val x = weights.asArray
+  val x = toDouble(weights.asArray)
   val n = dim
   val g = Array.fill(n)(0.0)
   
@@ -162,6 +167,8 @@ abstract class BatchOptimizer[T, W <: Weights[W], G <: LossGradient[G]](val dim:
   val lmStorage = Array.tabulate(params.m) { _ => IterationData(0, Array.fill(n)(0.0), Array.fill(n)(0.0), 0) }
   var curStor = IterationData(0, Array.fill(n)(0.0), Array.fill(n)(0.0), 0)
   val pf = Array.fill(params.past)(0.0)
+  
+  
 
   private def printVec(g: Array[Double]) = {
     g foreach { e => print(" " + e) }
@@ -176,11 +183,10 @@ abstract class BatchOptimizer[T, W <: Weights[W], G <: LossGradient[G]](val dim:
     (weights, obj)
   }
   
-  
   protected def optimize(data: GenData[T], subMax: Option[Int]): Result = {
     weights.updateFromArray(x)
     val lossGrad = batchEvaluator.evaluate(data, weights)
-    vecCopy(g, lossGrad.asArray)
+    vecCopy(g, toDouble(lossGrad.asArray))
     val ll = lossGrad.loss
     val smaxIters = subMax.getOrElse(0)  
 
@@ -346,7 +352,7 @@ extends Numerical {
       val ll = lossGrad.loss
 
       f set ll
-      vecCopy(g, lossGrad.asArray)
+      vecCopy(g, toDouble(lossGrad.asArray))
 
       if (params.veryVerbose) {
         println("Gradient: ")

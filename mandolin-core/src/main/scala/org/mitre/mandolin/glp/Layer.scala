@@ -40,7 +40,7 @@ case object TransLogLType extends LayerDesignate
 case object TLogisticLType extends LayerDesignate
 
 case class LType(val designate: LayerDesignate, 
-    val dim: Int = 0, val drO: Double = 0.0, val l1: Double = 0.0, val l2: Double = 0.0, val maxNorm: Double = 0.0) 
+    val dim: Int = 0, val drO: Float = 0.0f, val l1: Float = 0.0f, val l2: Float = 0.0f, val maxNorm: Float = 0.0f) 
 extends Serializable
 
 abstract class Layer(val index: Int, val dim: Int, val ltype: LType) extends Serializable {
@@ -98,7 +98,7 @@ abstract class DenseNonInputLayer(_i: Int, _d: Int, _lt: LType) extends NonInput
   protected var output: DenseVec = DenseVec.zeros(dim)
   
   // this stores the errors for backprop
-  val delta: DenseVec = DenseVec.zeros(dim)
+  var delta: DenseVec = DenseVec.zeros(dim)
 
   def setOutput(v: Vec) : Unit = v match {
     case vv: DenseVec => setOutput(vv)
@@ -133,13 +133,13 @@ abstract class InputLayer(d: Int, lt: LType) extends Layer(0, d, lt) {
   def sharedWeightCopy(): InputLayer
 }
 
-class DenseInputLayer(_d: Int, drO: Double = 0.0) extends InputLayer(_d, LType(InputLType, _d, drO)) {
+class DenseInputLayer(_d: Int, drO: Float = 0.0f) extends InputLayer(_d, LType(InputLType, _d, drO)) {
 
   protected val output: DenseVec = DenseVec.zeros(dim)
   def setOutput(v: Vec): Unit = v match { case x: DenseVec => setOutput(x) case _ => throw new RuntimeException("Input vector type mis-match") }
   def setOutput(v: DenseVec): Unit = { output := v }
   def getOutput(tr: Boolean): Vec = {
-    if (tr && (drO > 0.0)) { output.addMaskNoise(drO) }
+    if (tr && (drO > 0.0f)) { output.addMaskNoise(drO) }
     output
   }
   def copy() = new DenseInputLayer(_d, drO)
@@ -147,7 +147,7 @@ class DenseInputLayer(_d: Int, drO: Double = 0.0) extends InputLayer(_d, LType(I
 
 }
 
-class SparseInputLayer(_d: Int, drO: Double = 0.0) extends InputLayer(_d, LType(SparseInputLType, _d, drO)) {
+class SparseInputLayer(_d: Int, drO: Float = 0.0f) extends InputLayer(_d, LType(SparseInputLType, _d, drO)) {
   protected var output: SparseVec = SparseVec(dim)
   def setOutput(v: Vec): Unit = v match { case x: SparseVec => setOutput(x) case _ => throw new RuntimeException("Input vector type mis-match") }
   def setOutput(v: SparseVec) = { output = v }
@@ -170,15 +170,15 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
                                    costFn: (DenseVec, DenseVec) => Double,
                                    costGradFn: (DenseVec, DenseVec) => DenseVec,
                                    lt: LType,
-                                   dropOut: Double = 0.0) extends DenseNonInputLayer(i, curDim, lt) with Serializable {
+                                   dropOut: Float = 0.0f) extends DenseNonInputLayer(i, curDim, lt) with Serializable {
 
-  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double) =
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Float) =
     this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut)
 
   def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType) =
     this(cd, pd, ol, i, loss, lt, lt.drO)
 
-  val mbuf = if (dropOut > 0.0) Array.fill[Boolean](curDim)(false) else Array.fill[Boolean](1)(false)
+  val mbuf = if (dropOut > 0.0f) Array.fill[Boolean](curDim)(false) else Array.fill[Boolean](1)(false)
   // this is the target vector, generally just for output layers
   val target: Option[DenseVec] = if (outputLayer) Some(DenseVec.zeros(dim)) else None
 
@@ -192,8 +192,8 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
   def forwardWith(in: Vec, w: Mat, b: Vec, training: Boolean) = {
     val drO = dropOut
     if (!outputLayer) {
-      if (drO > 0.0) {
-        if (drO > 0.01) {
+      if (drO > 0.0f) {
+        if (drO > 0.01f) {
           if (training) {
             var i = 0; while (i < curDim) {
               if (util.Random.nextDouble < drO) mbuf(i) = false else mbuf(i) = true
@@ -206,7 +206,7 @@ abstract class AbstractWeightLayer(val curDim: Int, val prevDim: Int, outputLaye
             w *= (in, output)
             output += b
             output := actFn(output)
-            output *= (1.0 - drO)
+            output *= (1.0f - drO)
           }
         } else throw new RuntimeException("Dropout value of " + drO + " not allowed")
       }
@@ -236,14 +236,14 @@ class WeightLayer(curDim: Int, _prevDim: Int, outputLayer: Boolean, i: Int,
                   costFn: (DenseVec, DenseVec) => Double,
                   costGradFn: (DenseVec, DenseVec) => DenseVec,
                   lt: LType,
-                  dropOut: Double = 0.0,
+                  dropOut: Float = 0.0f,
                   noBias: Boolean = false)
   extends AbstractWeightLayer(curDim, _prevDim, outputLayer, i, actFn, actFnDeriv, costFn, costGradFn, lt, dropOut) {
   
-  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double, nb: Boolean) =
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Float, nb: Boolean) =
     this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, nb)
     
-  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double) =
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Float) =
     this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, false)    
 
   def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, nb: Boolean) =
@@ -312,14 +312,14 @@ class SparseGradientWeightLayer(curDim: Int, prevDim: Int, outputLayer: Boolean,
                                 costFn: (DenseVec, DenseVec) => Double,
                                 costGradFn: (DenseVec, DenseVec) => DenseVec,
                                 lt: LType,
-                                dropOut: Double = 0.0,
+                                dropOut: Float = 0.0f,
                                 noBias: Boolean = false) 
                                 extends AbstractWeightLayer(curDim, prevDim, outputLayer, i, actFn, actFnDeriv, costFn, costGradFn, lt, dropOut) {
 
-  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double, nb: Boolean) =
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Float, nb: Boolean) =
     this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, nb)
 
-  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Double) =
+  def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, dOut: Float) =
     this(cd, pd, ol, i, loss.link _, loss.linkGrad _, loss.loss _, loss.lossGrad _, lt, dOut, false)
 
   def this(cd: Int, pd: Int, ol: Boolean, i: Int, loss: LossFunction, lt: LType, nb: Boolean) =
@@ -350,7 +350,7 @@ class SparseGradientWeightLayer(curDim: Int, prevDim: Int, outputLayer: Boolean,
     val target : Vec = t 
     val deriv: DenseVec = actFnDeriv(output)
     val d = output.copy
-    d *= (-1.0) // (-output)
+    d *= (-1.0f) // (-output)
     d += t  // add target .. amounts to (target - output)
     d *= deriv 
     val grad : Mat = SparseMat.zeros(curDim, prevDim)
@@ -387,14 +387,14 @@ object WeightLayer {
   private final def getStraightCostGrad(t: DenseVec, o: DenseVec): DenseVec = t :- o
 
   def getTanHLayer(lt: LType, pd: Int, ind: Int) = {
-    val thFn = { v: DenseVec => v.map { x => math.tanh(x) } }
-    val thDeriv = { v: DenseVec => v.map { x => val th = math.tanh(x); 1.0 - th * th } }
+    val thFn = { v: DenseVec => v.map { x => math.tanh(x).toFloat } }
+    val thDeriv = { v: DenseVec => v.map { x => val th = math.tanh(x).toFloat; 1.0f - th * th } }
     new WeightLayer(lt.dim, pd, false, ind, thFn, thDeriv, { (_, _) => 0.0 }, getStraightCostGrad _, lt, lt.drO)
   }
 
   def getReluLayer(lt: LType, pd: Int, ind: Int) = {
-    val thFn = { v: DenseVec => v map { x => if (x > 0.0) x else 0.0 } }
-    val thDeriv = { v: DenseVec => v map { x => if (x > 0.0) 1.0 else 0.0 } }
+    val thFn = { v: DenseVec => v map { x => if (x > 0.0f) x else 0.0f } }
+    val thDeriv = { v: DenseVec => v map { x => if (x > 0.0) 1.0f else 0.0f } }
     new WeightLayer(lt.dim, pd, false, ind, thFn, thDeriv, getSECost _, getStraightCostGrad _, lt, lt.drO)
   }
 
@@ -408,22 +408,22 @@ object WeightLayer {
 
   def getLogisticLayer(lt: LType, pd: Int, isOut: Boolean, ind: Int) = {
     val ones = DenseVec.ones(lt.dim)
-    val thFn = { v: DenseVec => v map { v => 1.0 / (1.0 + math.exp(-v)) } }
+    val thFn = { v: DenseVec => v map { v => 1.0f / (1.0f + math.exp(-v).toFloat) } }
     val thDeriv = { v: DenseVec => v :* (ones :- v) }
     new WeightLayer(lt.dim, pd, isOut, ind, thFn, thDeriv, getSECost _, getStraightCostGrad _, lt, lt.drO)
   }
 
   def getCELayer(lt: LType, pd: Int, isOut: Boolean, ind: Int) = {
     val ones = DenseVec.ones(lt.dim)
-    val thFn = { v: DenseVec => v map { v => 1.0 / (1.0 + math.exp(-v)) } }
+    val thFn = { v: DenseVec => v map { v => 1.0f / (1.0f + math.exp(-v).toFloat) } }
     val thDeriv = { v: DenseVec => ones }
     new WeightLayer(lt.dim, pd, isOut, ind, thFn, thDeriv, getCECost _, getStraightCostGrad _, lt, lt.drO)
   }
 
   def getOutputLayer(loss: LossFunction, lt: LType, pd: Int, ind: Int, sp: Boolean, noBias: Boolean = false) : AbstractWeightLayer =
     if (sp) {
-      new SparseGradientWeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0, noBias)
-    } else new WeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0, noBias)
+      new SparseGradientWeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0f, noBias)
+    } else new WeightLayer(lt.dim, pd, true, ind, loss, lt, 0.0f, noBias)
   
 }
 
