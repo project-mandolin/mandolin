@@ -16,7 +16,7 @@ class CBOWModelSettings(args: Array[String]) extends LearnerSettings(args) with 
 }
   
 
-object ContinuousBagOfWords {
+object CBOW {
   
   def main(args: Array[String]) = {
     val appSettings = new CBOWModelSettings(args)
