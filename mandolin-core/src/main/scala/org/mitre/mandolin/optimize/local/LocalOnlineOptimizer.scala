@@ -20,7 +20,7 @@ trait LocalOptimizerEstimator[T, W <: Weights[W]] {
  */
 class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG], U <: Updater[W, LG, U]: ClassTag](
   val initialWeights: W,
-  val evaluator: TrainingUnitEvaluator[T, W, LG],
+  val evaluator: TrainingUnitEvaluator[T, W, LG, U],
   val initialUpdater: U,
   maxEpochs: Int,
   numSubEpochs: Int,
@@ -32,7 +32,7 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
   miniBatchSize : Int = 1,
   shuffle: Boolean = true) extends LocalOptimizerEstimator[T, W] {
   
-  def this(_iw: W, _ev: TrainingUnitEvaluator[T,W,LG], _u: U, _as: OnlineLearnerSettings) = {
+  def this(_iw: W, _ev: TrainingUnitEvaluator[T,W,LG, U], _u: U, _as: OnlineLearnerSettings) = {
     this(_iw, _ev, _u, _as.numEpochs, _as.numSubEpochs,
           _as.numThreads, _as.detailsFile,
           synchronous = _as.synchronous, skipProb = _as.skipProb, 
@@ -67,7 +67,9 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
   def processEpoch(data: Vector[T], numPartitions: Int, curEpoch: Int, currentWeights: W, currentUpdater: U): (Double, W, U) = {
     val ep = new EpochProcessor[T, W, LG, U](evaluator, workersPerPartition = workersPerPartition, 
         synchronous = synchronous, numSubEpochs = numSubEpochs, skipProb = skipProb)
-    val loss = ep.processPartitionWithinEpoch(curEpoch, data, currentWeights, currentUpdater)    
+    val ss = System.nanoTime
+    val loss = ep.processPartitionWithinEpoch(curEpoch, data, currentWeights, currentUpdater)
+    println("*** Epoch processed in " + ((System.nanoTime - ss) / 1E9) + " seconds ***")
     (loss, currentWeights, currentUpdater)
   }
   

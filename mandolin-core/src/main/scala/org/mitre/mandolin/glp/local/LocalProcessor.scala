@@ -9,8 +9,8 @@ import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.optimize.local.{VectorData}
 import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalPosteriorDecoder }
 import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, GLPPredictor, GLPModelReader,
-  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPInstanceEvaluator, GLPLossGradient, GLPModelSpec }
-import org.mitre.mandolin.optimize.{BatchEvaluator, GenData}
+  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPInstanceEvaluator, GLPLossGradient, GLPModelSpec, ANNetwork, NullGLPUpdater }
+import org.mitre.mandolin.optimize.{BatchEvaluator, GenData, Updater}
 import com.twitter.chill.EmptyScalaKryoInstantiator
 import org.mitre.mandolin.config.MandolinRegistrator
 import com.esotericsoftware.kryo.Kryo
@@ -39,8 +39,8 @@ class LocalGLPModelWriter extends GLPModelWriter {
     throw new RuntimeException("Intermediate model writing not implemented with GLPWeights")
   }
 
-  def writeModel(io: IOAssistant, filePath: String, w: GLPWeights, la: Alphabet, ev: GLPInstanceEvaluator, fe: FeatureExtractor[String, GLPFactor]): Unit = {
-    io.writeSerializedObject(kryo, filePath, GLPModelSpec(w, ev, la, fe))
+  def writeModel(io: IOAssistant, filePath: String, w: GLPWeights, la: Alphabet, ann: ANNetwork, fe: FeatureExtractor[String, GLPFactor]): Unit = {
+    io.writeSerializedObject(kryo, filePath, GLPModelSpec(w, ann, la, fe))
   }
 }
 
@@ -75,14 +75,13 @@ class LocalProcessor extends AbstractProcessor {
     val io = new LocalIOAssistant
     val components = getComponentsViaSettings(appSettings, io)       
     val trainFile = appSettings.trainFile
-    val ev = components.evaluator
     val fe = components.featureExtractor
-    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, ev)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, components.ann)
     val lines = io.readLines(trainFile.get).toVector
     val trainer = new LocalTrainer(fe, optimizer)
     val (finalWeights,_) = trainer.trainWeights(lines)
     val modelWriter = new LocalGLPModelWriter
-    modelWriter.writeModel(io, appSettings.modelFile.get, finalWeights, components.labelAlphabet, ev, fe)
+    modelWriter.writeModel(io, appSettings.modelFile.get, finalWeights, components.labelAlphabet, components.ann, fe)
     finalWeights
   }  
   
@@ -91,8 +90,7 @@ class LocalProcessor extends AbstractProcessor {
     val io = new LocalIOAssistant
     val modelSpec = (new LocalGLPModelReader).readModel(appSettings.modelFile.get, io)
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
-    val evaluator = modelSpec.evaluator
-    val predictor = new GLPPredictor(evaluator.glp, true)
+    val predictor = new GLPPredictor(modelSpec.ann, true)
     val oc = new GLPPosteriorOutputConstructor()
     val decoder = new LocalPosteriorDecoder(modelSpec.fe, predictor, oc)
     val os = io.getPrintWriterFor(appSettings.outputFile.get, false)
@@ -106,10 +104,9 @@ class LocalProcessor extends AbstractProcessor {
     if (trainFile.isEmpty) throw new RuntimeException("Training file required in train-test mode")
     val io = new LocalIOAssistant
     val components = getComponentsViaSettings(appSettings, io)
-    val ev = components.evaluator
     val fe = components.featureExtractor
     val pr = components.predictor
-    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, ev)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, components.ann)
     val lines = io.readLines(trainFile.get).toVector
     val trainer = new LocalTrainer(fe, optimizer)
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
@@ -137,11 +134,11 @@ class LocalProcessor extends AbstractProcessor {
           val tstFile = new java.io.File(tst)
           val trLines = scala.io.Source.fromFile(tr).getLines.toVector
           val components = getComponentsViaSettings(appSettings, io)
-          val ev = components.evaluator
+
           val fe = components.featureExtractor
           val pr = components.predictor
           // XXX - this will only work properly if each train-test split has the same label set as the first fold
-          val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, ev)
+          val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, components.ann)
           val lines = trLines.toVector
           val trainer = new LocalTrainer(fe, optimizer)
           val testLines = scala.io.Source.fromFile(tst).getLines().toVector
@@ -181,11 +178,13 @@ class LocalProcessor extends AbstractProcessor {
   }
 }
 
-class GlpLocalBatchEvaluator(ev: GLPInstanceEvaluator) extends BatchEvaluator[GLPFactor, GLPWeights, GLPLossGradient] {
+class GlpLocalBatchEvaluator(ev: GLPInstanceEvaluator[NullGLPUpdater]) 
+extends BatchEvaluator[GLPFactor, GLPWeights, GLPLossGradient] {
+  val up = new NullGLPUpdater
   def evaluate(gd:GenData[GLPFactor], w: GLPWeights) : GLPLossGradient = {
     gd match {
       case data: VectorData[GLPFactor] =>
-        data.vec map {d => ev.evaluateTrainingUnit(d, w)} reduce {_ ++ _}
+        data.vec map {d => ev.evaluateTrainingUnit(d, w, up)} reduce {_ ++ _}
       case _ => throw new RuntimeException("Require local Scala vector data sequence for LocalBatchEvaluator")
     }
   }

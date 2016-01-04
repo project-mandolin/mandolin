@@ -27,9 +27,7 @@ import org.mitre.mandolin.predict.spark.{
 }
 
 import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, GLPPredictor, GLPModelReader,
-  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPLossGradient, GLPModelSpec, GLPInstanceEvaluator}
-
-import org.mitre.mandolin.glp.AbstractProcessor
+  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPLossGradient, GLPModelSpec, GLPInstanceEvaluator, ANNetwork}
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
 import org.mitre.mandolin.util.LineParser
@@ -78,8 +76,8 @@ class DistributedGLPModelWriter(sc: SparkContext) extends GLPModelWriter {
     throw new RuntimeException("Intermediate model writing not implemented with GLPWeights")
   }
 
-  def writeModel(io: IOAssistant, filePath: String, w: GLPWeights, la: Alphabet, ev: GLPInstanceEvaluator, fe: FeatureExtractor[String, GLPFactor]): Unit = {
-    io.writeSerializedObject(kryo, filePath, GLPModelSpec(w, ev, la, fe))
+  def writeModel(io: IOAssistant, filePath: String, w: GLPWeights, la: Alphabet, ann: ANNetwork, fe: FeatureExtractor[String, GLPFactor]): Unit = {
+    io.writeSerializedObject(kryo, filePath, GLPModelSpec(w, ann, la, fe))
   }
 }
 
@@ -157,18 +155,17 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val sc = AppConfig.getSparkContext(appSettings)
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
-    val ev = components.evaluator
     val fe = components.featureExtractor
     val trainFile = appSettings.trainFile.get
-    val network = ev.glp
-    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, network, ev)
+    val network = components.ann
+    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, network)
     val lines =
       if (numPartitions > 0) sc.textFile(trainFile, numPartitions).coalesce(numPartitions, true)
       else sc.textFile(trainFile)
     val trainer = new Trainer[String, GLPFactor, GLPWeights](fe, optimizer, StorageLevel.MEMORY_ONLY)
     val (w, _) = trainer.trainWeights(lines)
     val modelWriter = new DistributedGLPModelWriter(sc)
-    modelWriter.writeModel(io, appSettings.modelFile.get, w, components.labelAlphabet, ev, fe)
+    modelWriter.writeModel(io, appSettings.modelFile.get, w, components.labelAlphabet, network, fe)
     w
   }
 
@@ -178,8 +175,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val io = new SparkIOAssistant(sc)
     val modelSpec = (new DistributedGLPModelReader(sc)).readModel(appSettings.modelFile.get, io)
     val testLines = sc.textFile(appSettings.testFile.get, numPartitions).coalesce(numPartitions, true)
-    val evaluator = modelSpec.evaluator
-    val predictor = new GLPPredictor(evaluator.glp, true)
+    val predictor = new GLPPredictor(modelSpec.ann, true)
     val oc = new GLPPosteriorOutputConstructor()
     val decoder = new PosteriorDecoder(modelSpec.fe, predictor, oc)
     val os = io.getPrintWriterFor(appSettings.outputFile.get, false)
@@ -193,12 +189,10 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val sc = AppConfig.getSparkContext(appSettings)
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
-    val ev = components.evaluator
     val fe = components.featureExtractor
     val pr = components.predictor
-
     val trainFile = appSettings.trainFile
-    val optimizer = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, ev.glp, ev)
+    val optimizer = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, components.ann)
     val lines = sc.textFile(appSettings.trainFile.get, numPartitions).coalesce(numPartitions, true)
     val trainer = new Trainer(fe, optimizer)
     val testLines = sc.textFile(appSettings.testFile.get, numPartitions).coalesce(numPartitions, true)
@@ -212,7 +206,6 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val sc = AppConfig.getSparkContext(appSettings)
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
-    val ev = components.evaluator
     val fe = components.featureExtractor
     val predictor = components.predictor
     val labelAlphabet = components.labelAlphabet

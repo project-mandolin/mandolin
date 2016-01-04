@@ -63,14 +63,17 @@ abstract class LossGradient[LG <: LossGradient[LG]](val loss: Double) {
  * Subclasses evaluate a single training unit of type `T`, returning a LossGradient.
  * @author Ben Wellner
  */ 
-abstract class TrainingUnitEvaluator[T, W <: Weights[W], LG <: LossGradient[LG]] extends Serializable {
+abstract class TrainingUnitEvaluator[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W, LG, U]] extends Serializable {
+  
   
   /**
    * Primary method which returns a LossGradient for a given training unit with the current model parameters/weights, W.
    */ 
-  def evaluateTrainingUnit(unit: T, modelParameters: W): LG
-  def copy(): TrainingUnitEvaluator[T, W, LG]
+  //def evaluateTrainingUnit(unit: T, modelParameters: W): LG
+  def evaluateTrainingUnit(unit: T, modelParameters: W, updater: U) : LG
+  def copy(): TrainingUnitEvaluator[T, W, LG, U]
 }
+
 
 /**
  * Updater subclasses update a set of model weights given a LossGradient.

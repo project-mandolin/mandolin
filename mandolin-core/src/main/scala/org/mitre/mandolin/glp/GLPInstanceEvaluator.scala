@@ -3,7 +3,7 @@ package org.mitre.mandolin.glp
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.optimize.TrainingUnitEvaluator
+import org.mitre.mandolin.optimize.{TrainingUnitEvaluator, Updater}
 import org.mitre.mandolin.predict.{EvalPredictor, RegressionConfusion, DiscreteConfusion}
 
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1 => Vec}
@@ -53,10 +53,10 @@ class SparseGLPFactor(val ind: Int, in: SparseVec, out: Vec, val uniqueKey: Opti
 /**
  * @author wellner
  */
-class GLPInstanceEvaluator(val glp: ANNetwork)
-extends TrainingUnitEvaluator [GLPFactor, GLPWeights, GLPLossGradient] with Serializable {
+class GLPInstanceEvaluator[U <: Updater[GLPWeights, GLPLossGradient, U]](val glp: ANNetwork)
+extends TrainingUnitEvaluator [GLPFactor, GLPWeights, GLPLossGradient, U] with Serializable {
       
-  def evaluateTrainingUnit(unit: GLPFactor, weights: GLPWeights) : GLPLossGradient = { 
+  def evaluateTrainingUnit(unit: GLPFactor, weights: GLPWeights, u: U) : GLPLossGradient = { 
     val gr = glp.getGradient(unit.getInput, unit.getOutput, weights)
     new GLPLossGradient(glp.getCost, gr)
   }  

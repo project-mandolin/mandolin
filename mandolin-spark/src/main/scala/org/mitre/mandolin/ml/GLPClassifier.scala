@@ -80,7 +80,7 @@ class GLPClassificationModel(override val uid: String, val gmSpec: GLPModelSpec)
   def this(gmSpec: GLPModelSpec) = this(Identifiable.randomUID("GLPClassificationModel"), gmSpec)
   
   protected val numLabels = gmSpec.la.getSize
-  private val predictor = new GLPPredictor(gmSpec.evaluator.glp, false)
+  private val predictor = new GLPPredictor(gmSpec.ann, false)
   
   def copy(extra: ParamMap) : GLPClassificationModel = new GLPClassificationModel(gmSpec.copy())
   

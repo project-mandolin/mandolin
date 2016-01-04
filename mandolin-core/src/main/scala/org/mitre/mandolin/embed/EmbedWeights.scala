@@ -74,40 +74,70 @@ class EmbedGradient extends LossGradient[EmbedGradient](0.0) {
   def asArray = throw new RuntimeException("Norm not implemented")
 }
 
-class NullUpdater extends Updater[EmbedWeights, EmbedGradient, NullUpdater] with Serializable {
+abstract class EmbedUpdater[T <: Updater[EmbedWeights, EmbedGradient, T]] extends Updater[EmbedWeights, EmbedGradient, T] with Serializable {
+  def updateEmbeddingSqG(i: Int, wArr: Array[Float], g: Float)
   
-  // trick here is to use updater to keep track of total instances processed
-  // actual parameter updates happen within evaluator for efficiency
-  @volatile var totalProcessed = 0
+  def updateOutputSqG(i: Int, wArr: Array[Float], g: Float)
+  
+  def updateNumProcessed() : Unit
+}
+
+class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUpdater[NullUpdater] with Serializable {
+  
+  @volatile var totalProcessed = 0.0f
+  var currentRate = 0.0f
   
   // these are null ops
   def updateWeights(g: EmbedGradient, w: EmbedWeights): Unit = {}
   def resetLearningRates(v: Float): Unit = {}
-  def copy() : NullUpdater = new NullUpdater
-  def compose(u: NullUpdater) : NullUpdater = this
+  def copy() : NullUpdater = new NullUpdater(initialLearnRate, decay)
+  def compose(u: NullUpdater) : NullUpdater = {
+    this.totalProcessed += u.totalProcessed    
+    this
+  }
+  
+  @inline
+  final def updateEmbeddingSqG(i: Int, wArr: Array[Float], g: Float) = { wArr(i) += g * currentRate }
+  
+  @inline
+  final def updateOutputSqG(i: Int, wArr: Array[Float], g: Float) = { wArr(i) += g * currentRate }
+  
+  @inline
+  final def updateNumProcessed() = {
+    totalProcessed += 1.0f
+    currentRate = initialLearnRate / (1.0f + totalProcessed * decay)
+  }
 }
 
 class EmbedAdaGradUpdater(initialLearningRate: Float, val embSqG: Array[Float], val outSqG: Array[Float]) 
-extends Updater[EmbedWeights, EmbedGradient, EmbedAdaGradUpdater] with Serializable {
+extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
+  val fullSize = embSqG.length
   def updateWeights(g: EmbedGradient, w: EmbedWeights): Unit = {}
   def resetLearningRates(v: Float): Unit = {}
   def copy() : EmbedAdaGradUpdater = new EmbedAdaGradUpdater(initialLearningRate,embSqG, outSqG)
-  def compose(u: EmbedAdaGradUpdater) : EmbedAdaGradUpdater = this
+  def compose(u: EmbedAdaGradUpdater) : EmbedAdaGradUpdater = {
+    var i = 0; while (i < fullSize) {
+      embSqG(i) = math.max(embSqG(i),u.embSqG(i))
+      outSqG(i) = math.max(outSqG(i),u.outSqG(i))
+      i += 1
+    }
+    this
+  }
   
   @inline
   final private def fastSqrt(x: Float) : Float = 
     java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
     
-  def updateEmbeddingSqG(i: Int, wArr: Array[Float], g: Float) = {    
+  final def updateEmbeddingSqG(i: Int, wArr: Array[Float], g: Float) = {    
     embSqG(i) += g * g
     wArr(i) += (initialLearningRate * g / (initialLearningRate + fastSqrt(embSqG(i))))
   }
   
-  def updateOutputSqG(i: Int, wArr: Array[Float], g: Float) = {
+  final def updateOutputSqG(i: Int, wArr: Array[Float], g: Float) = {
     outSqG(i) += g * g
     wArr(i) += (initialLearningRate * g / (initialLearningRate + fastSqrt(outSqG(i))))
-  }
-  
+  }  
+  def updateNumProcessed() = {}
 }
 
 object EmbedWeights {

@@ -217,6 +217,13 @@ class GLPWeights(val wts: GLPLayout, m: Float) extends Weights[GLPWeights](m) wi
   }
 }
 
+class NullGLPUpdater() extends Updater[GLPWeights, GLPLossGradient, NullGLPUpdater] {
+  def copy() = new NullGLPUpdater
+  def resetLearningRates(v: Float) = {}
+  def compose(u: NullGLPUpdater) = this
+  def updateWeights(lossGrad: GLPLossGradient, weights: GLPWeights): Unit = {}
+}
+
 class BasicGLPSgdUpdater(val initialLearningRate: Double = 0.2, lambda: Double = 0.1) extends Updater[GLPWeights, GLPLossGradient, BasicGLPSgdUpdater] {
   var numIterations = 0
   def copy() = {

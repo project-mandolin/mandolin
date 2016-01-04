@@ -1,16 +1,16 @@
 package org.mitre.mandolin.glp
 
 
-import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, AlphabetWithUnitScaling, IOAssistant,
-  AbstractPrintWriter}
-
+import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, 
+AlphabetWithUnitScaling, IOAssistant, AbstractPrintWriter}
+import org.mitre.mandolin.optimize.Updater
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
 import org.mitre.mandolin.util.LineParser
 import scala.reflect.ClassTag
 
 case class GLPComponentSet(
-    evaluator: GLPInstanceEvaluator, 
+    ann: ANNetwork, 
     predictor: GLPPredictor, 
     outputConstructor: GLPPosteriorOutputConstructor, 
     featureExtractor: FeatureExtractor[String,GLPFactor],
@@ -156,23 +156,22 @@ abstract class AbstractProcessor extends LineParser {
         appSettings.filterFeaturesMI, appSettings.printFeatureFile, io)
   }
 
-  def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int): (GLPInstanceEvaluator, GLPPredictor, GLPPosteriorOutputConstructor) = {
+  def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int): (ANNetwork, GLPPredictor, GLPPosteriorOutputConstructor) = {
     val specs = getGLPSpec(confSpecs, idim, odim)
     getSubComponents(specs)
   }
 
-  def getSubComponents(specs: IndexedSeq[LType]): (GLPInstanceEvaluator, GLPPredictor, GLPPosteriorOutputConstructor) = {
+  def getSubComponents(specs: IndexedSeq[LType]): (ANNetwork, GLPPredictor, GLPPosteriorOutputConstructor) = {
     val nn = ANNetwork(specs)
-    val evaluator = new GLPInstanceEvaluator(nn)
     val predictor = new GLPPredictor(nn, true)
     val oc = new GLPPosteriorOutputConstructor
-    (evaluator, predictor, oc)
+    (nn, predictor, oc)
   }
 
   def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet): GLPComponentSet = {
-    val (evaluator, predictor, outConstructor) = getSubComponents(confSpecs, dim, labelAlphabet.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, labelAlphabet.getSize)
       val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, dim)
-      GLPComponentSet(evaluator, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
+      GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
   }
 
   def getComponentsDenseVecs(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
@@ -181,25 +180,25 @@ abstract class AbstractProcessor extends LineParser {
   }
 
   def getComponentsDenseVecs(layerSpecs: IndexedSeq[LType]): GLPComponentSet = {
-    val (evaluator, predictor, outConstructor) = getSubComponents(layerSpecs)
+    val (nn, predictor, outConstructor) = getSubComponents(layerSpecs)
     val labelAlphabet = new IdentityAlphabet(layerSpecs.last.dim)
     val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, layerSpecs.head.dim)
-    GLPComponentSet(evaluator, predictor, outConstructor, fe, labelAlphabet, layerSpecs.head.dim,1000)
+    GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, layerSpecs.head.dim,1000)
   }
 
   def getComponentsHashsedFeatures(confSpecs: List[Map[String, String]], randFeatures: Int, labelAlphabet: StdAlphabet): GLPComponentSet = {
     val fa = new RandomAlphabet(randFeatures)
-    val (evaluator, predictor, outConstructor) = getSubComponents(confSpecs, randFeatures, labelAlphabet.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, randFeatures, labelAlphabet.getSize)
     val fe = new SparseVecFeatureExtractor(fa, labelAlphabet)
-    GLPComponentSet(evaluator, predictor, outConstructor, fe, labelAlphabet, randFeatures, 1000)
+    GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, randFeatures, 1000)
   }
 
   def getComponentsHashedFeatures(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
     val fa = new RandomAlphabet(appSettings.numFeatures)
-    val (evaluator, predictor, outConstructor) = getSubComponents(appSettings.netspec, appSettings.numFeatures, la.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(appSettings.netspec, appSettings.numFeatures, la.getSize)
     val fe = new SparseVecFeatureExtractor(fa, la)
-    GLPComponentSet(evaluator, predictor, outConstructor, fe, la, appSettings.numFeatures,1000)
+    GLPComponentSet(nn, predictor, outConstructor, fe, la, appSettings.numFeatures,1000)
   }
 
   def getComponentsInducedAlphabet(confSpecs: List[Map[String, String]], lines: Iterator[String],
@@ -207,10 +206,10 @@ abstract class AbstractProcessor extends LineParser {
     val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
     fa.ensureFixed
     la.ensureFixed
-    val (evaluator, predictor, outConstructor) = getSubComponents(confSpecs, fa.getSize, la.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, fa.getSize, la.getSize)
     val isSparse = confSpecs.head("ltype").equals("InputSparse")
     val fe = if (isSparse) new SparseVecFeatureExtractor(fa, la) else new VecFeatureExtractor(fa, la)
-    GLPComponentSet(evaluator, predictor, outConstructor, fe, la, fa.getSize, npts)
+    GLPComponentSet(nn, predictor, outConstructor, fe, la, fa.getSize, npts)
   }
 
   def getComponentsInducedAlphabet(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
@@ -227,10 +226,10 @@ abstract class AbstractProcessor extends LineParser {
         new IdentityAlphabet(outputDim) 
     }
     val inDim = appSettings.netspec.head("dim").toInt
-    val (evaluator, predictor, outConstructor) = getSubComponents(appSettings.netspec, inDim, la.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(appSettings.netspec, inDim, la.getSize)
     val fe = new BagOneHotExtractor(la,inDim)
     // XXX - remove 1000 here and replace with count of number of data points
-    GLPComponentSet(evaluator, predictor, outConstructor, fe, la, inDim, 1000)
+    GLPComponentSet(nn, predictor, outConstructor, fe, la, inDim, 1000)
   }
 
   def getComponentsViaSettings(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {

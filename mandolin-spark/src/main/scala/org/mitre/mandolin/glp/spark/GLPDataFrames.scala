@@ -91,7 +91,7 @@ class GlpModel extends GLPDataFrames {
     val dp = new DistributedProcessor()
     val dim = mspec.wts.getInputDim
     val odim = mspec.wts.getOutputDim
-    val predictor = new GLPPredictor(mspec.evaluator.glp, true)
+    val predictor = new GLPPredictor(mspec.ann, true)
     val evalDecoder = new org.mitre.mandolin.predict.spark.EvalDecoder(mspec.fe, predictor)
     val wBc = sc.broadcast(mspec.wts)
     val tstVecs = mapDfToGLPFactors(sc, tstdata, dim, odim)
@@ -110,7 +110,7 @@ class GlpModel extends GLPDataFrames {
     val odim = trdata.select("label").rdd map {v => v.getDouble(0)} max // get the maximum value of the label column 
     val modelSpec = ANNetwork.fullySpecifySpec(mSpec, idim, odim.toInt + 1)
     val components = dp.getComponentsDenseVecs(modelSpec)
-    val glp = components.evaluator.glp
+    val glp = components.ann
     val layout = glp.generateZeroedLayout
     upSpec match {
       case AdaGradSpec(lr)     => estimate(components, trdata, modelSpec, new GLPAdaGradUpdater(layout, lr.toFloat), epochs, threads)
@@ -128,28 +128,28 @@ class GlpModel extends GLPDataFrames {
     val sc = trdata.sqlContext.sparkContext
     val dim = components.dim
     val odim = components.labelAlphabet.getSize
-    val glp = components.evaluator.glp
+    val glp = components.ann
+    val ev = new GLPInstanceEvaluator[U](glp)
     val optimizer = 
-      new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, U](sc, glp.generateRandomWeights, components.evaluator, updater, 
+      new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, U](sc, glp.generateRandomWeights, ev, updater, 
           epochs, 1, threads, None)
     val fvs = mapDfToGLPFactors(sc, trdata, dim, odim)
     val (w,_) = optimizer.estimate(fvs)
-    GLPModelSpec(w, components.evaluator, components.labelAlphabet, components.featureExtractor)    
+    GLPModelSpec(w, glp, components.labelAlphabet, components.featureExtractor)    
   }
   
   def estimate(trdata: DataFrame, appSettings: GLPModelSettings) : GLPModelSpec = {
     val dp = new DistributedProcessor(appSettings.numPartitions)
     val io = new SparkIOAssistant(trdata.sqlContext.sparkContext)
     val components = dp.getComponentsViaSettings(appSettings, io)       
-    val ev = components.evaluator
     val fe = components.featureExtractor
     val trainFile = appSettings.trainFile
     val sc = AppConfig.getSparkContext(appSettings)
-    val network = ev.glp
-    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, network, ev)
+    val network = components.ann
+    val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, network)
     val fvs = mapDfToGLPFactors(sc, trdata, trdata.columns.length - 1, components.labelAlphabet.getSize)
     val (w, _) = optimizer.estimate(fvs, Some(appSettings.numEpochs))
-    GLPModelSpec(w, components.evaluator, components.labelAlphabet, components.featureExtractor)
+    GLPModelSpec(w, network, components.labelAlphabet, components.featureExtractor)
   }
   
 }

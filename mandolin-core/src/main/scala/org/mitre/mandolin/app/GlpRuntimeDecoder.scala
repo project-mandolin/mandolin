@@ -35,7 +35,7 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
   val laSize = model.la.getSize
   val invLa  = model.la.getInverseMapping
   
-  val predictor = new GLPPredictor(model.evaluator.glp, true)
+  val predictor = new GLPPredictor(model.ann, true)
   val evalDecoder = new org.mitre.mandolin.predict.local.LocalPosteriorDecoder(fe, predictor, new GLPPosteriorOutputConstructor)
 
   fa.ensureFixed // make sure the feature alphabet is fixed

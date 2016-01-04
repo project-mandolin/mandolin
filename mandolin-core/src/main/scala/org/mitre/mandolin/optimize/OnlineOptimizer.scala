@@ -22,7 +22,7 @@ import org.mitre.mandolin.config.{ LearnerSettings, OnlineLearnerSettings }
  * @param miniBatchSize Number of datapoints to compute loss/gradient for each update
  * @author Ben Wellner, Karthik Prakhya
  */
-class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W, LG, U]](evaluator: TrainingUnitEvaluator[T, W, LG],
+class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W, LG, U]](evaluator: TrainingUnitEvaluator[T, W, LG, U],
   val workersPerPartition: Int = 16, synchronous: Boolean = false, numSubEpochs: Int = 1, skipProb: Double = 0.0, 
   miniBatchSize: Int = 1, concurrentBatch: Int = 0)
   extends Serializable {
@@ -68,7 +68,7 @@ abstract class AbstractThreadProcessor[T] {
 class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W, LG, U]](
   val data: Vector[T],
   val weights: W,
-  val evaluator: TrainingUnitEvaluator[T, W, LG],
+  val evaluator: TrainingUnitEvaluator[T, W, LG, U],
   val updater: U,
   skipProb: Double = 0.0,
   miniBatchSize: Int = 1)
@@ -81,12 +81,12 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
       if ((skipProb <= 0.0) || (util.Random.nextDouble() < skipProb)) {
         val totalLossGrad = if (miniBatchSize > 1) {
           val items = math.min(miniBatchSize + i, n) - i
-          val lossGrads = for (jj <- i until math.min(miniBatchSize + i, n)) yield evaluator.evaluateTrainingUnit(data(jj), weights)
+          val lossGrads = for (jj <- i until math.min(miniBatchSize + i, n)) yield evaluator.evaluateTrainingUnit(data(jj), weights, updater)
           i += items
           updater.resetMass(1.0f / items.toFloat) // set the update mass in updater to the number if 1.0/items to take average of gradient
           lossGrads reduce { _ ++ _ }
         } else {
-          val r = evaluator.evaluateTrainingUnit(data(i), weights)
+          val r = evaluator.evaluateTrainingUnit(data(i), weights, updater)
           i += 1
           r
         }
@@ -107,7 +107,7 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
 class SynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W, LG, U]](
   val data: Vector[T],
   val weights: W,
-  val evaluator: TrainingUnitEvaluator[T, W, LG],
+  val evaluator: TrainingUnitEvaluator[T, W, LG, U],
   val updater: U,
   rwLock: ReentrantReadWriteLock,
   skipProb: Double = 0.0,
@@ -124,11 +124,11 @@ class SynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <
         readLock.lock()
         val totalLossGrad = if (miniBatchSize > 1) {
           val items = math.min(miniBatchSize + i, n) - i
-          val lossGrads = for (jj <- i until math.min(miniBatchSize + i, n)) yield evaluator.evaluateTrainingUnit(data(jj), weights)
+          val lossGrads = for (jj <- i until math.min(miniBatchSize + i, n)) yield evaluator.evaluateTrainingUnit(data(jj), weights, updater)
           i += items
           lossGrads reduce { _ ++ _ }
         } else {
-          val r = evaluator.evaluateTrainingUnit(data(i), weights)
+          val r = evaluator.evaluateTrainingUnit(data(i), weights, updater)
           i += 1
           r
         }

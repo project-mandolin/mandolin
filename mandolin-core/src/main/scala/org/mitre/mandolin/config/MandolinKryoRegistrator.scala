@@ -24,7 +24,7 @@ trait MandolinRegistrator {
     kryo.register(classOf[org.mitre.mandolin.glp.GLPLossGradient])
     kryo.register(classOf[org.mitre.mandolin.glp.SparseToDenseReader])
     kryo.register(classOf[org.mitre.mandolin.glp.DenseReader])
-    kryo.register(classOf[org.mitre.mandolin.glp.GLPInstanceEvaluator])
+    kryo.register(classOf[org.mitre.mandolin.glp.GLPInstanceEvaluator[_]])
     kryo.register(classOf[org.mitre.mandolin.glp.VecFeatureExtractor])
     kryo.register(classOf[org.mitre.mandolin.glp.Layer])
     kryo.register(classOf[org.mitre.mandolin.glp.DenseInputLayer])
@@ -37,5 +37,8 @@ trait MandolinRegistrator {
     kryo.register(classOf[org.mitre.mandolin.util.IdentityAlphabet])
     kryo.register(classOf[org.mitre.mandolin.embed.EmbedWeights])
     kryo.register(classOf[org.mitre.mandolin.embed.NullUpdater])
+    kryo.register(classOf[org.mitre.mandolin.embed.EmbedAdaGradUpdater])
+    kryo.register(classOf[org.mitre.mandolin.embed.SeqInstance])
+    kryo.register(classOf[org.mitre.mandolin.embed.SeqInstanceExtractor])
   }
 }

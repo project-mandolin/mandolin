@@ -57,7 +57,7 @@ class RandomPartitioner(partitions: Int) extends Partitioner {
 class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: LossGradient[LG], U <: Updater[W, LG, U]: ClassTag](
   sc: SparkContext,
   val initialWeights: W,
-  val evaluator: TrainingUnitEvaluator[T, W, LG],
+  val evaluator: TrainingUnitEvaluator[T, W, LG, U],
   val initialUpdater: U,
   maxEpochs: Int,
   numSubEpochs: Int,
@@ -69,7 +69,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
   miniBatchSize: Int = 1,
   oversample: Double = 0.0) extends DistributedOptimizerEstimator[T, W] {
 
-  def this(_sc: SparkContext, _iw: W, _e: TrainingUnitEvaluator[T, W, LG], _u: U, _as: OnlineLearnerSettings) = {
+  def this(_sc: SparkContext, _iw: W, _e: TrainingUnitEvaluator[T, W, LG, U], _u: U, _as: OnlineLearnerSettings) = {
     this(_sc, _iw, _e, _u, _as.numEpochs, _as.numSubEpochs,
       _as.numThreads, _as.detailsFile,
       synchronous = _as.synchronous, skipProb = _as.skipProb, miniBatchSize = _as.miniBatchSize,

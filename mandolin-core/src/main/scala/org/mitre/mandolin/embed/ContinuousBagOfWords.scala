@@ -1,7 +1,7 @@
 package org.mitre.mandolin.embed
 
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, LocalIOAssistant}
-import org.mitre.mandolin.optimize.{TrainingUnitEvaluator}
+import org.mitre.mandolin.optimize.{TrainingUnitEvaluator, Updater}
 import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
 import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings, DecoderSettings}
@@ -29,14 +29,27 @@ object ContinuousBagOfWords {
     val vocabSize = mapping.getSize  
     val wts = EmbedWeights(eDim, vocabSize)     
     val fe = new SeqInstanceExtractor(mapping)
-    val up = new NullUpdater
-    val ev = new CBOWEvaluator(wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, up)    
-    val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,epochs,1,nthreads,None)
-    val trainer = new LocalTrainer(fe, optimizer)
     val io = new LocalIOAssistant
-    val lines = io.readLines(inFile.get).toVector
+    val lines = io.readLines(inFile.get).toVector    
+    if (appSettings.method equals "adagrad") {
+      println(">> Using AdaGrad adaptive weight update scheme <<")
+    val gemb = Array.fill(eDim * vocabSize)(0.0f)
+    val gout = Array.fill(eDim * vocabSize)(0.0f)    
+    val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)
+    val ev = new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable)    
+    val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](wts, ev, up,epochs,1,nthreads,None)
+    val trainer = new LocalTrainer(fe, optimizer)
     val (finalWeights,_) = trainer.trainWeights(lines)
     finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
+    } else {
+      println(">> Using vanilla SGD weight update scheme <<")
+      val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)
+      val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable)    
+      val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,epochs,1,nthreads,None)
+      val trainer = new LocalTrainer(fe, optimizer)
+      val (finalWeights,_) = trainer.trainWeights(lines)
+      finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
+    }
   }
 }
 
@@ -45,11 +58,9 @@ object ContinuousBagOfWords {
 /**
  * @author wellner
  */
-class CBOWEvaluator(val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, freqTable: Array[Int], logisticTable: Array[Float], up: NullUpdater)
-extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Serializable {
+class CBOWEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, freqTable: Array[Int], logisticTable: Array[Float])
+extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with Serializable {
   
-  val initialLearnRate = 0.1
-  val decay = 0.00001
   val ftLen = freqTable.length
   val hlSize = emb.embW.getDim2
   val vocabSize = emb.embW.getDim1
@@ -59,7 +70,7 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
   val logisticTableSizeCoef = logisticTable.length.toFloat / maxDp / 2.0f
   val eDp = 5.999f
   
-  // xorshift generator with period 2^128 - 1
+  // xorshift generator with period 2^128 - 1; on the order of 10 times faster than util.Random.nextInt
   var seed0 = util.Random.nextInt(Integer.MAX_VALUE)
   var seed1 = util.Random.nextInt(Integer.MAX_VALUE)
   
@@ -83,7 +94,7 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
   
   
   //workhorse function that updates weights directly without returning explicit gradient
-  def trainWeightsOnSequence(in: SeqInstance, w: EmbedWeights) : Unit = {
+  def trainWeightsOnSequence(in: SeqInstance, w: EmbedWeights, up: U) : Unit = {
     var spos = 0
     val seq = in.seq
     var bagSize = 0
@@ -95,8 +106,9 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
     if (in.ln > 2) {
     while (spos < in.ln) {
       bagSize = 0
-      up.totalProcessed += 1
-      val learningRate = initialLearnRate.toFloat / (1.0f + initialLearnRate.toFloat * up.totalProcessed * decay.toFloat)
+      up.updateNumProcessed()
+      //up.totalProcessed += 1
+      //val learningRate = initialLearnRate.toFloat / (1.0f + initialLearnRate.toFloat * up.totalProcessed * decay.toFloat)
       //if ((up.totalProcessed % 10000) == 0) printf("\r%d instances procssed .. learning rate %f ", up.totalProcessed, learningRate)    
       val curWord = seq(spos)
       set(h,0.0f)
@@ -132,21 +144,25 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
           dp += h(i) * l2Ar(offset + i)         
           i += 1 } 
         val out = if (dp >= eDp) 1.0f else if (dp <= -eDp) 0.0f else logisticFn(dp)
-        val o_err = (label - out) * learningRate // XXX - AdaGrad update here         
+        //val o_err = (label - out) * learningRate // XXX - AdaGrad update here
+        val o_err = (label - out)
         i = 0; while (i < hlSize) { 
           d(i) += o_err * l2Ar(offset + i)
           i += 1}
-        i = 0; while (i < hlSize) { 
-          l2Ar(offset + i) += o_err * h(i)
+        i = 0; while (i < hlSize) {
+          val g = o_err * h(i)
+          up.updateOutputSqG(offset + i, l2Ar, g)
+          //l2Ar(offset + i) += o_err * h(i)
           i += 1}
         s += 1
       }
       a = b; while (a < wSize * 2 + 1 - b) {
         con_i = spos - wSize + a
         if ((a != wSize) && (con_i >= 0) && (con_i < in.ln)) {
-          val wi = seq(con_i)
-          var i = 0; while (i < hlSize) {             
-            l1Ar(i + wi * hlSize) += d(i)
+          val offset = seq(con_i) * hlSize
+          var i = 0; while (i < hlSize) {
+            up.updateEmbeddingSqG(i + offset, l1Ar, d(i))
+            //l1Ar(i + offset) += d(i)
             i += 1
           }
         }
@@ -158,13 +174,13 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient] with Se
     
   }
       
-  def evaluateTrainingUnit(unit: SeqInstance, weights: EmbedWeights) : EmbedGradient = { 
-    trainWeightsOnSequence(unit, weights)
+  def evaluateTrainingUnit(unit: SeqInstance, weights: EmbedWeights, up: U) : EmbedGradient = { 
+    trainWeightsOnSequence(unit, weights, up)
     new EmbedGradient()
   }  
   
   def copy() = {
     // this copy will share weights but have separate layer data members
-    new CBOWEvaluator(emb.sharedWeightCopy(), wSize, negSampleSize, freqTable, logisticTable, up) 
+    new CBOWEvaluator(emb.sharedWeightCopy(), wSize, negSampleSize, freqTable, logisticTable) 
   }
 }
