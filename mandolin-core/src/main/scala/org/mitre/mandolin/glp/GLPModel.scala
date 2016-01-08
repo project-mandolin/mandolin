@@ -17,7 +17,7 @@ abstract class GLPModelWriter {
   def writeModel(io: IOAssistant, filePath: String, w: GLPWeights, la: Alphabet, ann: ANNetwork, fe: FeatureExtractor[String, GLPFactor]) : Unit
 }
 
-abstract class GLPModelReader[U <: Updater[GLPWeights, GLPLossGradient, U]] {
+abstract class GLPModelReader {
   def readModel(f: String, io: IOAssistant) : GLPModelSpec
 }
 

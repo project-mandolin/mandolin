@@ -5,6 +5,7 @@ import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.AccumulatorParam
 
 import org.mitre.mandolin.glp._
 import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, DistributedOptimizerEstimator}

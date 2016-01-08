@@ -2,7 +2,9 @@ package org.mitre.mandolin.glp.spark
 
 import org.mitre.mandolin.glp._
 import org.mitre.mandolin.optimize.spark.DistributedOnlineOptimizer
+import org.mitre.mandolin.optimize.Updater
 import org.apache.spark.SparkContext
+import org.apache.spark.AccumulatorParam
 
 object DistributedGLPOptimizer {
 
@@ -19,6 +21,14 @@ object DistributedGLPOptimizer {
     val l1Array = if (l1ArrayVals.max > 0.0) Some(l1ArrayVals.toArray) else None
     val l2Array = if (l2ArrayVals.max > 0.0) Some(l2ArrayVals.toArray) else None
     val maxNormArray = if (mnArrayVals.max > 0.0) Some(mnArrayVals.toArray) else None
+    
+    def getAccumulator[U <: Updater[GLPWeights, GLPLossGradient, U]] = new AccumulatorParam[U] {
+      def zero(v: U) = {
+            v.resetLearningRates(0.0f)
+            v
+          }
+      def addInPlace(v1: U, v2: U) = v1 compose v2
+    }
     
     appSettings.method match {
       case "adagrad" =>

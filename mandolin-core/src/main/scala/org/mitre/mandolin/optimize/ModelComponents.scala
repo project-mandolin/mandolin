@@ -89,6 +89,8 @@ abstract class Updater[W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,L
   def resetLearningRates(v: Float): Unit
   def resetMass(v: Float = 1.0f) : Unit = updaterMass = v 
   def copy() : U
+
+  def updateFromArray(a: Array[Float]) : Unit
   
   def getDiagnostic() : String = ""
   
@@ -102,8 +104,10 @@ abstract class Updater[W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,L
    * Override compress and decompress methods to provide effciency gains when sending
    * updaters over the wire.
    */ 
-  def compress() : Unit = {}
-  def decompress() : Unit = {}
+  def compress() : U
+  def decompress() : U
+  
+  def asArray : Array[Float]
 }
 
 

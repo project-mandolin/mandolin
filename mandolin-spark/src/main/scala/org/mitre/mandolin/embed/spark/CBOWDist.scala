@@ -9,7 +9,7 @@ import org.mitre.mandolin.predict.spark.Trainer
 import org.mitre.mandolin.glp.spark.AppConfig
 
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkContext, AccumulatorParam}
 import org.apache.spark.rdd.RDD
 
 object CBOWDist {
@@ -78,20 +78,24 @@ object CBOWDist {
     val fe = new SeqInstanceExtractor(mapping)
     val gemb = Array.fill(eDim * vocabSize)(0.0f)
     val gout = Array.fill(eDim * vocabSize)(0.0f)
+    println("*** Number of parameters = " + (eDim * vocabSize * 2))
     val lines1 = lines.coalesce(appSettings.numPartitions, true) // coalesce for SGD
-    if (appSettings.method == "adagrad") {
+    if (appSettings.method equals "adagrad") {
+      println("*** Using AdaGrad stochastic optimization ***")
       val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)            
-      val ev = new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable)
-      val optimizer = new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](sc, wts, ev, up,epochs,1,nthreads,None)
+      val ev = new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample, freqs, logisticTable)
+      val optimizer = 
+        new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](sc, wts, ev, up, epochs,1,nthreads,None)
       val trainer = new Trainer(fe, optimizer)
       val io = new SparkIOAssistant(sc)
       val (finalWeights,_) = trainer.trainWeights(lines1)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     }
     else {
+      println("*** Using SGD optimization ***")
       val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)            
-      val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable)
-      val optimizer = new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](sc, wts, ev, up,epochs,1,nthreads,None)
+      val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable)      
+      val optimizer = new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](sc, wts, ev, up, epochs,1,nthreads,None)
       val trainer = new Trainer(fe, optimizer)
       val io = new SparkIOAssistant(sc)
       val (finalWeights,_) = trainer.trainWeights(lines1)

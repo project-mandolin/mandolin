@@ -218,14 +218,26 @@ class GLPWeights(val wts: GLPLayout, m: Float) extends Weights[GLPWeights](m) wi
 }
 
 class NullGLPUpdater() extends Updater[GLPWeights, GLPLossGradient, NullGLPUpdater] {
+
   def copy() = new NullGLPUpdater
   def resetLearningRates(v: Float) = {}
   def compose(u: NullGLPUpdater) = this
   def updateWeights(lossGrad: GLPLossGradient, weights: GLPWeights): Unit = {}
+  def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
+  def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")
+  def compress() = this
+  def decompress() = this
+
 }
 
 class BasicGLPSgdUpdater(val initialLearningRate: Double = 0.2, lambda: Double = 0.1) extends Updater[GLPWeights, GLPLossGradient, BasicGLPSgdUpdater] {
   var numIterations = 0
+  
+  def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
+  def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")
+  def compress() = this
+  def decompress() = this
+
   def copy() = {
     val sgd = new BasicGLPSgdUpdater(initialLearningRate)
     sgd.numIterations = this.numIterations
@@ -347,6 +359,11 @@ class GLPAdamUpdater(val alpha: Float, beta1: Float, beta2: Float, val mom1: GLP
   var beta2T = beta2
 
   val nLayers = mom1.length
+
+  def compress() = this
+  def decompress() = this
+  def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")  
+  def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
   def copy() = {
     val sgd = new GLPAdamUpdater(alpha, beta1, beta2, mom1, mom2, composeSt, maxNormArray, l1Array, l2Array)
     sgd.numIterations = this.numIterations
@@ -354,7 +371,10 @@ class GLPAdamUpdater(val alpha: Float, beta1: Float, beta2: Float, val mom1: GLP
     sgd.beta2T = this.beta2T
     sgd
   }
-  def resetLearningRates(v: Float) = {}
+  def resetLearningRates(v: Float) = {
+    mom1.set(v)
+    mom2.set(v)
+  }
   
   def compose(u: GLPAdamUpdater) = {
     for (i <- 0 until nLayers) {      
@@ -514,13 +534,21 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
 
   var numIterations = 0
   val nLayers = momentum.length
-  
+
+  def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")
+  def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
+
+  def compress() = this
+  def decompress() = this
+
   def copy() = {
     val sgd = new GLPSgdUpdater(momentum, nesterov, initialLearningRate, maxNormArray, l1Array, l2Array, numPoints, compose)
     sgd.numIterations = this.numIterations
     sgd
   }
-  def resetLearningRates(v: Float) = {}
+  def resetLearningRates(v: Float) = {
+    momentum.set(v)
+  }
 
   def compose(u: GLPSgdUpdater) = {
     for (i <- 0 until nLayers) {
@@ -667,6 +695,12 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Floa
   var numIterations = 0
   val rhoInv = 1.0f - rho
   
+  def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")  
+  def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
+  def compress() = this
+  def decompress() = this
+
+  
   /*
    * A <i>shallow</i> copy so learning rates are shared across threads/partitions on same machine
    */
@@ -800,6 +834,11 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Floa
   sumSquared set initialLearningRate // set sum squared to initial learning rate
 
   val nLayers = sumSquared.length
+  
+  def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
+  def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")
+  def compress() = this
+  def decompress() = this
 
   /*
    * A <i>shallow</i> copy so learning rates are shared across threads/partitions
@@ -826,6 +865,7 @@ class GLPAdaGradUpdater(val sumSquared: GLPLayout, val initialLearningRate: Floa
     }
     this
   }
+    
 
   @inline
   final private def fastSqrt(x: Double) =
@@ -948,14 +988,21 @@ class GLPAdaDeltaUpdater(val sumSquared: GLPLayout, val prevUpdates: GLPLayout, 
   @inline
   final private def fastSqrt(x: Float) : Float = 
     java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
-      
 
+  def compress() = this
+  def decompress() = this
+
+  def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")
+  def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
   /*
    * A <i>shallow</i> copy so learning rates are shared across threads/partitions
    */
   def copy() = new GLPAdaDeltaUpdater(sumSquared, prevUpdates, epsilon, rho)
 
-  def resetLearningRates(v: Float) = throw new RuntimeException("not clear how to reset adadelta")
+  def resetLearningRates(v: Float) = {
+    sumSquared.set(v)
+    prevUpdates.set(v)
+  }
 
   def compose(u: GLPAdaDeltaUpdater) = {
     for (i <- 0 until nLayers) {

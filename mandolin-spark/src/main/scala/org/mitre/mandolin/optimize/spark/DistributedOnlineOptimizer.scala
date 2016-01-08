@@ -82,7 +82,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
 
   protected var weights = initialWeights
   protected var updater = initialUpdater
-
+  
   /**
    * Estimates/trains model parameters
    * @param rdd - training data in RDD
@@ -94,7 +94,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
     val mx = mxEpochs.getOrElse(maxEpochs)
     var finalLoss = 0.0
     for (i <- 1 to mx) {
-      val (loss, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater)
+      val (loss, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater)      
       val ct = (System.nanoTime() - t0) / 1.0E9
       optOut.writeln(i.toString() + "\t" + loss + "\t" + ct)
       newWeights.resetMass()
@@ -105,7 +105,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
     }
     (weights, finalLoss)
   }
-
+  
   /**
    * @param rdd All data elements represented as an RDD
    * @param numPartitions Number of partitions to create for training
@@ -122,8 +122,8 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
     currentWeights.resetMass(1.0f) // ensure the masses on weights are reset
     val bc = sc.broadcast(currentWeights)
     val bcUpdater = sc.broadcast(currentUpdater)
-    val ep = new EpochProcessor[T, W, LG, U](evaluator, workersPerPartition = workersPerPartition,
-      synchronous = synchronous, numSubEpochs = numSubEpochs, skipProb = skipProb)
+    val bcEp = sc.broadcast(new EpochProcessor[T, W, LG, U](evaluator, workersPerPartition = workersPerPartition,
+      synchronous = synchronous, numSubEpochs = numSubEpochs, skipProb = skipProb))
     val _ensureSparse = ensureSparse
 
     val trainRDD =
@@ -137,6 +137,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
       val parameterSet = trainRDD.mapPartitions({ insts =>
         val w = bc.value
         val u = bcUpdater.value
+        val ep = bcEp.value
         w.resetMass(1.0f)
         u.resetMass(1.0f)
         val partitionInsts = insts.toVector // pull in data points to a vector -- note this duplicates between here and local cache
@@ -145,9 +146,8 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
         val loss = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u)
         if (_ensureSparse) {
           w.compress()
-          u.compress()
-        }
-        Seq((loss, w, u)).toIterator
+        }        
+        Seq((loss, w, u.compress())).toIterator
       }, true)
       parameterSet reduce {
         case (l, r) =>
@@ -156,4 +156,67 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
     }
     (lossAndParamSums._1, lossAndParamSums._2, lossAndParamSums._3)
   }
+  
+  
+  
+  def processEpochLargeModel1(rdd: RDD[T], numPartitions: Int, curEpoch: Int, currentWeights: W, currentUpdater: U): (Double, W, U) = {
+    if (ensureSparse) {
+      currentWeights.compress()
+      currentUpdater.compress()
+    }
+    currentWeights.resetMass(1.0f) // ensure the masses on weights are reset
+    val bc = sc.broadcast(currentWeights)
+    val bcUpdater = sc.broadcast(currentUpdater)
+    val bcEp = sc.broadcast(new EpochProcessor[T, W, LG, U](evaluator, workersPerPartition = workersPerPartition,
+      synchronous = synchronous, numSubEpochs = numSubEpochs, skipProb = skipProb))
+    val _ensureSparse = ensureSparse
+    val lossAc = sc.accumulator(0.0)
+    val numPartitions = rdd.partitions.length
+    val trainRDD =
+      if (oversample > 0.0) {
+        val withReplacement = (oversample > 1.0)        
+        val sampled = rdd.sample(withReplacement, oversample).map(x => (x, 1))
+        sampled.partitionBy(new RandomPartitioner(numPartitions)).map(x => x._1)
+      } else rdd
+    val lossAndParamSums = {
+      val parameterSet = trainRDD.mapPartitions({ insts =>
+        val w = bc.value
+        val u = bcUpdater.value
+        val ep = bcEp.value
+        w.resetMass(1.0f)
+        u.resetMass(1.0f)
+        val partitionInsts = insts.toVector // pull in data points to a vector 
+        w.decompress()
+        u.decompress()
+        val loss = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u)
+        if (_ensureSparse) {
+          w.compress()
+          u.compress()
+        }
+        lossAc += loss
+        val arW = w.asArray
+        val arU = u.asArray  
+        // idea here ... 
+        // use accumulator to handle loss
+        // represent weights and learning rates with tuples (index, weight, learning rate)
+        // map index
+        //Seq((loss, w, u)).toIterator
+        Iterator.tabulate(arW.length)(i => (i, (arW(i), arU(i))))
+      }, true)
+      parameterSet reduceByKey {(a,b) => ((a._1 + b._1), (a._2 + b._2))}
+    }  
+    val size = currentWeights.asArray.length
+    val wArr = Array.fill(size)(0.0f)
+    val uArr = Array.fill(size)(0.0f)
+    lossAndParamSums.toLocalIterator foreach { case (ind, (wv, uv)) =>
+      wArr(ind) = wv / numPartitions
+      uArr(ind) = uv / numPartitions  // need to normalize this back to get the average
+    }
+    currentWeights.updateFromArray(wArr)
+    currentUpdater.updateFromArray(uArr)
+    // add capabilities to consturct weights efficiently from indexed iterator 
+    (lossAc.value, currentWeights, currentUpdater)
+  }
 }
+
+
