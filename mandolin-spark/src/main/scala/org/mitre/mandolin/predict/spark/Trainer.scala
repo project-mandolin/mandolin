@@ -33,6 +33,7 @@ class Trainer[IType, U : ClassTag, W <: Weights[W]](
     val _opt = opt
     val fs = rdd map { _fe.extractFeatures }
     fs.persist(persistLevel) // persist before estimation
+    rdd.unpersist() // drop the RDD here once we have the results of feature extraction
     _opt.estimate(fs)
   }
 

@@ -147,24 +147,27 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
   val fullSize = embSqG.length
   def getZeroUpdater = new EmbedAdaGradUpdater(initialLearningRate, Array.fill(fullSize)(0.0f), Array.fill(fullSize)(0.0f))
 
-  var isCompressed = false
   var compressedEmbSqG = (Array[Byte](), Array[Float]())
   var compressedOutSqG = (Array[Byte](), Array[Float]())
   
   def compress() = {
-    val ne = new EmbedAdaGradUpdater(initialLearningRate, Array(), Array())
-    ne.compressedEmbSqG_=(SimpleFloatCompressor.compress(embSqG))
-    ne.compressedOutSqG_=(SimpleFloatCompressor.compress(outSqG))
-    ne.isCompressed_=(true)
-    ne
+    if (!isCompressed) {
+      val ne = new EmbedAdaGradUpdater(initialLearningRate, Array(), Array())
+      ne.compressedEmbSqG_=(SimpleFloatCompressor.compress(embSqG))
+      ne.compressedOutSqG_=(SimpleFloatCompressor.compress(outSqG))
+      ne.isCompressed_=(true)    
+      ne 
+    } else this
   }
   
   def decompress() = {
-    val (eAr,eVls) = compressedEmbSqG
-    val (oAr,oVls) = compressedOutSqG
-    val nEmb = Array.tabulate(eAr.length){i => eVls(eAr(i) + 128)}
-    val nOut = Array.tabulate(oAr.length){i => oVls(oAr(i) + 128)}
-    new EmbedAdaGradUpdater(initialLearningRate, nEmb, nOut)
+    if (isCompressed) {
+      val (eAr,eVls) = compressedEmbSqG
+      val (oAr,oVls) = compressedOutSqG
+      val nEmb = Array.tabulate(eAr.length){i => eVls(eAr(i).toInt + 128)}
+      val nOut = Array.tabulate(oAr.length){i => oVls(oAr(i).toInt + 128)}
+      new EmbedAdaGradUpdater(initialLearningRate, nEmb, nOut)
+    } else this
   }
   
   def updateWeights(g: EmbedGradient, w: EmbedWeights): Unit = {}
@@ -190,7 +193,15 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
     Array.tabulate(fullSize*2){i => if (i < fullSize) embSqG(i) else outSqG(i - fullSize) }
   }
   
-  def copy() : EmbedAdaGradUpdater = new EmbedAdaGradUpdater(initialLearningRate,embSqG, outSqG)
+  def copy() : EmbedAdaGradUpdater = {
+    val cc = new EmbedAdaGradUpdater(initialLearningRate,embSqG, outSqG)
+    // important state
+    cc.compressedEmbSqG_=(this.compressedEmbSqG)
+    cc.compressedOutSqG_=(this.compressedEmbSqG)
+    cc.isCompressed_=(this.isCompressed)
+    cc
+  }
+  
   def compose(u: EmbedAdaGradUpdater) : EmbedAdaGradUpdater = {
     if (isCompressed) {
       val (eAr, eVls) = compressedEmbSqG
@@ -200,6 +211,9 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
       var i = 0; while (i < eAr.length) {
         eAr(i) = math.max(eAr(i), u_eAr(i)).toByte
         oAr(i) = math.max(oAr(i), u_oAr(i)).toByte
+        i += 1
+      }
+      i = 0; while (i < oVls.length) {
         eVls(i) = math.max(eVls(i), u_eVls(i))
         oVls(i) = math.max(oVls(i), u_oVls(i))
         i += 1

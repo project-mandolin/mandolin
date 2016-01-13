@@ -81,6 +81,9 @@ abstract class TrainingUnitEvaluator[T, W <: Weights[W], LG <: LossGradient[LG],
  * @author Ben Wellner
  */ 
 abstract class Updater[W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,LG,U] ](var updaterMass: Float = 1.0f) extends Serializable {
+  
+  var isCompressed : Boolean = false 
+  
   /**
    * Modify the weights, W, given the provided LossGradient. Different ML algorithms can be realized with
    * different update methods.
@@ -106,6 +109,7 @@ abstract class Updater[W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,L
    */ 
   def compress() : U
   def decompress() : U
+
   
   def asArray : Array[Float]
 }

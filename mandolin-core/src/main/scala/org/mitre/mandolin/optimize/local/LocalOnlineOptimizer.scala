@@ -69,7 +69,6 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
         synchronous = synchronous, numSubEpochs = numSubEpochs, skipProb = skipProb)
     val ss = System.nanoTime
     val loss = ep.processPartitionWithinEpoch(curEpoch, data, currentWeights, currentUpdater)
-    println("*** Epoch processed in " + ((System.nanoTime - ss) / 1E9) + " seconds ***")
     (loss, currentWeights, currentUpdater)
   }
   

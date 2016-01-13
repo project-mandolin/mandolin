@@ -79,7 +79,7 @@ object CBOWDist {
     val gemb = Array.fill(eDim * vocabSize)(0.0f)
     val gout = Array.fill(eDim * vocabSize)(0.0f)
     println("*** Number of parameters = " + (eDim * vocabSize * 2))
-    val lines1 = lines.coalesce(appSettings.numPartitions, true) // coalesce for SGD
+    val lines1 = lines.repartition(appSettings.numPartitions * appSettings.numThreads).coalesce(appSettings.numPartitions, false) // repartition should balance these across cluster ..
     if (appSettings.method equals "adagrad") {
       println("*** Using AdaGrad stochastic optimization ***")
       val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)            
@@ -87,7 +87,7 @@ object CBOWDist {
       val optimizer = 
         new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](sc, wts, ev, up, epochs,1,nthreads,None)
       val trainer = new Trainer(fe, optimizer)
-      val io = new SparkIOAssistant(sc)
+      //val io = new SparkIOAssistant(sc)
       val (finalWeights,_) = trainer.trainWeights(lines1)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     }

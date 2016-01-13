@@ -121,7 +121,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
     }
     currentWeights.resetMass(1.0f) // ensure the masses on weights are reset
     val bc = sc.broadcast(currentWeights)
-    val bcUpdater = sc.broadcast(currentUpdater)
+    val bcUpdater = sc.broadcast(currentUpdater.compress())
     val bcEp = sc.broadcast(new EpochProcessor[T, W, LG, U](evaluator, workersPerPartition = workersPerPartition,
       synchronous = synchronous, numSubEpochs = numSubEpochs, skipProb = skipProb))
     val _ensureSparse = ensureSparse
@@ -141,9 +141,8 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
         w.resetMass(1.0f)
         u.resetMass(1.0f)
         val partitionInsts = insts.toVector // pull in data points to a vector -- note this duplicates between here and local cache
-        w.decompress()
-        u.decompress()
-        val loss = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u)
+        w.decompress()     
+        val loss = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u.decompress())
         if (_ensureSparse) {
           w.compress()
         }        

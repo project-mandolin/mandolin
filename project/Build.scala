@@ -31,7 +31,7 @@ object MandolinBuild extends Build {
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre.mandolin",
-    version := "0.3.2-SNAPSHOT",
+    version := "0.3.3-SNAPSHOT",
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
     publishTo := {
@@ -92,9 +92,9 @@ object MandolinBuild extends Build {
   def sparkDependencySettings : Seq[Setting[_]] = {
     Seq(
       libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-core" % "1.5.0",
-      "org.apache.spark" %% "spark-sql"  % "1.5.0",
-      "org.apache.spark" %% "spark-mllib"  % "1.5.0"      
+      "org.apache.spark" %% "spark-core" % "1.5.2",
+      "org.apache.spark" %% "spark-sql"  % "1.5.2",
+      "org.apache.spark" %% "spark-mllib"  % "1.5.2"      
       )
     )
   }  
