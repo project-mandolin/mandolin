@@ -29,7 +29,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
       val rv = new scala.util.Random
       var i = 0; while (i < curDim) {
         var j = 0; while (j < prevDim) {
-          w.update(i, j, getGaussian(rv, gv).toFloat)
+          if (util.Random.nextBoolean()) w.update(i, j, getGaussian(rv, gv).toFloat)
           j += 1
         }
         i += 1
@@ -38,7 +38,7 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
     val b = DenseVec.zeros(curDim)
     lt.designate match {
       case TanHLType => b += (0.5f)
-      case ReluLType => b += (0.1f)
+      //case ReluLType => b += (0.1f)
       case _ =>
     }
     (w, b)

@@ -55,7 +55,8 @@ class RegressionConfusion(var error: Double) extends Confusion[RegressionConfusi
   def getROCofIndex(i: Int) = throw new RuntimeException("Unsupported method")
 }
 
-class DiscreteConfusion(val dim: Int, val matrix: Array[Array[Float]], val scoreVals: ArrayBuffer[(Array[Float], Int)], var weight: Int = -1) extends Confusion[DiscreteConfusion] {
+class DiscreteConfusion(val dim: Int, val matrix: Array[Array[Float]], val scoreVals: ArrayBuffer[(Array[Float], Int)], var weight: Int = -1) 
+extends Confusion[DiscreteConfusion] with Serializable {
 
   def this(dim: Int) = this(dim, Array.tabulate(dim) { _ => Array.fill(dim)(0.0f) }, new ArrayBuffer[(Array[Float], Int)]())
   def this(dim: Int, m: Array[Array[Float]]) = this(dim, m, new ArrayBuffer[(Array[Float], Int)]())

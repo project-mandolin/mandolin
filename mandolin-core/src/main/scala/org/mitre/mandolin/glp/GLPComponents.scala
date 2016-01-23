@@ -673,7 +673,7 @@ class GLPSgdUpdater(val momentum: GLPLayout, val nesterov: Boolean = true,
               } 
               })
         }
-          if (maxNorm > 0)
+          if (maxNorm > 0.0f)
             w_w match { 
               case ww: DenseMat => rescaleWeightsDense(ww, w_b, d1, d2, maxNorm) 
               case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)
@@ -689,7 +689,8 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Floa
                         compose: ComposeStrategy = Minimum)
   extends Updater[GLPWeights, GLPLossGradient, GLPRMSPropUpdater] with Regularizer {
 
-  sumSquared set initialLearningRate // set sum squared to initial learning rate
+  // set sum squared to initial learning rate
+  //sumSquared set initialLearningRate 
 
   val nLayers = sumSquared.length
   var numIterations = 0
@@ -704,7 +705,8 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Floa
   /*
    * A <i>shallow</i> copy so learning rates are shared across threads/partitions on same machine
    */
-  def copy() = new GLPRMSPropUpdater(sumSquared, initialLearningRate)
+  def copy() = 
+    new GLPRMSPropUpdater(sumSquared, initialLearningRate, lambda, rho, epsilon, maxNormArray, l1Array, l2Array)
 
   def resetLearningRates(v: Float) = sumSquared.timesEquals(initialLearningRate * v)
 
@@ -816,7 +818,7 @@ class GLPRMSPropUpdater(val sumSquared: GLPLayout, val initialLearningRate: Floa
             i += 1
           }
         }          
-        if (maxNorm > 0)
+        if (maxNorm > 0.0f)
             w_w match { 
               case ww: DenseMat => rescaleWeightsDense(ww, w_b, d1, d2, maxNorm) 
               case ww: SparseMat => rescaleWeightsSparse(ww, w_b, d1, maxNorm)

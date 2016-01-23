@@ -140,7 +140,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
         val ep = bcEp.value
         w.resetMass(1.0f)
         u.resetMass(1.0f)
-        val partitionInsts = insts.toVector // pull in data points to a vector -- note this duplicates between here and local cache
+        val partitionInsts = util.Random.shuffle(insts.toVector) 
         w.decompress()     
         val loss = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u.decompress())
         if (_ensureSparse) {

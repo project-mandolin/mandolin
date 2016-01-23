@@ -31,16 +31,27 @@ object CBOWDist {
   val numRe = "^[0-9.,]+$".r
   
   def getNormalizedString(t: String) : String = {
-    val s = t.replaceAll("[^0-9a-zA-z]", "")
+    val s = t.replaceAll("\\p{Punct}", "")
     if (numRe.findFirstIn(s).isDefined) "-NUM-" else s
   }
   
-  def getVocabularyAndFreqs(lines: RDD[String], minCnt: Int, smoothFactor: Double) = {
+  def getVocabularyAndFreqs(lines: RDD[String], dim: Int, minCnt: Int, smoothFactor: Double) = {
+    val maxVocabSize = (Integer.MAX_VALUE / dim / 21).toInt // this is an upper bound on the vocab size due to serialization constraints
     val _mc = minCnt
-    val res = lines.flatMap { x => x.split("[ \n\r\t]+") }
+    val res1 = lines.flatMap { x => x.split("[ \n\r\t]+") }
                .map{x => (getNormalizedString(x),1)}.filter{x => x._1.length() > 0} 
-               .reduceByKey {_ + _} filter {x => x._2 >= _mc }
-    val hist = res.collect()
+               .reduceByKey {_ + _}
+    val res2 = res1 filter {x => x._2 >= _mc }
+    val curSize = res2.count()
+    val hist = 
+      if (curSize <= maxVocabSize) {
+        println("*** Using vocab size of " + curSize + " ... ")
+        res2.collect() 
+      } 
+      else {
+        println("*** Warning: Filtered vocab size = " + curSize + " reducing to maxVocabSize = " + maxVocabSize + " based on embedding size = " + dim)
+        res2.sortBy(si => si._2, false).take(maxVocabSize)
+      }
     val size = hist.length
     val alphabet = new StdAlphabet
     val ft = Array.tabulate(size){i => alphabet.ofString(hist(i)._1); hist(i)._2}
@@ -62,7 +73,9 @@ object CBOWDist {
       a += 1
     }
     (alphabet, ut, constructLogisticTable(6.0f))
-  }  
+  }
+  
+  
 
   def main(args: Array[String]) = {
     val appSettings = new org.mitre.mandolin.embed.CBOWModelSettings(args)
@@ -72,7 +85,7 @@ object CBOWDist {
     val eDim   = appSettings.eDim
     val sc = AppConfig.getSparkContext(appSettings)
     val lines = sc.textFile(inFile.get)
-    val (mapping, freqs, logisticTable) = getVocabularyAndFreqs(lines, appSettings.minCnt, 0.75)
+    val (mapping, freqs, logisticTable) = getVocabularyAndFreqs(lines, appSettings.eDim, appSettings.minCnt, 0.75)
     val vocabSize = mapping.getSize  
     val wts = EmbedWeights(eDim, vocabSize) 
     val fe = new SeqInstanceExtractor(mapping)

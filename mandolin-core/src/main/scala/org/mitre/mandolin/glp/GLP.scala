@@ -28,7 +28,7 @@ class VecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
   def getAlphabet = alphabet
   
   def extractFeatures(s: String): GLPFactor = {
-    val (l, spv, id) = sparseOfLine(s, alphabet, addBias = false)
+    val (l, spv, id) = sparseOfLine(s, alphabet)
     val dVec : DenseVec = DenseVec.zeros(alphabet.getSize)    
     spv foreach { f =>
       if (f.fid >= 0) {
@@ -60,7 +60,7 @@ class SparseVecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
   def getAlphabet = alphabet
   
   def extractFeatures(s: String): GLPFactor = {
-    val (l, spv, id) = sparseOfLine(s, alphabet, addBias = false)
+    val (l, spv, id) = sparseOfLine(s, alphabet)
     val spVec : SparseVec = SparseVec(alphabet.getSize)    
     spv foreach { f =>
       if (f.fid >= 0) {
@@ -84,16 +84,16 @@ class SparseVecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
  * the features have already been mapped to integers - e.g. with datasets in libSVM/libLINEAR format. 
  * @author
  */
-class StdVectorExtractorWithAlphabet(la: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
-  val reader = new SparseToDenseReader(' ', nfs)
+class StdVectorExtractorWithAlphabet(la: Alphabet, fa: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
+  val reader = new SparseToDenseReader(' ', fa, nfs)
   
-  def getAlphabet = new IdentityAlphabet(nfs)
+  def getAlphabet = fa
   
   def extractFeatures(s: String) : GLPFactor = {
     val (lab, features) = reader.getLabeledLine(s)
     val targetVec = DenseVec.zeros(la.getSize)
     targetVec.update(la.ofString(lab), 1.0f) // set one-hot
-    new StdGLPFactor(features, targetVec)
+    new StdGLPFactor(features, targetVec)  
   }
   def getNumberOfFeatures = nfs
 }
@@ -119,7 +119,6 @@ class BagOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String
     val targetVec : Vec = SparseVec.getOneHot(la.getSize, la.ofString(lab))
     val (inds, vls) = mm.toList.unzip
     val spv = SparseVec.getStaticSparseTensor1(nfs, inds.toArray, vls.toArray)
-    if ((x % 10000) == 1) println("Processed " + x + " input vectors")
     new SparseGLPFactor(spv, targetVec)
   }
 }

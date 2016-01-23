@@ -2,7 +2,7 @@ package org.mitre.mandolin.glp
 
 
 import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, 
-AlphabetWithUnitScaling, IOAssistant, AbstractPrintWriter}
+AlphabetWithUnitScaling, IdentityAlphabetWithUnitScaling, IOAssistant, AbstractPrintWriter}
 import org.mitre.mandolin.optimize.Updater
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
@@ -87,6 +87,17 @@ abstract class AbstractProcessor extends LineParser {
   def getAlphabet(inputLines: Vector[String], la: StdAlphabet, scaling: Boolean, selectFeatures: Int, fd: Option[String], io: IOAssistant): (Alphabet, Int) = {
     getAlphabet(inputLines.iterator, la, scaling, selectFeatures, fd, io)
   }
+  
+  def getScaledDenseVecAlphabet(inputLines: Iterator[String], la: Alphabet, d: Int) = {
+    val alphabet = new IdentityAlphabetWithUnitScaling(d)
+    var numPoints = 0
+    inputLines foreach { l =>
+      numPoints += 1
+      val (y, _, _) = sparseOfLine(l, alphabet, buildVecs = false)
+      la.ofString(y)
+      }
+    alphabet
+  }
 
   def getAlphabet(inputLines: Iterator[String], la: Alphabet, scaling: Boolean, selectFeatures: Int, fdetailFile: Option[String], io: IOAssistant): (Alphabet, Int) = {
     val alphabet = if (scaling) new AlphabetWithUnitScaling else new StdAlphabet
@@ -96,12 +107,12 @@ abstract class AbstractProcessor extends LineParser {
     inputLines foreach { l =>
       numPoints += 1
       if (selectFeatures > 0) { // selecting features, so need to instantiate at this point...
-        val (y, fv, _) = sparseOfLine(l, alphabet, addBias = false, buildVecs = true) // filter out features with a prefix
+        val (y, fv, _) = sparseOfLine(l, alphabet, buildVecs = true) // filter out features with a prefix
         fbuf append fv
         val yi = la.ofString(y)
         yvs append yi
       } else {
-        val (y, _, _) = sparseOfLine(l, alphabet, addBias = false, buildVecs = false) // filter out features with a prefix
+        val (y, _, _) = sparseOfLine(l, alphabet, buildVecs = false) // filter out features with a prefix
         la.ofString(y)
       }
     }
@@ -168,21 +179,25 @@ abstract class AbstractProcessor extends LineParser {
     (nn, predictor, oc)
   }
 
-  def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet): GLPComponentSet = {
+  def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet, fa: Alphabet): GLPComponentSet = {
     val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, labelAlphabet.getSize)
-      val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, dim)
+      val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
       GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
   }
 
   def getComponentsDenseVecs(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
-    getComponentsDenseVecs(appSettings.netspec, appSettings.denseVectorSize, la)
+    val fa = 
+      if (appSettings.scaleInputs) getScaledDenseVecAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.denseVectorSize) 
+      else new IdentityAlphabet(appSettings.denseVectorSize)
+    getComponentsDenseVecs(appSettings.netspec, appSettings.denseVectorSize, la, fa)
   }
 
   def getComponentsDenseVecs(layerSpecs: IndexedSeq[LType]): GLPComponentSet = {
     val (nn, predictor, outConstructor) = getSubComponents(layerSpecs)
     val labelAlphabet = new IdentityAlphabet(layerSpecs.last.dim)
-    val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, layerSpecs.head.dim)
+    val fa = new IdentityAlphabet(layerSpecs.head.dim)
+    val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, fa, layerSpecs.head.dim)
     GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, layerSpecs.head.dim,1000)
   }
 

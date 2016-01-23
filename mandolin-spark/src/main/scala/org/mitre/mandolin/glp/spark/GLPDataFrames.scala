@@ -70,7 +70,7 @@ trait GLPDataFrames {
   }
 }
 
-class GlpModel extends GLPDataFrames {
+class GlpModel extends GLPDataFrames with Serializable {
   import org.apache.spark.sql.DataFrame
   import org.apache.spark.sql._
   import org.apache.spark.sql.functions._
@@ -82,7 +82,7 @@ class GlpModel extends GLPDataFrames {
   def readAsDataFrame(sqlContext: SQLContext, sc: SparkContext, fPath: String, idim: Int, odim: Int) = {
     val lines = sc.textFile(fPath)
     val dp = new DistributedProcessor()
-    val fe = new StdVectorExtractorWithAlphabet(new IdentityAlphabet(odim), idim)
+    val fe = new StdVectorExtractorWithAlphabet(new IdentityAlphabet(odim, false), new IdentityAlphabet(idim), idim)
     val fvs = lines map {fe.extractFeatures}
     mapGLPFactorsToDf(sqlContext, fvs, idim)
   }

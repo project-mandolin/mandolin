@@ -11,7 +11,7 @@ import org.mitre.mandolin.gm.{Feature, NonUnitFeature}
  * @author wellner
  */
 trait LineParser {
-  def sparseOfLine(s: String, mp: Alphabet, sep: Char = ' ', addBias: Boolean = true, buildVecs: Boolean = true,
+  def sparseOfLine(s: String, mp: Alphabet, sep: Char = ' ', buildVecs: Boolean = true,
     prefFilter: Option[String] = None): (String, Array[Feature], Option[String]) = {
 
     def checkFeature(s: String) = {
@@ -28,10 +28,6 @@ trait LineParser {
     vec.split(sep).toList match {
       case lab :: rest =>
         val fvbuf = new collection.mutable.ArrayBuffer[Feature]
-        if (addBias) {
-          if (buildVecs) fvbuf append (new NonUnitFeature(mp.ofString("=BIAS="), 1.0)) // not very efficient
-          else mp.ofString("=BIAS=")
-        }
         rest foreach { f =>
           f.split(':').toList match {
             case a :: b :: Nil =>
