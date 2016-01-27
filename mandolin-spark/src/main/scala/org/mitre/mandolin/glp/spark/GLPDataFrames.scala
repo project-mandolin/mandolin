@@ -105,7 +105,7 @@ class GlpModel extends GLPDataFrames with Serializable {
   }
   
   def estimate(trdata: DataFrame, mSpec: IndexedSeq[LType], upSpec: UpdaterSpec, 
-      epochs: Int = 20, threads: Int = 8) : GLPModelSpec = {
+      epochs: Int = 20, threads: Int = 8, partitions: Int = 0) : GLPModelSpec = {
     val dp = new DistributedProcessor()
     val idim = trdata.select("features").head().get(0).asInstanceOf[org.apache.spark.mllib.linalg.Vector].size 
     val odim = trdata.select("label").rdd map {v => v.getDouble(0)} max // get the maximum value of the label column 
@@ -114,18 +114,18 @@ class GlpModel extends GLPDataFrames with Serializable {
     val glp = components.ann
     val layout = glp.generateZeroedLayout
     upSpec match {
-      case AdaGradSpec(lr)     => estimate(components, trdata, modelSpec, new GLPAdaGradUpdater(layout, lr.toFloat), epochs, threads)
-      case RMSPropSpec(lr)     => estimate(components, trdata, modelSpec, new GLPRMSPropUpdater(layout, lr.toFloat), epochs, threads)
-      case SgdSpec(lr)         => estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, false, lr.toFloat), epochs, threads)
-      case AdaDeltaSpec        => estimate(components, trdata, modelSpec, new GLPAdaDeltaUpdater(layout, layout.copy()), epochs, threads)
+      case AdaGradSpec(lr)     => estimate(components, trdata, modelSpec, new GLPAdaGradUpdater(layout, lr.toFloat), epochs, threads, partitions)
+      case RMSPropSpec(lr)     => estimate(components, trdata, modelSpec, new GLPRMSPropUpdater(layout, lr.toFloat), epochs, threads, partitions)
+      case SgdSpec(lr)         => estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, false, lr.toFloat), epochs, threads, partitions)
+      case AdaDeltaSpec        => estimate(components, trdata, modelSpec, new GLPAdaDeltaUpdater(layout, layout.copy()), epochs, threads, partitions)
       case NesterovSgdSpec(lr) =>
         val np = trdata.count().toInt // get total number of training points to scale momentum in Nesterov accelerated SGD
-        estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, true, lr.toFloat, numPoints = np), epochs, threads)
+        estimate(components, trdata, modelSpec, new GLPSgdUpdater(layout, true, lr.toFloat, numPoints = np), epochs, threads, partitions)
     }    
   }
   
   def estimate[U <: Updater[GLPWeights, GLPLossGradient, U]: ClassTag](components: GLPComponentSet, trdata: DataFrame, 
-      modelSpec: IndexedSeq[LType], updater: U, epochs: Int, threads: Int) : GLPModelSpec = {
+      modelSpec: IndexedSeq[LType], updater: U, epochs: Int, threads: Int, numPartitions: Int) : GLPModelSpec = {
     val sc = trdata.sqlContext.sparkContext
     val dim = components.dim
     val odim = components.labelAlphabet.getSize
@@ -134,7 +134,9 @@ class GlpModel extends GLPDataFrames with Serializable {
     val optimizer = 
       new DistributedOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, U](sc, glp.generateRandomWeights, ev, updater, 
           epochs, 1, threads, None)
-    val fvs = mapDfToGLPFactors(sc, trdata, dim, odim)
+    val fvs1 = mapDfToGLPFactors(sc, trdata, dim, odim)
+    val fvs = if (numPartitions > 0) fvs1.repartition(numPartitions) else fvs1
+    fvs.persist()
     val (w,_) = optimizer.estimate(fvs)
     GLPModelSpec(w, glp, components.labelAlphabet, components.featureExtractor)    
   }
@@ -146,9 +148,12 @@ class GlpModel extends GLPDataFrames with Serializable {
     val fe = components.featureExtractor
     val trainFile = appSettings.trainFile
     val sc = AppConfig.getSparkContext(appSettings)
+    val numPartitions = appSettings.numPartitions
     val network = components.ann
     val optimizer: DistributedOptimizerEstimator[GLPFactor, GLPWeights] = DistributedGLPOptimizer.getDistributedOptimizer(sc, appSettings, network)
-    val fvs = mapDfToGLPFactors(sc, trdata, trdata.columns.length - 1, components.labelAlphabet.getSize)
+    val fvs1 = mapDfToGLPFactors(sc, trdata, trdata.columns.length - 1, components.labelAlphabet.getSize)
+    val fvs = if (numPartitions > 0) fvs1.repartition(numPartitions) else fvs1    
+    fvs.persist()
     val (w, _) = optimizer.estimate(fvs, Some(appSettings.numEpochs))
     GLPModelSpec(w, network, components.labelAlphabet, components.featureExtractor)
   }

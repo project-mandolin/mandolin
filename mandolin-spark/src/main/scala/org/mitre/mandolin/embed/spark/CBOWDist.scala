@@ -31,7 +31,7 @@ object CBOWDist {
   val numRe = "^[0-9.,]+$".r
   
   def getNormalizedString(t: String) : String = {
-    val s = t.replaceAll("\\p{Punct}", "")
+    val s = t.replaceAll("[\\p{Punct}&&[^_]]", "") // this will replace all punctuation with '' EXCEPT underscore '_'
     if (numRe.findFirstIn(s).isDefined) "-NUM-" else s
   }
   

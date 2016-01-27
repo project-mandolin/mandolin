@@ -32,6 +32,9 @@ trait GLPParams extends Params {
   
   val threadsParam = new IntParam(this,"numThreads","Number of threads to use on each worker node/partition")
   setDefault(threadsParam -> 8)
+  
+  val numPartitionsParam = new IntParam(this, "numPartitions", "Number of data partitions(nodes) for training")
+  setDefault(numPartitionsParam -> 0)
 }
 
 /**
@@ -54,6 +57,7 @@ extends Predictor[MllibVector, GLPClassifier, GLPClassificationModel] with GLPPa
   def setUpdaterSpec(usp: UpdaterSpec) : this.type = set(updaterSpecParam, usp)
   def setMaxIters(mi: Int) : this.type = set(maxIterParam, mi)
   def setThreads(th:Int) : this.type   = set(threadsParam, th)
+  def setNumPartitions(p: Int) : this.type = set(numPartitionsParam, p)
 
   /**
    * Trains a GLP model; other functions use this, notably `fit`.
@@ -65,7 +69,8 @@ extends Predictor[MllibVector, GLPClassifier, GLPClassificationModel] with GLPPa
     val updaterSpec = get(updaterSpecParam).getOrElse(AdaGradSpec(0.1))
     val maxIters = get(maxIterParam).getOrElse(20)
     val threads  = get(threadsParam).getOrElse(8)
-    val m = glp.estimate(dataset, modelSpec, updaterSpec, maxIters, threads)
+    val partitions = get(numPartitionsParam).getOrElse(0)
+    val m = glp.estimate(dataset, modelSpec, updaterSpec, maxIters, threads, partitions)
     new GLPClassificationModel(m)
   }  
 }
