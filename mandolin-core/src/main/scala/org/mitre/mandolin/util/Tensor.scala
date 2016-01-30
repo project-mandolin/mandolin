@@ -362,7 +362,7 @@ class DenseTensor1(val a: Array[Float], dr: Float = 1.0f) extends Tensor1(dr) wi
   def norm2: Float = {
     var n = 0.0
     var i = 0; while (i < size) { n += (a(i) * a(i)); i += 1 }
-    math.sqrt(n.toDouble).toFloat
+    math.sqrt(n.toDouble).toFloat  
   }
 
   def addMaskNoise(v: Float) = {

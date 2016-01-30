@@ -28,7 +28,8 @@ class PreProcess(minCnt: Int) {
     ar
   }
   
-  def computeFrequencyTable(hist: HashMap[String,Int], mapping: StdAlphabet) : Array[Int] = {
+  def computeFrequencyTable(hist: HashMap[String,Int], mapping: StdAlphabet, 
+      sample: Double = 0.0, numWords: Int = 1000000) : (Array[Int], Array[Int]) = {
     val ut = Array.fill(unigramTableSize)(0)
     val ft = new collection.mutable.HashMap[Int, Int]()
     var ss = 0 
@@ -51,19 +52,28 @@ class PreProcess(minCnt: Int) {
       }
       a += 1
     }
-    ut
+    mapping.ensureFixed
+    println("mapping size = " + mapping.getSize)
+    println("hist size = " + hist.size)
+    // now build array with word index => probability of discarding
+    val discardChances = Array.fill(ft.size)(0)
+    ft foreach {case (ind,cnt) => 
+      val prob = (math.sqrt(cnt.toDouble / (sample * numWords)) + 1.0) * (sample * numWords) / cnt
+      discardChances(ind) = (prob * Integer.MAX_VALUE).toInt
+      }
+    (ut, discardChances)
   }
 
-  def getMappingAndFreqs(dirOrFile: java.io.File, mxVal: Float = 6.0f) = {
+  def getMappingAndFreqs(dirOrFile: java.io.File, downSample: Double = 0.0) = {
     val hist = new HashMap[String,Int]
-    if (dirOrFile.isDirectory()) dirOrFile.listFiles() foreach {f => updateTermHistogram(f,hist)}
-    else updateTermHistogram(dirOrFile,hist)
+    var tw = 0
+    if (dirOrFile.isDirectory()) dirOrFile.listFiles() foreach {f => tw += updateTermHistogram(f,hist)}
+    else tw += updateTermHistogram(dirOrFile,hist)
     val mapping = new StdAlphabet
     hist foreach {case (s,c) => if (c >= minCnt) mapping.ofString(s) }
     mapping.ensureFixed
-    val ft = computeFrequencyTable(hist, mapping)    
-    (mapping, ft, constructLogisticTable(mxVal))
-    //(mapping, ft)
+    val (ft,sampleTable) = computeFrequencyTable(hist, mapping, downSample, tw)    
+    (mapping, ft, constructLogisticTable(6.0f), sampleTable)
   }
   
   val numRe = "^[0-9.,]+$".r
@@ -73,22 +83,21 @@ class PreProcess(minCnt: Int) {
     if (numRe.findFirstIn(s).isDefined) "-NUM-" else s
   }
   
-  def updateTermHistogram(f: java.io.File, hist: HashMap[String,Int]) : Unit = {
+  def updateTermHistogram(f: java.io.File, hist: HashMap[String,Int]) : Int = {
     val src = io.Source.fromFile(f)("UTF-8")
-    var scnt = 0
+    var totalWords = 0
     src.getLines() foreach {l =>
       val toks = l.split("[\t\n\r ]+")
       toks foreach {t =>
         val ss = getNormalizedString(t)
         if (ss.length > 0) {
+          totalWords += 1
           val cnt = hist.get(ss).getOrElse(0)
           hist.put(ss,cnt+1)
         }
       }
-      scnt += 1
     }
-    //val histCnt = hist.get("</s>").getOrElse(0)
-    //hist.put("</s>",histCnt + scnt)
+    totalWords
   }
   
   def updateFromFile(f: java.io.File, hist: HashMap[String,Int], mapping: StdAlphabet) = {

@@ -1,7 +1,7 @@
 package org.mitre.mandolin.embed.spark
 
 import org.mitre.mandolin.embed.{PreProcess, EmbedWeights, SeqInstanceExtractor, NullUpdater, EmbedAdaGradUpdater,
-  CBOWEvaluator, SeqInstance, EmbedGradient, EmbedUpdater}
+  CBOWEvaluator, SkipGramEvaluator, SeqInstance, EmbedGradient, EmbedUpdater}
 import org.mitre.mandolin.util.spark.{SparkIOAssistant}
 import org.mitre.mandolin.util.{Alphabet, StdAlphabet}
 import org.mitre.mandolin.optimize.spark.DistributedOnlineOptimizer
@@ -35,12 +35,13 @@ object CBOWDist {
     if (numRe.findFirstIn(s).isDefined) "-NUM-" else s
   }
   
-  def getVocabularyAndFreqs(lines: RDD[String], dim: Int, minCnt: Int, smoothFactor: Double) = {
+  def getVocabularyAndFreqs(lines: RDD[String], dim: Int, minCnt: Int, smoothFactor: Double, sample: Double = 0.0) = {
     val maxVocabSize = (Integer.MAX_VALUE / dim / 21).toInt // this is an upper bound on the vocab size due to serialization constraints
     val _mc = minCnt
-    val res1 = lines.flatMap { x => x.split("[ \n\r\t]+") }
+    val res11 = lines.flatMap { x => x.split("[ \n\r\t]+") }
                .map{x => (getNormalizedString(x),1)}.filter{x => x._1.length() > 0} 
-               .reduceByKey {_ + _}
+    val wordCount = res11.count() // need the count for the total training size
+    val res1 = res11.reduceByKey { _ + _ }
     val res2 = res1 filter {x => x._2 >= _mc }
     val curSize = res2.count()
     val hist = 
@@ -72,7 +73,16 @@ object CBOWDist {
       }
       a += 1
     }
-    (alphabet, ut, constructLogisticTable(6.0f))
+    // now build array with word index => probability of discarding
+    val discardChances = Array.fill(ft.size)(0)
+    i = 0; while (i < ft.length) {
+      val cnt = ft(i)
+      val prob = (math.sqrt(cnt.toDouble / (sample * wordCount)) + 1.0) * (sample * wordCount) / cnt
+      if ((prob < 1.0) && (prob > 0.0))
+        discardChances(i) = (prob * Integer.MAX_VALUE.toDouble).toInt
+      i += 1
+      }
+    (alphabet, ut, constructLogisticTable(6.0f), discardChances)
   }
   
   
@@ -85,7 +95,7 @@ object CBOWDist {
     val eDim   = appSettings.eDim
     val sc = AppConfig.getSparkContext(appSettings)
     val lines = sc.textFile(inFile.get)
-    val (mapping, freqs, logisticTable) = getVocabularyAndFreqs(lines, appSettings.eDim, appSettings.minCnt, 0.75)
+    val (mapping, freqs, logisticTable, chances) = getVocabularyAndFreqs(lines, appSettings.eDim, appSettings.minCnt, 0.75)
     val vocabSize = mapping.getSize  
     val wts = EmbedWeights(eDim, vocabSize) 
     val fe = new SeqInstanceExtractor(mapping)
@@ -96,7 +106,10 @@ object CBOWDist {
     if (appSettings.method equals "adagrad") {
       println("*** Using AdaGrad stochastic optimization ***")
       val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)            
-      val ev = new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample, freqs, logisticTable)
+      val ev =
+        if (appSettings.embedMethod.equals("skipgram"))
+          new SkipGramEvaluator[EmbedAdaGradUpdater](wts, appSettings.contextSize, appSettings.negSample, freqs, logisticTable, chances)
+        else new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample, freqs, logisticTable, chances)
       val optimizer = 
         new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](sc, wts, ev, up, epochs,1,nthreads,None)
       val trainer = new Trainer(fe, optimizer)
@@ -107,7 +120,7 @@ object CBOWDist {
     else {
       println("*** Using SGD optimization ***")
       val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)            
-      val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable)      
+      val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable,chances)      
       val optimizer = new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](sc, wts, ev, up, epochs,1,nthreads,None)
       val trainer = new Trainer(fe, optimizer)
       val io = new SparkIOAssistant(sc)

@@ -6,9 +6,51 @@ import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
 import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings, DecoderSettings}
 
-class SkipGramEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, freqTable: Array[Int], logisticTable: Array[Float])
+
+object SkipGram {
+
+  def main(args: Array[String]) = {
+    val appSettings = new CBOWModelSettings(args)
+    val prep = new PreProcess(appSettings.minCnt)
+    val nthreads = appSettings.numThreads
+    val epochs = appSettings.numEpochs
+    val inFile = appSettings.trainFile
+    val eDim = appSettings.eDim
+    val downSample = appSettings.downSample
+    val (mapping, freqs, logisticTable, chances) = prep.getMappingAndFreqs(new java.io.File(inFile.get), downSample)
+    val vocabSize = mapping.getSize
+    val wts = EmbedWeights(eDim, vocabSize)
+    val fe = new SeqInstanceExtractor(mapping)
+    val io = new LocalIOAssistant
+    val lines = io.readLines(inFile.get).toVector
+    if (appSettings.method equals "adagrad") {
+      println(">> Using AdaGrad adaptive weight update scheme <<")
+      val gemb = Array.fill(eDim * vocabSize)(0.0f)
+      val gout = Array.fill(eDim * vocabSize)(0.0f)
+      val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)
+      val ev = new SkipGramEvaluator[EmbedAdaGradUpdater](wts, appSettings.contextSize, appSettings.negSample, freqs, logisticTable, chances)
+      val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](wts, ev, up, epochs, 1, nthreads, None)
+      val trainer = new LocalTrainer(fe, optimizer)
+      val (finalWeights, _) = trainer.trainWeights(lines)
+      finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
+    } else {
+      println(">> Using vanilla SGD weight update scheme <<")
+      val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)
+      val ev = new SkipGramEvaluator[NullUpdater](wts, appSettings.contextSize, appSettings.negSample, freqs, logisticTable, chances)
+      val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up, epochs, 1, nthreads, None)
+      val trainer = new LocalTrainer(fe, optimizer)
+      val (finalWeights, _) = trainer.trainWeights(lines)
+      finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
+    }
+  }
+}
+
+
+class SkipGramEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, 
+    freqTable: Array[Int], logisticTable: Array[Float], chances: Array[Int])
 extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with Serializable  {
 
+  val maxSentLength = 200
   val ftLen = freqTable.length
   val hlSize = emb.embW.getDim2
   val vocabSize = emb.embW.getDim1
@@ -49,24 +91,32 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
     var con_i = 0
     val l1Ar = w.embW.asArray // array layout of matrix
     val l2Ar = w.outW.asArray // array layout of matrix
+    val sent = Array.fill(maxSentLength)(0)
 
+    var ii = 0
+    while (con_i < in.ln) {
+      val ni = nextInt(Integer.MAX_VALUE)
+      val wi = seq(con_i)
+      val wiProb = chances(wi)
+      if (ni < wiProb) {
+        sent(ii) = wi
+        ii += 1
+      }
+      con_i += 1
+    }
+    
     if (in.ln > 2) {
-      while (spos < in.ln) {
-        bagSize = 0
+      while (spos < ii) {
         up.updateNumProcessed()
-        val curWord = seq(spos)
+        val curWord = sent(spos)
         set(h, 0.0f)
         set(d, 0.0f)
         val b = nextInt(wSize)
-        // forward hidden outputs
         var a = b; while (a < wSize * 2 + 1 - b) {
           con_i = spos - wSize + a
           if ((a != wSize) && (con_i >= 0) && (con_i < in.ln)) {
-            val wi = seq(con_i)
-            if (wi >= 0) {
-              bagSize += 1
-              var i = 0; while (i < hlSize) { h(i) += l1Ar(i + wi * hlSize); i += 1 }
-            }
+            val wi = sent(con_i)
+            var i = 0; while (i < hlSize) { d(i) = 0.0f; i += 1 }            
             var inIndex = wi
             var label = 1.0f
             var s = 0;
@@ -81,10 +131,9 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
                 }
                 label = 0.0f
               }
-
               val outOffset = outIndex * hlSize
               var dp = 0.0f
-              var i = 0; while (i < hlSize) {
+              i = 0; while (i < hlSize) {
                 dp += l1Ar(inOffset + i) * l2Ar(outOffset + i)
                 i += 1
               }
@@ -95,18 +144,18 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
                 i += 1
               }
               i = 0; while (i < hlSize) {
-                val g = o_err * h(i)
+                val g = o_err * l1Ar(inOffset + i)
                 up.updateOutputSqG(outOffset + i, l2Ar, g)
                 i += 1
               }
               s += 1
             }
-            var i = 0; while (i < hlSize) {
+            i = 0; while (i < hlSize) {
               up.updateEmbeddingSqG(inOffset + i, l1Ar, d(i))
               i += 1
-            }
-            a += 1
+            }            
           }
+          a += 1
         }
         spos += 1
       }
@@ -121,6 +170,6 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
   
   def copy() = {
     // this copy will share weights but have separate layer data members
-    new SkipGramEvaluator(emb.sharedWeightCopy(), wSize, negSampleSize, freqTable, logisticTable) 
+    new SkipGramEvaluator(emb.sharedWeightCopy(), wSize, negSampleSize, freqTable, logisticTable, chances) 
   }
 }
