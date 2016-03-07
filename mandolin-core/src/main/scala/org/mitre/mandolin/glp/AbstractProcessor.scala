@@ -181,15 +181,16 @@ abstract class AbstractProcessor extends LineParser {
 
   def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet, fa: Alphabet): GLPComponentSet = {
     val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, labelAlphabet.getSize)
-      val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
-      GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
+    val isSparse = confSpecs.head("ltype").equals("InputSparse")
+    val fe = if (isSparse) new SparseVecFeatureExtractor(fa, labelAlphabet) else new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
+    GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
   }
 
   def getComponentsDenseVecs(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
     val fa = 
       if (appSettings.scaleInputs) getScaledDenseVecAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.denseVectorSize) 
-      else new IdentityAlphabet(appSettings.denseVectorSize)
+      else new IdentityAlphabet(appSettings.denseVectorSize, fix = true)
     getComponentsDenseVecs(appSettings.netspec, appSettings.denseVectorSize, la, fa)
   }
 
@@ -253,9 +254,7 @@ abstract class AbstractProcessor extends LineParser {
     else if (appSettings.netspec.head("ltype").equals("SeqInputSparse")) // special-case of one-hot sequence inputs 
       getComponentsSeqOneHot(appSettings, io)
     else getComponentsInducedAlphabet(appSettings, io)
-  }
-  
-  
+  }    
 
   def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, GLPFactor)], laOpt: Option[Alphabet]): Unit = {
     laOpt foreach { la =>

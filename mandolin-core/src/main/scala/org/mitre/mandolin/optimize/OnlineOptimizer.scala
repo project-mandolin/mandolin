@@ -30,12 +30,13 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
   /*
    * Get a new thread processor for this epoch; either asynchronous or synchronous
    */
-  def getThreadProcessor(data: Vector[T], w: W, updater: U, rwLock: Option[ReentrantReadWriteLock]) = rwLock match {
+  def getThreadProcessor(data: Vector[T], w: W, updater: U, rwLock: Option[ReentrantReadWriteLock], timeout: Long) = rwLock match {
     case Some(rwL) => new SynchronousThreadProcessor(data, w, evaluator.copy(), updater, rwL, skipProb, miniBatchSize)
-    case None => new AsynchronousThreadProcessor(data, w, evaluator.copy(), updater, skipProb, miniBatchSize)
+    case None => new AsynchronousThreadProcessor(data, w, evaluator.copy(), updater, skipProb, miniBatchSize, timeout)
   }
   
   // this may better handle very large datasets
+  /*
   def processPartitionsConcurrently(data: Iterator[T], w: W, updater: U) : Double = {
     if (concurrentBatch > 0)      
       data.grouped(concurrentBatch).foldLeft(0.0){case (ac, seq) =>
@@ -43,23 +44,29 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
     else
       processPartitionWithinEpoch(0,data.toVector,w,updater)
   }
+  * 
+  */
 
-  def processPartitionWithinEpoch(curEpoch: Int, partitionInsts: Vector[T], w: W, updater: U): Double = {
+  def processPartitionWithinEpoch(curEpoch: Int, partitionInsts: Vector[T], w: W, updater: U, timeout: Long): (Double, Long) = {
     val factor = (partitionInsts.size.toDouble / workersPerPartition).ceil.toInt
     val subPartitions = partitionInsts.grouped(factor) // split up data into sub-slices
     val rwLock = if (synchronous) Some(new ReentrantReadWriteLock) else None
-    val workers = (subPartitions map { sub => getThreadProcessor(sub, w, updater, rwLock) }).toList.par
+    val workers = (subPartitions map { sub => getThreadProcessor(sub, w, updater, rwLock, timeout) }).toList.par
     var totalLoss: Double = 0
+    var totalTime = 0L
     for (i <- 1 to numSubEpochs) {
-      val subLoss = workers map { _.process() } reduce { _ + _ }
+      val ss = System.nanoTime
+      val (subLoss,time) = workers map { _.process() } reduce { (r1,r2) => (r1._1 + r2._1, r1._2 + r2._2) }
+      totalTime += time
       totalLoss += subLoss
     }
-    totalLoss
+    val avgTimeEpoch = totalTime / numSubEpochs / factor
+    (totalLoss, avgTimeEpoch)
   }
 }
 
 abstract class AbstractThreadProcessor[T] {
-  def process(): Double
+  def process(): (Double, Long)
 }
 
 /**
@@ -71,12 +78,14 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
   val evaluator: TrainingUnitEvaluator[T, W, LG, U],
   val updater: U,
   skipProb: Double = 0.0,
-  miniBatchSize: Int = 1)
+  miniBatchSize: Int = 1,
+  timeout: Long = 0L)
   extends AbstractThreadProcessor[T] {
   val n = data.length
   def process() = {
     @volatile var totalLoss = 0.0
     var continue = true
+    val startTime = System.nanoTime()
     var i = 0; while (continue) {
       if ((skipProb <= 0.0) || (util.Random.nextDouble() < skipProb)) {
         val totalLossGrad = if (miniBatchSize > 1) {
@@ -94,8 +103,14 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
         totalLoss += totalLossGrad.loss
       } else i += 1
       if (i >= n) continue = false
+      // stop if timeout reached
+      val elapsed = System.nanoTime() - startTime
+      if ((timeout > 0L) && (elapsed > timeout)) {
+        //println("TIMEOUT - processed " + i + " instances, taking " + (elapsed.toDouble / 1E9) + " seconds")
+        continue = false
+      }
     }
-    totalLoss
+    (totalLoss, (System.nanoTime - startTime))
   }
 }
 
@@ -119,6 +134,7 @@ class SynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <
   def process() = {
     var totalLoss = 0.0
     var continue = true
+    val startTime = System.nanoTime
     var i = 0; while (continue) {
       if ((skipProb <= 0.0) || (util.Random.nextDouble() < skipProb)) {
         readLock.lock()
@@ -140,7 +156,7 @@ class SynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <
       } else i += 1
       if (i >= n) continue = false
     }
-    totalLoss
+    (totalLoss, (System.nanoTime - startTime))
   }
 }
 

@@ -29,20 +29,26 @@ abstract class Alphabet {
  * @param size Current size of the alphabet
  * @author wellner
  */
-class IdentityAlphabet(var size: Int, val oneBased: Boolean = true) extends Alphabet with Serializable {
+class IdentityAlphabet(var size: Int, val oneBased: Boolean = true, val fix: Boolean = false) extends Alphabet with Serializable {
 
-  var fixed = false
+  var fixed = fix
   def this() = this(0)
 
   def getValue(f: Int, v: Double) = v
   def ofString(s: String, vl: Double) : Int = ofString(s)
   def ofString(s: String): Int = try {
     val i = if (oneBased) s.toInt - 1 else s.toInt
-    if (!fixed && (i >= size)) {
-      size = i + 1
-    } 
-    i
-  } catch { case _: Throwable => throw new RuntimeException("Feature index expected as integer, found: " + s) }
+    if (i >= size) 
+      if (!fixed) {
+        size = i + 1
+        i
+      } else {
+        -1
+      }
+    else {
+      i
+    }     
+  } catch { case _: Throwable => -1 } // just return unrecognized feature if not an integer within range
 
   def getSize = size
   def ensureFixed = { fixed = true}

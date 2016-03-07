@@ -133,6 +133,7 @@ abstract class AppSettings(args: Seq[String]) extends GeneralSettings(args) {
   val name             = asStr("mandolin.name")
   /** Mode for application (train|decode|train-test|train-decode) */
   val appMode          = asStr("mandolin.mode")
+  val storage          = asStr("mandolin.spark.storage")
 }
 
 /**

@@ -53,7 +53,7 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
     var finalLoss = 0.0
     for (i <- 1 to mx) {
       val shdata = if (shuffle) util.Random.shuffle(data) else data
-      val (loss, newWeights, newUpdater) = processEpoch(shdata, numPartitions, i, weights, updater)
+      val (loss, time, newWeights, newUpdater) = processEpoch(shdata, numPartitions, i, weights, updater)
       val ct = (System.nanoTime() - t0) / 1.0E9
       optOut.writeln(i.toString() + "\t" + loss + "\t" + ct)
       weights = newWeights
@@ -64,12 +64,12 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
     (weights, finalLoss)
   }
 
-  def processEpoch(data: Vector[T], numPartitions: Int, curEpoch: Int, currentWeights: W, currentUpdater: U): (Double, W, U) = {
+  def processEpoch(data: Vector[T], numPartitions: Int, curEpoch: Int, currentWeights: W, currentUpdater: U): (Double, Long, W, U) = {
     val ep = new EpochProcessor[T, W, LG, U](evaluator, workersPerPartition = workersPerPartition, 
         synchronous = synchronous, numSubEpochs = numSubEpochs, skipProb = skipProb)
     val ss = System.nanoTime
-    val loss = ep.processPartitionWithinEpoch(curEpoch, data, currentWeights, currentUpdater)
-    (loss, currentWeights, currentUpdater)
+    val (loss,time) = ep.processPartitionWithinEpoch(curEpoch, data, currentWeights, currentUpdater, 0L)
+    (loss, time, currentWeights, currentUpdater)
   }
   
 }

@@ -22,6 +22,7 @@ class RDDData[T](val rdd: RDD[T]) extends GenData[T]
 
 trait DistributedOptimizerEstimator[T, W <: Weights[W]] {
   def estimate(data: RDD[T], mxEpochs: Option[Int] = None): (W, Double)
+  def getExpectedEpochTime : Long
 }
 
 
@@ -50,6 +51,7 @@ class DistributedLbfgsOptimizer[T, W <: Weights[W], G <: LossGradient[G]](_dim: 
   with DistributedOptimizerEstimator[T, W] {
       
   def estimate(data: RDD[T], mxEpochs: Option[Int] = None) : (W, Double) = estimate(new RDDData(data), mxEpochs)
+  def getExpectedEpochTime = 0L
   
 }
 

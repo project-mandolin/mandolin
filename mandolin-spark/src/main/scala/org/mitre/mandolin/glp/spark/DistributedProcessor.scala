@@ -147,6 +147,14 @@ object AppConfig {
  */
 class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
   def this() = this(0)
+  
+  def getStorageLevel(appSettings: GLPModelSettings) = appSettings.storage match {
+    case "mem_ser_only" => StorageLevel.MEMORY_ONLY_SER
+    case "disk_only" => StorageLevel.DISK_ONLY
+    case "mem_and_disk" => StorageLevel.MEMORY_AND_DISK
+    case "mem_and_disk_ser" => StorageLevel.MEMORY_AND_DISK_SER
+    case _ => StorageLevel.MEMORY_ONLY
+  }
 
   //def processTrain(ev: GLPInstanceEvaluator)
 
@@ -162,7 +170,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val lines =
       if (numPartitions > 0) sc.textFile(trainFile, numPartitions).coalesce(numPartitions, true)
       else sc.textFile(trainFile)
-    val trainer = new Trainer[String, GLPFactor, GLPWeights](fe, optimizer, StorageLevel.MEMORY_ONLY)
+    val trainer = new Trainer[String, GLPFactor, GLPWeights](fe, optimizer, getStorageLevel(appSettings))
     val (w, _) = trainer.trainWeights(lines)
     val modelWriter = new DistributedGLPModelWriter(sc)
     modelWriter.writeModel(io, appSettings.modelFile.get, w, components.labelAlphabet, network, fe)
@@ -198,7 +206,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val testLines = sc.textFile(appSettings.testFile.get, numPartitions).coalesce(numPartitions, true)
     val trainTester =
       new TrainTester[String, GLPFactor, GLPWeights, GLPLossGradient, Int, DiscreteConfusion](trainer,
-        pr, appSettings.numEpochs, appSettings.testFreq, sc, appSettings.progressFile)
+        pr, appSettings.numEpochs, appSettings.testFreq, sc, appSettings.progressFile, getStorageLevel(appSettings))
     trainTester.trainAndTest(lines, testLines)
   }
 

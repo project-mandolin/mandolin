@@ -65,7 +65,7 @@ class CBOWEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: Int,
     freqTable: Array[Int], logisticTable: Array[Float], chances: Array[Int])
 extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with Serializable {
   
-  val maxSentLength = 200
+  val maxSentLength = 1000
   val ftLen = freqTable.length
   val hlSize = emb.embW.getDim2
   val vocabSize = emb.embW.getDim1
@@ -110,11 +110,11 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
     val l2Ar = w.outW.asArray // array layout of matrix
     
     var ii = 0
-    while (con_i < in.ln) {
+    while ((con_i < in.ln) && (ii < maxSentLength)) {      
       val ni = nextInt(Integer.MAX_VALUE)
       val wi = seq(con_i)
       val wiProb = chances(wi)
-      if (ni < wiProb) {
+      if (ni > wiProb) {
         sent(ii) = wi
         ii += 1
       }
@@ -135,7 +135,7 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
       // forward hidden outputs
       var a = b; while (a < wSize * 2 + 1 - b) {
     		con_i = spos - wSize + a
-    		if ((a != wSize) && (con_i >= 0) && (con_i < in.ln)) {
+    		if ((a != wSize) && (con_i >= 0) && (con_i < in.ln) && (con_i < maxSentLength)) {
     		  val wi = sent(con_i)
     		  if (wi >= 0) {
     			  bagSize += 1
@@ -174,7 +174,7 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
       }
       a = b; while (a < wSize * 2 + 1 - b) {
         con_i = spos - wSize + a
-        if ((a != wSize) && (con_i >= 0) && (con_i < in.ln)) {
+        if ((a != wSize) && (con_i >= 0) && (con_i < in.ln) && (con_i < maxSentLength)) {
           val offset = sent(con_i) * hlSize
           var i = 0; while (i < hlSize) {
             up.updateEmbeddingSqG(i + offset, l1Ar, d(i))

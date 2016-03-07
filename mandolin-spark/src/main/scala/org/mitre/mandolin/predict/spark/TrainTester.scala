@@ -56,13 +56,13 @@ class TrainTester[IType, U: ClassTag, W <: Weights[W]: ClassTag, G <: LossGradie
   val io = new SparkIOAssistant(sc)
   
   def logDetails(trainingLoss: Double, testAccuracy: Double, testAuROC: Double, accAt50: Double, 
-      accAt30: Double, elapsedTime: Double, epoch: Int) = {
+      accAt30: Double, elapsedTime: Double, epoch: Int, timeout: Double) = {
     detailFile map {f =>
       val writer = io.getPrintWriterFor(f, append)
       if (!append) {
-        writer.write("Epoch" + "\t" + "ElapsedTime" + "\t" + "TrainingLoss" + "\t" + "TestAccuracy" + "\t" + "TestAUROC" + "\t" + "Acc@50" + "\t" + "Acc@30" + "\n")
+        writer.write("Epoch" + "\t" + "ElapsedTime" + "\t" + "TrainingLoss" + "\t" + "TestAccuracy" + "\t" + "TestAUROC" + "\t" + "Acc@50" + "\t" + "Acc@30" + "\t" + "Timeout" + "\n")
       }
-      writer.write(epoch.toString + "\t" + elapsedTime + "\t" + trainingLoss + "\t" + testAccuracy + "\t" + testAuROC + "\t" + accAt50 + "\t" + accAt30 + "\n")      
+      writer.write(epoch.toString + "\t" + elapsedTime + "\t" + trainingLoss + "\t" + testAccuracy + "\t" + testAuROC + "\t" + accAt50 + "\t" + accAt30 + "\t" + timeout + "\n")      
       writer.close()
       append = true
       }
@@ -88,7 +88,7 @@ class TrainTester[IType, U: ClassTag, W <: Weights[W]: ClassTag, G <: LossGradie
         case None => trainLoss
         case Some(ev) => ev.evaluate(new RDDData(trainVectors) : GenData[U], weights).loss
       } 
-      logDetails(reportedTrainLoss, acc, auRoc, accAt50, accAt30, elapsedTrainingTime, (i * evalFrequency))      
+      logDetails(reportedTrainLoss, acc, auRoc, accAt50, accAt30, elapsedTrainingTime, (i * evalFrequency), ((trainer.opt.getExpectedEpochTime).toDouble / 1E9))    
     }
     trainer.retrainWeights(trainVectors, 1)
   }

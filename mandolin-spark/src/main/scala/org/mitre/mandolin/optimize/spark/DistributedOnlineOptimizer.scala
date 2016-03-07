@@ -76,12 +76,19 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
       oversample = _as.oversampleRatio)
   }
 
-  var numEpochs = 0
-
   val optOut = new OptimizerWriter(optimizationDetails)
 
+  var numEpochs = 0 // keep some state here as this can be called repeatedly/incrementally
   protected var weights = initialWeights
   protected var updater = initialUpdater
+  
+  var expectedTime = 0L
+  
+  def getExpectedEpochTime = expectedTime
+  
+  def getNewExpectedTime(recentTime: Long) : Long = {
+    ((recentTime + (expectedTime / math.sqrt(numEpochs.toDouble))) / (1.0 + (1.0 / math.sqrt(numEpochs.toDouble)))).toLong  
+  }     
   
   /**
    * Estimates/trains model parameters
@@ -89,12 +96,13 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
    * @param mxEpochs - optional number of training passes
    */
   def estimate(rdd: RDD[T], mxEpochs: Option[Int] = None): (W, Double) = {
+    numEpochs += 1
     val numPartitions = rdd.partitions.length
     val t0 = System.nanoTime()
     val mx = mxEpochs.getOrElse(maxEpochs)
     var finalLoss = 0.0
     for (i <- 1 to mx) {
-      val (loss, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater)      
+      val (loss, time, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater, expectedTime)
       val ct = (System.nanoTime() - t0) / 1.0E9
       optOut.writeln(i.toString() + "\t" + loss + "\t" + ct)
       newWeights.resetMass()
@@ -102,6 +110,9 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
       weights = newWeights
       updater = newUpdater
       finalLoss = loss
+      val localExpectedTime = time / numPartitions
+      if (numEpochs < 2) expectedTime = localExpectedTime * 10 // set the previous expected time to large factor more than first epoch expected time to be conservative
+      expectedTime = getNewExpectedTime(localExpectedTime)
     }
     (weights, finalLoss)
   }
@@ -114,7 +125,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
    * @param currentUpdater the current updater to update weights within online training
    * @author wellner
    */
-  def processEpoch(rdd: RDD[T], numPartitions: Int, curEpoch: Int, currentWeights: W, currentUpdater: U): (Double, W, U) = {
+  def processEpoch(rdd: RDD[T], numPartitions: Int, curEpoch: Int, currentWeights: W, currentUpdater: U, expectedTime: Long): (Double, Long, W, U) = {
     if (ensureSparse) {
       currentWeights.compress()
       currentUpdater.compress()
@@ -141,22 +152,21 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
         w.resetMass(1.0f)
         u.resetMass(1.0f)
         val partitionInsts = util.Random.shuffle(insts.toVector) 
-        w.decompress()     
-        val loss = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u.decompress())
+        w.decompress()         
+        val ss = System.nanoTime()
+        val (loss, time) = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u.decompress(), expectedTime)        
         if (_ensureSparse) {
           w.compress()
-        }        
-        Seq((loss, w, u.compress())).toIterator
+        }
+        Seq((loss, time, w, u.compress())).toIterator
       }, true)
       parameterSet reduce {
         case (l, r) =>
-          ((l._1 + r._1), l._2 compose r._2, l._3 compose r._3)
+          ((l._1 + r._1), (l._2 + r._2), l._3 compose r._3, l._4 compose r._4)
       }
     }
-    (lossAndParamSums._1, lossAndParamSums._2, lossAndParamSums._3)
+    (lossAndParamSums._1, lossAndParamSums._2, lossAndParamSums._3, lossAndParamSums._4)
   }
-  
-  
   
   def processEpochLargeModel1(rdd: RDD[T], numPartitions: Int, curEpoch: Int, currentWeights: W, currentUpdater: U): (Double, W, U) = {
     if (ensureSparse) {
@@ -187,7 +197,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
         val partitionInsts = insts.toVector // pull in data points to a vector 
         w.decompress()
         u.decompress()
-        val loss = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u)
+        val (loss,time) = ep.processPartitionWithinEpoch(curEpoch, partitionInsts, w, u, 0L)
         if (_ensureSparse) {
           w.compress()
           u.compress()
