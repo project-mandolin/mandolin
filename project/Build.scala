@@ -62,6 +62,9 @@ object MandolinBuild extends Build {
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
     resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
     resolvers += "Akka Repository" at "http://repo.akka.io/releases/",
+    resolvers += "Secured Central Repository" at "https://repo1.maven.org/maven2",
+    resolvers += "Snapshot Repo" at "https://oss.sonatype.org/content/repositories/snapshots/",
+    externalResolvers := Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false),
     javacOptions ++= Seq("-source","1.7","-target","1.7"),
     scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value+"/src/root-doc.txt", "-unchecked")
   )  
@@ -84,6 +87,7 @@ object MandolinBuild extends Build {
       "com.typesafe" % "config" % "1.2.1",
       "colt" % "colt" % "1.2.0",
       "com.twitter" %% "chill" % "0.7.2",
+      "org.mitre.jcarafe" %% "jcarafe-core" % "0.9.96-SNAPSHOT",
       versionDependencies(scalaVersion.value)
       )
     )
