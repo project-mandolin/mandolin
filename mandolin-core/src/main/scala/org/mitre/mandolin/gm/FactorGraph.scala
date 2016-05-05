@@ -10,20 +10,13 @@ import org.mitre.mandolin.predict.local.LocalTrainer
 
 case class AlphabetSet(sa: Alphabet, fa: Alphabet, sla: Alphabet, fla: Alphabet)
 
-class FactorGraphTrainer {
-  
-  def getOptimizer(fgSettings: FactorGraphSettings, network: ANNetwork) = {
-    LocalGLPOptimizer.getLocalOptimizer(fgSettings, network)
-  }
-  
-  def getOptimizer(network: ANNetwork) = {
-    val weights = network.generateRandomWeights
-    val sumSquared = network.generateZeroedLayout
-    sumSquared set 0.1f // set to the initial learning rate
-    val updater = new GLPAdaGradUpdater(sumSquared, 0.1f, None, l1Array = None, l2Array = None)
-    val evaluator = new GLPInstanceEvaluator[GLPAdaGradUpdater](network)
-    new LocalOnlineOptimizer[GLPFactor, GLPWeights, GLPLossGradient, GLPAdaGradUpdater](weights, evaluator, updater,10,1, 1,None)    
-  }
+class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGraph) {
+  val (singletonNN, factorNN) = getComponents(fgSettings, factorGraph.alphabets)
+  val sOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, singletonNN)
+  val fOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, factorNN)
+  val ie = new IdentityExtractor(new IdentityAlphabet(1))
+  val sTrainer = new LocalTrainer(ie, sOpt)
+  val fTrainer = new LocalTrainer(ie, fOpt)
   
   def getComponents(fgSettings: FactorGraphSettings, as: AlphabetSet) = {
     val fgProcessor = new FactorGraphProcessor
@@ -34,36 +27,38 @@ class FactorGraphTrainer {
     (ANNetwork(singletonSp), ANNetwork(factorSp))    
   }
   
-  def trainModels(fgSettings: FactorGraphSettings, factorGraph: FactorGraph) = {
-    val (singletonNN, factorNN) = getComponents(fgSettings, factorGraph.alphabets)
-    val sOpt = getOptimizer(fgSettings, singletonNN)
-    val fOpt = getOptimizer(fgSettings, factorNN)
-    val ie = new IdentityExtractor(new IdentityAlphabet(1))
-    val sTrain = new LocalTrainer(ie, sOpt)
-    val fTrain = new LocalTrainer(ie, fOpt)
-    val (sWeights,_) = sTrain.trainWeights(factorGraph.singletons)
-    val (fWeights,_) = fTrain.trainWeights(factorGraph.factors)
+  def trainModels() = {    
+    val (sWeights,_) = sTrainer.trainWeights(factorGraph.singletons)
+    val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
     val sm = new FactorModel(new GLPPredictor(singletonNN, true), sWeights)
     val fm = new FactorModel(new GLPPredictor(factorNN, true), fWeights)
-    new TrainedFactorGraph(fm, sm, factorGraph)
+    new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
   }
   
 }
 
 class FactorGraph(val factors: Vector[MultiFactor], val singletons: Vector[SingletonFactor], val alphabets: AlphabetSet)
 
-class TrainedFactorGraph(val factorModel: FactorModel, val singletonModel: FactorModel, _fs: Vector[MultiFactor], _ss: Vector[SingletonFactor], _a: AlphabetSet) 
+class TrainedFactorGraph(val factorModel: FactorModel, val singletonModel: FactorModel, 
+    _fs: Vector[MultiFactor], _ss: Vector[SingletonFactor], _a: AlphabetSet, init: Double = 0.1) 
 extends FactorGraph(_fs, _ss, _a) {
-  def this(fm: FactorModel, sm: FactorModel, fg: FactorGraph) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets)
+  def this(fm: FactorModel, sm: FactorModel, fg: FactorGraph, lr: Double) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr)
   
-  val subGradInference = new SubgradientInference(factorModel, singletonModel)
+  //val inference = new SubgradientInference(factorModel, singletonModel, init)
+  val inference = new StarCoordinatedBlockMinimizationInference(factorModel, singletonModel, init)
+  //val inference = new SmoothedGradientInference(factorModel, singletonModel, init)
   
   def mapInfer(n: Int) = {
-    subGradInference.mapInfer(factors, singletons, n)
+    inference.mapInfer(factors, singletons, n)
   }
   
   def getMap() = {
     singletons map {s => s.getMode(singletonModel, true)}
+  }
+  
+  def getAccuracy = {
+    val cor = singletons.foldLeft(0){case (ac,v) => if (v.label == v.getMode(singletonModel, true)) ac + 1 else ac}
+    cor.toDouble / singletons.length
   }
 }
 
@@ -78,7 +73,7 @@ object FactorGraph {
                   val bd = b.toDouble
                   val id = alphabet.ofString(a, bd)
                   if (id >= 0) fvbuf append (new NonUnitFeature(alphabet.ofString(a, bd), bd))
-                } else alphabet.ofString(a, b.toDouble)
+                } else alphabet.ofString(a)
             case a :: Nil =>
                 if (buildVecs) {
                   val id = alphabet.ofString(a)
@@ -91,17 +86,20 @@ object FactorGraph {
     } 
   
   
-  def getFeatureAlphabetSingleton(fstr: String) : Alphabet = {
+  def getFeatureAlphabetSingleton(fstr: String) : (Alphabet, Alphabet) = {
     val ifile = new java.io.File(fstr)
     val fa = new StdAlphabet()
+    val la = new StdAlphabet()
     val lines = scala.io.Source.fromFile(ifile).getLines
     lines foreach {l =>
-      val p = l.split(' ').toList
-      val lab = p.head
-      val rest = p.tail   
-      FactorGraph.getLineInfo(rest.tail, fa,false)      
+      l.split(' ').toList match {
+        case _ :: lab :: rest =>
+          la.ofString(lab)
+          FactorGraph.getLineInfo(rest, fa,false)
+        case _ =>
+      }
     }
-    fa
+    (fa, la)
   }
   
   def getFeatureAlphabetFactor(fstr: String) : Alphabet = {
@@ -117,17 +115,38 @@ object FactorGraph {
     fa
   }
 
-  def gatherFactorGraph(singletonStr: String, factorStr: String, cardinality: Int) : FactorGraph = {
-    val sa = getFeatureAlphabetSingleton(singletonStr)
+  def gatherFactorGraph(fgSettings: FactorGraphSettings) : FactorGraph = {
+    val singletonStr = fgSettings.singletonFile
+    val factorStr    = fgSettings.factorFile
+    val (sa,sla) = getFeatureAlphabetSingleton(singletonStr)
     val fa = getFeatureAlphabetFactor(factorStr)
-    val sla = new IdentityAlphabet(cardinality, false, true)
+    val cardinality = sla.getSize // # of labels
     val fla = new IdentityAlphabet(cardinality*cardinality, false, true)
+    sa.ensureFixed
+    fa.ensureFixed
+    sla.ensureFixed
+    fla.ensureFixed
     val singletonExtractor = new GMSingletonExtractor(sa, sla)
     val singletons = scala.io.Source.fromFile(new java.io.File(singletonStr)).getLines.toList map singletonExtractor.extractFeatures
     val factorExtractor = new GMFactorExtractor(fa, fla, cardinality,singletonExtractor.variableToSingletonFactors)
     val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
+    
     new FactorGraph(factors.toVector, singletons.toVector, AlphabetSet(sa, fa, sla, fla))
-  }  
+  }
+  
+  def gatherFactorGraph(fgSettings: FactorGraphSettings, alphabets: AlphabetSet) = {
+    val sla = alphabets.sla
+    val sa = alphabets.sa
+    val fla = alphabets.fla
+    val fa = alphabets.fa
+    val singletonStr = fgSettings.singletonTestFile
+    val factorStr    = fgSettings.factorTestFile
+    val singletonExtractor = new GMSingletonExtractor(sa, sla)
+    val singletons = scala.io.Source.fromFile(new java.io.File(singletonStr)).getLines.toList map singletonExtractor.extractFeatures
+    val factorExtractor = new GMFactorExtractor(fa, fla, sla.getSize,singletonExtractor.variableToSingletonFactors)
+    val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
+    new FactorGraph(factors.toVector, singletons.toVector, alphabets)
+  }
 }
 
 class IdentityExtractor(alphabet: Alphabet) extends FeatureExtractor[GMFactor, GLPFactor] {
@@ -141,11 +160,31 @@ extends FeatureExtractor[String, MultiFactor] {
   
   val sep = ' '
   val buildVecs = true
+  val factorSize = 2
+  
+  val bases = Vector.tabulate(factorSize){i => math.pow(varOrder,i).toInt}
+  val numConfigs = math.pow(varOrder, factorSize).toInt
   
   def getAlphabet = factorAlphabet
   
   def getNumberOfFeatures = factorAlphabet.getSize
-
+  
+  def indexToAssignment(ind: Int) : Array[Int] = {
+    val ar = Array.fill(factorSize)(0)
+    var i = factorSize - 1
+    var nn = ind
+    while (i >= 0) {
+      val base = bases(i)
+      ar(i) = nn / base
+      nn -= (base * ar(i))
+      i -= 1
+    }
+    ar
+  }
+  
+  
+  val indexAssignmentMap = Array.tabulate(numConfigs)(indexToAssignment) 
+  
   def extractFeatures(s: String) : MultiFactor = {
     
     val p = s.split(sep).toList
@@ -166,7 +205,7 @@ extends FeatureExtractor[String, MultiFactor] {
         val s1 = varToSingles(v1)
         val s2 = varToSingles(v2)        
         val sgs = Array(s1, s2)
-        val mf = new MultiFactor(varOrder, sgs, dVec, (v1+v2))
+        val mf = new MultiFactor(indexAssignmentMap, varOrder, sgs, dVec, (v1+v2))
         s1.addParent(mf, 0)
         s2.addParent(mf, 1)
         mf
@@ -205,9 +244,8 @@ class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet) e
             val fv = singletonAlphabet.getValue(f.fid, f.value).toFloat
             dVec.update(f.fid, fv)
           }
-        }
+        }       
         val l_ind = singletonLa.ofString(label)
-
         val lv = DenseVec.zeros(singletonLa.getSize)
         lv.update(l_ind,1.0f) // one-hot encoding
         val sgf = new StdGLPFactor(-1, dVec, lv, None)

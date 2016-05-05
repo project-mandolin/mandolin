@@ -245,7 +245,7 @@ class DenseTensor1(val a: Array[Float], dr: Float = 1.0f) extends Tensor1(dr) wi
   }
   
   def :=(vv: Tensor1) = {
-    assert(vv.getDim == this.getDim)
+    if (vv.getDim != this.getDim) throw new RuntimeException("Vector of length " + vv.getDim + " attempted on vector of length " + this.getDim)
     vv match {
       case v: DenseTensor1 => Array.copy(v.a, 0, a, 0, v.dim)
       case v: SparseTensor1 =>
