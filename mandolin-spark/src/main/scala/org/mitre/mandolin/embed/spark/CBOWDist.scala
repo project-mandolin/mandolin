@@ -88,7 +88,7 @@ object CBOWDist {
   
 
   def main(args: Array[String]) = {
-    val appSettings = new org.mitre.mandolin.embed.CBOWModelSettings(args)
+    val appSettings = new org.mitre.mandolin.embed.EmbeddingModelSettings(args)
     val nthreads = appSettings.numThreads
     val epochs = appSettings.numEpochs
     val inFile = appSettings.trainFile

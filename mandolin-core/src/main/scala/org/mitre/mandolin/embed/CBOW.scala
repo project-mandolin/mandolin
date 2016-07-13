@@ -6,56 +6,6 @@ import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
 import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings, DecoderSettings}
 
-class CBOWModelSettings(args: Array[String]) extends LearnerSettings(args) with OnlineLearnerSettings with DecoderSettings {
- 
-  val embedMethod = asStr("mandolin.embed.method")
-  val eDim        = asInt("mandolin.embed.dim")
-  val contextSize = asInt("mandolin.embed.window")
-  val minCnt      = asInt("mandolin.embed.min-cnt")
-  val negSample   = asInt("mandolin.embed.neg-sample")
-  val downSample  = asDouble("mandolin.embed.down-sample")
-
-}
-  
-
-object CBOW {
-  
-  def main(args: Array[String]) = {
-    val appSettings = new CBOWModelSettings(args)
-    val prep = new PreProcess(appSettings.minCnt)
-    val nthreads = appSettings.numThreads
-    val epochs = appSettings.numEpochs
-    val inFile = appSettings.trainFile
-    val eDim   = appSettings.eDim
-    val downSample = appSettings.downSample
-    val (mapping, freqs, logisticTable,chances) = prep.getMappingAndFreqs(new java.io.File(inFile.get), downSample)
-    val vocabSize = mapping.getSize  
-    val wts = EmbedWeights(eDim, vocabSize)     
-    val fe = new SeqInstanceExtractor(mapping)
-    val io = new LocalIOAssistant
-    val lines = io.readLines(inFile.get).toVector    
-    if (appSettings.method equals "adagrad") {
-      println(">> Using AdaGrad adaptive weight update scheme <<")
-    val gemb = Array.fill(eDim * vocabSize)(0.0f)
-    val gout = Array.fill(eDim * vocabSize)(0.0f)    
-    val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)
-    val ev = new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)    
-    val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](wts, ev, up,epochs,1,nthreads,None)
-    val trainer = new LocalTrainer(fe, optimizer)
-    val (finalWeights,_) = trainer.trainWeights(lines)
-    finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
-    } else {
-      println(">> Using vanilla SGD weight update scheme <<")
-      val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)
-      val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)    
-      val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,epochs,1,nthreads,None)
-      val trainer = new LocalTrainer(fe, optimizer)
-      val (finalWeights,_) = trainer.trainWeights(lines)
-      finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
-    }
-  }
-}
-
 
 
 /**
