@@ -4,7 +4,7 @@ import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{SQLContext}
 import org.apache.spark.AccumulatorParam
 
 import org.mitre.mandolin.glp._
@@ -16,12 +16,14 @@ import org.mitre.mandolin.util.spark.SparkIOAssistant
  * Utilities for mapping GLP factors to Spark DataFrames
  * @author wellner
  */
+
 trait GLPDataFrames {
   import org.apache.spark.sql.types.{StructType,StructField,StringType, DoubleType, IntegerType}
 
+
   //import org.apache.spark.mllib.linalg.VectorUDT
   import org.apache.spark.mllib.linalg.{VectorUDT, Vectors}
-  import org.apache.spark.sql.DataFrame
+  import org.apache.spark.sql._
   
   private def toDouble(x: Array[Float]) = x map {_.toDouble}
   
@@ -57,18 +59,31 @@ trait GLPDataFrames {
    * Map a Spark DataFrame back into an `RDD` of `GLPFactor` objects.  Assumes the input
    * DataFrame just has two columns (label, features)
    */
-  def mapDfToGLPFactors(sc: SparkContext, df: DataFrame, fvDim: Int, labelDim: Int) = {
-    val rows : RDD[GLPFactor] = df map {row =>
-      val outVec = Array.fill(labelDim)(0.0)
-      val r = row.getDouble(0).toInt
-      outVec(r) = 1.0
-      val vec = row.getAs[org.apache.spark.mllib.linalg.Vector](1) 
-      val inVec = vec.toArray
-      new StdGLPFactor(-1, new DenseVec(inVec), new DenseVec(outVec), None)
+  case class LabPoint(lab: Double, point: org.apache.spark.mllib.linalg.Vector)
+  import org.apache.spark.sql.Encoders
+  
+  def mapDfToGLPFactors(sc: SparkContext, df: Dataset[org.apache.spark.sql.Row], fvDim: Int, labelDim: Int) : RDD[GLPFactor] = {
+    throw new RuntimeException("Spark 2.0 invalidates dataframe to GLP code")
+  /*
+    implicit val encoder = Encoders.tuple[Encoders.scalaDouble, Encoders.
+    val dset = df.as[LabPoint]
+    
+    val rows : RDD[GLPFactor] = dset map {(row: LabPoint) => row match {
+      case LabPoint(l,p) =>
+        val outVec = Array.fill(labelDim)(0.0)
+        val r = l.toInt // row.getDouble(0).toInt
+        outVec(r) = 1.0
+        val vec = p // row.getAs[org.apache.spark.mllib.linalg.Vector](1)
+        val inVec = vec.toArray
+        new StdGLPFactor(-1, new DenseVec(inVec), new DenseVec(outVec), None)
       }
+    }
     rows
+    */
   }
 }
+
+
 
 class GlpModel extends GLPDataFrames with Serializable {
   import org.apache.spark.sql.DataFrame

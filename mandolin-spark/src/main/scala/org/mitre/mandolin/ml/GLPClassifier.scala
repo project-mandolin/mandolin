@@ -47,12 +47,12 @@ trait GLPParams extends Params {
  * @param glp A Glp model instance
  * @author wellner
  */
-class GLPClassifier(override val uid: String, glp: GlpModel) 
+abstract class GLPClassifier(override val uid: String, glp: GlpModel) 
 extends Predictor[MllibVector, GLPClassifier, GLPClassificationModel] with GLPParams {
   
   def this(glp: GlpModel) = this(Identifiable.randomUID("GLPClassifier"), glp)
   
-  def copy(extra: ParamMap) : GLPClassifier = new GLPClassifier(glp.copy())
+  def copy(extra: ParamMap) : GLPClassifier // = new GLPClassifier(glp.copy())
   def setLayerSpec(sp: IndexedSeq[LType]) : this.type = set(modelSpecParam, sp)
   def setUpdaterSpec(usp: UpdaterSpec) : this.type = set(updaterSpecParam, usp)
   def setMaxIters(mi: Int) : this.type = set(maxIterParam, mi)
@@ -64,7 +64,7 @@ extends Predictor[MllibVector, GLPClassifier, GLPClassificationModel] with GLPPa
    * @param dataset A training dataset
    * @return A `GLPClassificationModel` used to make predictions
    */
-  override def train(dataset: DataFrame) : GLPClassificationModel = {
+  def train(dataset: DataFrame) : GLPClassificationModel = {
     val modelSpec = get(modelSpecParam).get
     val updaterSpec = get(updaterSpecParam).getOrElse(AdaGradSpec(0.1))
     val maxIters = get(maxIterParam).getOrElse(20)
@@ -99,7 +99,9 @@ class GLPClassificationModel(override val uid: String, val gmSpec: GLPModelSpec)
 
 abstract class GLPEvaluator(glp: GlpModel, gmSpec: GLPModelSpec) extends Evaluator {
 
-  def evaluate(df: DataFrame) : Double = {
+  import org.apache.spark.sql.{Dataset, Row}
+  
+  def evaluateROC(df: Dataset[Row]) : Double = {
     val res = glp.evaluate(gmSpec, df)
     res.getTotalAreaUnderROC()
   }

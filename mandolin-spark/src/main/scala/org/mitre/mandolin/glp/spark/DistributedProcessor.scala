@@ -92,7 +92,7 @@ class DistributedGLPModelReader(sc: SparkContext) extends GLPModelReader {
   val registrator = new MandolinKryoRegistrator()  
   registrator.registerClasses(kryo)
   // add in additional Spark data structures to register
-  kryo.register(classOf[org.apache.spark.util.Vector])
+  kryo.register(classOf[org.apache.spark.mllib.linalg.Vector])
 
   def readModel(f: String, io: IOAssistant): GLPModelSpec = {
     io.readSerializedObject(kryo, f, classOf[GLPModelSpec]).asInstanceOf[GLPModelSpec]
