@@ -64,7 +64,10 @@ abstract class AbstractProcessor extends LineParser {
         case "Embedding"    => LType(EmbeddingLType, dim, dropOut)
         case "TanH"         => LType(TanHLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Logistic"     => LType(LogisticLType, dim, dropOut, l1Pen, l2Pen, mn)
-        case "Linear"       => LType(LinearLType, dim, dropOut, l1Pen, l2Pen, mn)
+        case "Linear"       =>
+          val lt = if (i >= cs.length - 1) LinearOutLType else LinearLType
+          println("dim = " + dim)
+          LType(lt, dim, dropOut, l1Pen, l2Pen, mn)
         case "LinearNoBias" => LType(LinearNoBiasLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "CrossEntropy" => LType(CrossEntropyLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Relu"         => LType(ReluLType, dim, dropOut, l1Pen, l2Pen, mn)
@@ -180,10 +183,15 @@ abstract class AbstractProcessor extends LineParser {
   }
 
   def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet, fa: Alphabet): GLPComponentSet = {
-    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, labelAlphabet.getSize)
+    
     val isSparse = confSpecs.head("ltype").equals("InputSparse")
-    val fe = if (isSparse) new SparseVecFeatureExtractor(fa, labelAlphabet) else new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
-    GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
+    val regression = confSpecs.last("ltype").equals("Linear")
+    val fe =
+      if (regression) new StdVectorExtractorRegression(fa, dim)
+    else if (isSparse) new SparseVecFeatureExtractor(fa, labelAlphabet) else new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
+    val laSize = if (regression) 1 else labelAlphabet.getSize
+    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, laSize)
+    GLPComponentSet(nn, predictor, outConstructor, fe, new IdentityAlphabet(1), dim, 1000)
   }
 
   def getComponentsDenseVecs(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {

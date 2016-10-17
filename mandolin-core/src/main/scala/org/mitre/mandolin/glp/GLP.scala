@@ -98,6 +98,20 @@ class StdVectorExtractorWithAlphabet(la: Alphabet, fa: Alphabet, nfs: Int) exten
   def getNumberOfFeatures = nfs
 }
 
+class StdVectorExtractorRegression(fa: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
+  val reader = new SparseToDenseReader(' ', fa, nfs)
+  
+  def getAlphabet = fa
+  
+  def extractFeatures(s: String) : GLPFactor = {
+    val (lab, features) = reader.getLabeledLine(s)
+    val lv = lab.toFloat
+    val targetVec = DenseVec.tabulate(1){_ => lv}
+    new StdGLPFactor(features, targetVec)  
+  }
+  def getNumberOfFeatures = nfs
+}
+
 class BagOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String, GLPFactor] with Serializable {
   def getNumberOfFeatures = nfs
   def getAlphabet = new IdentityAlphabet(nfs)

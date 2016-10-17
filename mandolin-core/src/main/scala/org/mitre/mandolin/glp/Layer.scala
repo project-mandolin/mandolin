@@ -25,6 +25,7 @@ case object LogisticLType extends LayerDesignate
 case object LinearLType extends LayerDesignate
 case object LinearNoBiasLType extends LayerDesignate
 case object CrossEntropyLType extends LayerDesignate
+case object LinearOutLType extends LayerDesignate
 case object ReluLType extends LayerDesignate
 case object SoftMaxLType extends LayerDesignate
 case class NegSampledSoftMaxLType(inDim: Int, sampleSize: Int, freqFile: String) extends LayerDesignate

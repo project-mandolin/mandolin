@@ -203,6 +203,7 @@ object ANNetwork {
           case RampLType(rl)          => WeightLayer.getOutputLayer(new RampLoss(d,rl), lt, prevDim, i, olSp)
           case TransLogLType          => WeightLayer.getOutputLayer(new TransLogLoss(d), lt, prevDim, i, olSp)
           case TLogisticLType         => WeightLayer.getOutputLayer(new TLogisticLoss(d), lt, prevDim, i, olSp)
+          case LinearOutLType         => WeightLayer.getOutputLayer(new SquaredErrorLoss(d), lt, prevDim, i, olSp)
           case NegSampledSoftMaxLType(inDim,ss,freqFile) => new NegSampledSoftMaxLayer(i, d, inDim, ss, lt)
           case _                                  => throw new RuntimeException("Invalid non-input layer specification: " + specs(i))
         }
