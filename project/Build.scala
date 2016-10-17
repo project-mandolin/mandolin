@@ -87,7 +87,7 @@ object MandolinBuild extends Build {
       "com.typesafe" % "config" % "1.2.1",
       "colt" % "colt" % "1.2.0",
       "com.twitter" %% "chill" % "0.7.2",
-      "org.scalanlp" %% "breeze" % "0.11.2",
+      "org.scalanlp" %% "breeze" % "0.12",
       versionDependencies(scalaVersion.value)
       )
     )

@@ -17,10 +17,8 @@ class GLPBayesianRegressor(network: ANNetwork,
   
   val meanFn = 0.0
   
-  val meanSubtractedTargets = designTargets - meanFn
-    
-  
-  val designInv = inv(designMatrix)
+  val meanSubtractedTargets = designTargets - meanFn  // y tilde from paper
+      
   val designTrans = designMatrix.t
     
     
@@ -32,7 +30,7 @@ class GLPBayesianRegressor(network: ANNetwork,
     network.forwardPass(u.getInput, u.getOutput, wts, false)
     val numLayers = network.layers.size  
     val penultimateOutput = network.layers(numLayers - 2).getOutput(false).asArray
-    val basis = BreezeVec.tabulate[Double](penultimateOutput.length){(i: Int) => penultimateOutput(i).toDouble}
+    val basis = BreezeVec.tabulate[Double](penultimateOutput.length){(i: Int) => penultimateOutput(i).toDouble} // convert array to Breeze vector
     val predMean = (m.t * basis) + meanFn
     val predVar  = basis.t * kInv * basis + (1.0 / beta)
     (predMean, predVar)
