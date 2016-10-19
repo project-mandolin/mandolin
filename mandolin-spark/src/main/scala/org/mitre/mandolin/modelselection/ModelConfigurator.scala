@@ -39,7 +39,7 @@ object ModelConfigurator {
     paramGrid.addGrid(msTest.initialLearningRate, (0.0 to 1.0 by 0.1).toArray.map(_.toFloat))
     paramGrid.addGrid(msTest.mParam, Array(6, 66, 666))
 
-    println(paramGrid.toIterator.map{ pm => pm } )
+    paramGrid.toIterator.map{ pm => pm }.foreach(println)
   }
 
   /* val lineSearch: LineSearchAlg = LineSearchBacktracking,

@@ -99,7 +99,7 @@ class LazyParamGridBuilder extends Iterator[ParamMap] {
   override def next(): ParamMap = {
     cardinality -= 1
     val m = new ParamMap()
-    paramArray.foreach{ case (param, values, i) => m.put(param, values(i))}
+    paramArray.foreach{ case (param, values, i) => m.put(param.asInstanceOf[Param[Any]], values(i))}
     val newIndices = updateIndices( paramArray.map( x => (x._2.size, x._3) ).toArray )
     val newArray = paramArray.zip(newIndices).map{ case (pTuple, newIndex) => (pTuple._1, pTuple._2, newIndex) }
     paramArray.clear()
