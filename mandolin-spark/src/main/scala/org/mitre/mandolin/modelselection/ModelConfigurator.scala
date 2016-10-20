@@ -1,11 +1,20 @@
 package org.mitre.mandolin.modelselection
 
 import org.apache.spark.ml.param.{ParamMap, ParamValidators, Param, Params}
-import org.apache.spark.ml.tuning.ParamGridBuilder
+import org.mitre.mandolin.optimize.ErrorCodes._
 
 /**
   * Created by jkraunelis on 10/4/16.
   */
+
+/*trait HasLineSearchAlgorithm extends Params {
+  val lineSearchAlgs = Array(LineSearchBacktracking, LineSearchMoreThuente, LineSearchBacktrackingArmijo, LineSearchBacktrackingWolfe)
+
+  final val lineSearchAlgorithm = new Param[LineSearchAlg](this, "lineSearchAlgorithm", "todo", ParamValidators.inArray(lineSearchAlgs))
+
+  final def getLineSearchAlgorithm: LineSearchAlg = $(lineSearchAlgorithm)
+}*/
+
 
 trait HasSGDMethod extends Params {
   final val sgdMethod = new Param[String](this, "SGDMethod", "todo", ParamValidators.inArray(Array("adagrad", "sgd")))
@@ -34,16 +43,16 @@ class MSTest extends HasSGDMethod with HasInitialLearningRate with HasMParam {
 object ModelConfigurator {
   def main(args: Array[String]): Unit = {
     val msTest = new MSTest
-    val paramGrid = new LazyParamGridBuilder()
-    paramGrid.addGrid(msTest.sgdMethod, Array("adagrad", "sgd"))
-    paramGrid.addGrid(msTest.initialLearningRate, (0.0 to 1.0 by 0.1).toArray.map(_.toFloat))
-    paramGrid.addGrid(msTest.mParam, Array(6, 66, 666))
+    val mcb = new ModelConfigurationBuilder()
+    mcb.addGrid(msTest.sgdMethod, Array("adagrad", "sgd"))
+    mcb.addGrid(msTest.initialLearningRate, (0.0 to 1.0 by 0.1).toArray.map(_.toFloat))
+    mcb.addGrid(msTest.mParam, Array(6, 67, 678))
 
-    paramGrid.toIterator.map{ pm => pm }.foreach(println)
+    mcb.toIterator.map{ pm => pm }.foreach(println)
   }
 
-  /* val lineSearch: LineSearchAlg = LineSearchBacktracking,
-   var m: Int = 6,
+  /*
+
    var epsilon: Double = 1E-5,
    var past: Int = 3,
    var delta: Double = 1E-5,
@@ -59,8 +68,6 @@ object ModelConfigurator {
    var veryVerbose: Boolean = false,
    var intermediateModelWriter: Option[(Array[Double], Int) => Unit] = None)*/
 
-  //optimizer {
-  //method                = adagrad
-  //initial-learning-rate = 0.1
+
 
 }
