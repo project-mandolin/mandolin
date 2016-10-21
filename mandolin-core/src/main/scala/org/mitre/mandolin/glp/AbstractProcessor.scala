@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 
 case class GLPComponentSet(
     ann: ANNetwork, 
-    predictor: GLPPredictor, 
+    predictor: CategoricalGLPPredictor, 
     outputConstructor: GLPPosteriorOutputConstructor, 
     featureExtractor: FeatureExtractor[String,GLPFactor],
     labelAlphabet: Alphabet,
@@ -170,14 +170,14 @@ abstract class AbstractProcessor extends LineParser {
         appSettings.filterFeaturesMI, appSettings.printFeatureFile, io)
   }
 
-  def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int): (ANNetwork, GLPPredictor, GLPPosteriorOutputConstructor) = {
+  def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int): (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
     val specs = getGLPSpec(confSpecs, idim, odim)
     getSubComponents(specs)
   }
 
-  def getSubComponents(specs: IndexedSeq[LType]): (ANNetwork, GLPPredictor, GLPPosteriorOutputConstructor) = {
+  def getSubComponents(specs: IndexedSeq[LType]): (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
     val nn = ANNetwork(specs)
-    val predictor = new GLPPredictor(nn, true)
+    val predictor = new CategoricalGLPPredictor(nn, true)
     val oc = new GLPPosteriorOutputConstructor
     (nn, predictor, oc)
   }

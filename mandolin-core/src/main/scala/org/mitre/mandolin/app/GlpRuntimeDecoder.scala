@@ -3,7 +3,7 @@ package org.mitre.mandolin.app
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.glp.{StdGLPFactor, GLPPredictor, GLPPosteriorOutputConstructor}
+import org.mitre.mandolin.glp.{StdGLPFactor, CategoricalGLPPredictor, GLPPosteriorOutputConstructor}
 import org.mitre.mandolin.glp.local.LocalGLPModelReader
 import org.mitre.mandolin.gm.NonUnitFeature
 import org.mitre.mandolin.util.{IOAssistant, DenseTensor1 => DenseVec, LocalIOAssistant, Tensor2 => Mat}
@@ -35,7 +35,7 @@ class GlpRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
   val laSize = model.la.getSize
   val invLa  = model.la.getInverseMapping
   
-  val predictor = new GLPPredictor(model.ann, true)
+  val predictor = new CategoricalGLPPredictor(model.ann, true)
   val evalDecoder = new org.mitre.mandolin.predict.local.LocalPosteriorDecoder(fe, predictor, new GLPPosteriorOutputConstructor)
 
   fa.ensureFixed // make sure the feature alphabet is fixed

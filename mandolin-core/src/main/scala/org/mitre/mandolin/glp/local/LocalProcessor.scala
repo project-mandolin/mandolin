@@ -8,7 +8,7 @@ import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.optimize.local.{VectorData}
 import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalPosteriorDecoder }
-import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, GLPPredictor, GLPModelReader,
+import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, CategoricalGLPPredictor, GLPModelReader,
   GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPInstanceEvaluator, GLPLossGradient, GLPModelSpec, ANNetwork, NullGLPUpdater }
 import org.mitre.mandolin.optimize.{BatchEvaluator, GenData, Updater}
 import com.twitter.chill.EmptyScalaKryoInstantiator
@@ -90,7 +90,7 @@ class LocalProcessor extends AbstractProcessor {
     val io = new LocalIOAssistant
     val modelSpec = (new LocalGLPModelReader).readModel(appSettings.modelFile.get, io)
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
-    val predictor = new GLPPredictor(modelSpec.ann, true)
+    val predictor = new CategoricalGLPPredictor(modelSpec.ann, true)
     val oc = new GLPPosteriorOutputConstructor()
     val decoder = new LocalPosteriorDecoder(modelSpec.fe, predictor, oc)
     val os = io.getPrintWriterFor(appSettings.outputFile.get, false)

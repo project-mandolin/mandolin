@@ -5,7 +5,6 @@ import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{SQLContext}
-import org.apache.spark.AccumulatorParam
 
 import org.mitre.mandolin.glp._
 import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, DistributedOptimizerEstimator}
@@ -107,7 +106,7 @@ class GlpModel extends GLPDataFrames with Serializable {
     val dp = new DistributedProcessor()
     val dim = mspec.wts.getInputDim
     val odim = mspec.wts.getOutputDim
-    val predictor = new GLPPredictor(mspec.ann, true)
+    val predictor = new CategoricalGLPPredictor(mspec.ann, true)
     val evalDecoder = new org.mitre.mandolin.predict.spark.EvalDecoder(mspec.fe, predictor)
     val wBc = sc.broadcast(mspec.wts)
     val tstVecs = mapDfToGLPFactors(sc, tstdata, dim, odim)

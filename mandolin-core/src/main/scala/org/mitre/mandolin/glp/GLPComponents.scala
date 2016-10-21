@@ -4,7 +4,7 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.optimize.{ Weights, Updater, LossGradient }
-import org.mitre.mandolin.predict.{ EvalPredictor, DiscreteConfusion }
+import org.mitre.mandolin.predict.{ EvalPredictor, DiscreteConfusion, Confusion, RegressionConfusion }
 import org.mitre.mandolin.util.{ DenseTensor2 => DenseMat, ColumnSparseTensor2 => SparseMat, RowSparseTensor2 => RowSparseMat, 
   DenseTensor1 => DenseVec, Tensor2 => Mat, Tensor1 => Vec, SparseTensor1 => SparseVec }
 
@@ -1069,8 +1069,18 @@ class GLPAdaDeltaUpdater(val sumSquared: GLPLayout, val prevUpdates: GLPLayout, 
   }
 }
 
-class GLPPredictor(network: ANNetwork, getScores: Boolean = false)
-  extends EvalPredictor[GLPFactor, GLPWeights, Int, DiscreteConfusion] with Serializable {
+abstract class GLPPredictor[R,C <: Confusion[C]](val network: ANNetwork, val getScores: Boolean = false)
+  extends EvalPredictor[GLPFactor, GLPWeights, R, C] with Serializable {
+  
+  def getLoss(u: GLPFactor, w: GLPWeights): Double = {
+    network.forwardPass(u.getInput, u.getOutput, w, false)
+    network.getCost
+  }
+
+}
+
+class CategoricalGLPPredictor(n: ANNetwork, gs: Boolean = false)
+  extends GLPPredictor[Int, DiscreteConfusion](n,gs) with Serializable {
 
   def getPrediction(u: GLPFactor, w: GLPWeights): Int = {
     network.forwardPass(u.getInput, u.getOutput, w, false)
@@ -1083,12 +1093,7 @@ class GLPPredictor(network: ANNetwork, getScores: Boolean = false)
     val uscores = network.outLayer.getOutput(false) // always softmax these scores
     uscores.asArray.toSeq.zipWithIndex
   }
-
-  def getLoss(u: GLPFactor, w: GLPWeights): Double = {
-    network.forwardPass(u.getInput, u.getOutput, w, false)
-    network.getCost
-  }
-
+  
   def getConfusion(u: GLPFactor, w: GLPWeights): DiscreteConfusion = {
     val p = getPrediction(u, w)
     val ncats = network.outLayer.getOutput(false).getDim
@@ -1100,4 +1105,15 @@ class GLPPredictor(network: ANNetwork, getScores: Boolean = false)
   }
 }
 
+class RegressionGLPPredictor(n: ANNetwork, gs: Boolean = false)
+  extends GLPPredictor[Vec, RegressionConfusion](n, gs) {
+
+  def getPrediction(u: GLPFactor, w: GLPWeights): Vec = {
+    network.forwardPass(u.getInput, u.getOutput, w, false)
+    network.outLayer.getOutput(false)
+  }
+  
+  def getScoredPredictions(u: GLPFactor, w: GLPWeights) = throw new RuntimeException("Not implemented")
+  def getConfusion(u: GLPFactor, w: GLPWeights) : RegressionConfusion = throw new RuntimeException("Not IMplemented")
+}
 

@@ -3,7 +3,7 @@ package org.mitre.mandolin.gm
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{ StdAlphabet, IdentityAlphabet, Alphabet, DenseTensor1 => DenseVec }
 import org.mitre.mandolin.glp.{ StdGLPFactor, ANNetwork, LType, InputLType, SoftMaxLType, GLPFactor, GLPWeights, GLPLossGradient, 
-  GLPPredictor, GLPAdaGradUpdater, GLPInstanceEvaluator }
+  CategoricalGLPPredictor, GLPAdaGradUpdater, GLPInstanceEvaluator }
 import org.mitre.mandolin.glp.local.LocalGLPOptimizer
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 import org.mitre.mandolin.predict.local.LocalTrainer
@@ -30,8 +30,8 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
   def trainModels() = {    
     val (sWeights,_) = sTrainer.trainWeights(factorGraph.singletons)
     val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
-    val sm = new FactorModel(new GLPPredictor(singletonNN, true), sWeights)
-    val fm = new FactorModel(new GLPPredictor(factorNN, true), fWeights)
+    val sm = new FactorModel(new CategoricalGLPPredictor(singletonNN, true), sWeights)
+    val fm = new FactorModel(new CategoricalGLPPredictor(factorNN, true), fWeights)
     new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
   }
   

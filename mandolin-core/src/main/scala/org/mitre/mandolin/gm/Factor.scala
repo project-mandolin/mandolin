@@ -1,6 +1,6 @@
 package org.mitre.mandolin.gm
 
-import org.mitre.mandolin.glp.{GLPPredictor, ANNetwork, GLPWeights, GLPFactor, StdGLPFactor}
+import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPWeights, GLPFactor, StdGLPFactor}
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec}
 
 abstract class GMFactor {
@@ -257,7 +257,7 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
  * This is the parametric model that produces distributions over variable
  * configurations for a factor
  */
-class FactorModel(glp: GLPPredictor, val wts: GLPWeights) {
+class FactorModel(glp: CategoricalGLPPredictor, val wts: GLPWeights) {
   
   def getFullMarginal(input: GLPFactor) = glp.getScoredPredictions(input, wts)
     

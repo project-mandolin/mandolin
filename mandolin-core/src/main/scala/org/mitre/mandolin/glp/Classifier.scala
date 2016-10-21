@@ -48,6 +48,49 @@ class GLPPosteriorOutputConstructor extends OutputConstructor[String, Seq[(Float
   def intToResponseString(r: Int): String = "UNK"
 }
 
+class GLPMostProbableOutputConstructor extends OutputConstructor[String, Int, String] {
+  def constructOutput(i: String, r: Int, s: String): String = {
+    val (_, id) = i.split('#').toList match {
+      case a :: b :: Nil => (a, Some(b))
+      case a :: _        => (a, None)
+      case Nil           => throw new RuntimeException("Invalid line: " + i)
+    }
+    val idStr = id.getOrElse("-1")
+    val resStr = responseString(r)
+    val sbuf = new StringBuilder
+    sbuf append idStr
+    sbuf append resStr
+    sbuf.toString
+  }
+
+  def responseString(r: Int): String = {
+    r.toString
+  }
+  def intToResponseString(r: Int): String = "UNK"
+}
+
+class GLPRegressionOutputConstructor extends OutputConstructor[String, (Double, Double), String] {
+  def constructOutput(i: String, r: (Double, Double), s: String): String = {
+    val (vec, id) = i.split('#').toList match {
+      case a :: b :: Nil => (a, Some(b))
+      case a :: _        => (a, None)
+      case Nil           => throw new RuntimeException("Invalid line: " + i)
+    }
+    val idStr = id.getOrElse("-1")
+    val resStr = responseString(r)
+    val sbuf = new StringBuilder
+    sbuf append idStr
+    sbuf append resStr
+    sbuf.toString
+  }
+
+  def responseString(r: (Double, Double)): String = {
+    r._1.toString + ", " + r._2.toString
+  }
+  
+  def intToResponseString(r: Int): String = "UNK"
+}
+
 
 /**
  * A separate utility program that takes inputs in a Sparse vector representation 
