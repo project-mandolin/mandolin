@@ -39,7 +39,7 @@ class GLPBayesianRegressor(network: ANNetwork,
   val kInv = inv(K)
   val m =  (kInv * designMatrix.t * meanSubtractedTargets) * varInv  
   
-  println("FreqW => " + freqW.toString)
+  // println("FreqW => " + freqW.toString)
 
 
   def getPrediction(u: GLPFactor, wts: GLPWeights): (Double, Double) = {
@@ -76,11 +76,11 @@ object GLPBayesianRegressor {
 
   
   def main(args: Array[String]) : Unit = {
-    val fp = args(0)
+    val fpModel = args(0)
     val data = new java.io.File(args(1))
     val reader = new LocalGLPModelReader
     val io = new LocalIOAssistant
-    val model = reader.readModel(fp, io)
+    val model = reader.readModel(fpModel, io)
     val fe = model.fe
     val dataFactors = scala.io.Source.fromFile(data).getLines.toList map { l =>
       fe.extractFeatures(l)
@@ -90,17 +90,17 @@ object GLPBayesianRegressor {
       val v = BreezeVec.tabulate(inV.getDim + 1){i => if (i > 0) inV(i-1).toDouble else 1.0} // add in bias to designmatrix
       BreezeMat(v)
       }
-    val bMat = dfInVecs.reduce{(a,b) => BreezeMat.vertcat(a,b)}
+    val bMat = dfInVecs.reduce{(a,b) => BreezeMat.vertcat(a,b)}  // the design matrix
     val dfArray = dataFactors.toArray
-    val targetsVec = BreezeVec.tabulate(dataFactors.length){i => dfArray(i).getOutput(0).toDouble}
-    val predictor = new GLPBayesianRegressor(model.ann, bMat, targetsVec, 0.8, 0.0, false)
-    val freqPredictor = new RegressionGLPPredictor(model.ann, true)
-    val oc = new GLPRegressionOutputConstructor    
-    val evalDecoder = new org.mitre.mandolin.predict.local.LocalDecoder(fe, predictor, oc)
+    val targetsVec = BreezeVec.tabulate(dataFactors.length){i => dfArray(i).getOutput(0).toDouble} // the target vector
+    val predictor = new GLPBayesianRegressor(model.ann, bMat, targetsVec, 0.8, 0.0, false)    
     dataFactors foreach {l =>
-      val (prMean, prVar) = evalDecoder.pr.getPrediction(l, model.wts)
-      val freqMean = freqPredictor.getPrediction(l, model.wts)
-      println("Predicted mean: " + prMean + " Var: " + prVar + "   ==> Actual value: " + l.getOutput(0) + " ++ Freq mean: " + freqMean(0).toString)
+      val (prMean, prVar) = predictor.getPrediction(l, model.wts)
+      // val freqMean = freqPredictor.getPrediction(l, model.wts)
+      println("Predicted mean: " + prMean + " Var: " + prVar + "   ==> Actual value: " + l.getOutput(0))
       }
+    //val oc = new GLPRegressionOutputConstructor    
+    //val evalDecoder = new org.mitre.mandolin.predict.local.LocalDecoder(fe, predictor, oc)    
+    // val freqPredictor = new RegressionGLPPredictor(model.ann, true)
   }  
 }
