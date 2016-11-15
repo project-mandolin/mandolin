@@ -1,5 +1,6 @@
 package org.mitre.mandolin.modelselection
 
+import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.param.{ParamMap, ParamValidators, Param, Params}
 import org.mitre.mandolin.optimize.ErrorCodes._
 
@@ -34,6 +35,13 @@ trait HasMParam extends Params {
   final def getmParam: Int = $(mParam)
 }
 
+trait HasEpsilonParam extends Params {
+  final val epsilonParam = new Param[Double](this, "Epsilon", "todo", ParamValidators.ltEq(0))
+
+  final def getEpsilonParam: Double = $(epsilonParam)
+}
+
+
 class MSTest extends HasSGDMethod with HasInitialLearningRate with HasMParam {
   override def copy(extra: ParamMap): Params = defaultCopy(extra)
 
@@ -41,6 +49,7 @@ class MSTest extends HasSGDMethod with HasInitialLearningRate with HasMParam {
 }
 
 object ModelConfigurator {
+
   def main(args: Array[String]): Unit = {
     val msTest = new MSTest
     val mcb = new ModelConfigurationBuilder()
@@ -48,7 +57,7 @@ object ModelConfigurator {
     mcb.addGrid(msTest.initialLearningRate, (0.0 to 1.0 by 0.1).toArray.map(_.toFloat))
     mcb.addGrid(msTest.mParam, Array(6, 67, 678))
 
-    mcb.toIterator.map{ pm => pm }.foreach(println)
+    mcb.toIterator.map { pm => pm }.foreach(println)
   }
 
   /*
@@ -67,7 +76,6 @@ object ModelConfigurator {
    var verbose: Boolean = false,
    var veryVerbose: Boolean = false,
    var intermediateModelWriter: Option[(Array[Double], Int) => Unit] = None)*/
-
 
 
 }
