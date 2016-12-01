@@ -76,11 +76,11 @@ class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEv
   def receive = {
     case WorkAvailable => master ! ProvideWork
     case Work(w: ModelConfig) => doWork(w) onComplete { case r => 
-      modelScorer ! r // send result to modelScorer
+      println("Worker " + this + " processing configuration ....")
+      modelScorer ! r.get // send result to modelScorer
       master ! ProvideWork }
   }
   
-  // type T could be grounded to ModelConfig
   def doWork(w: ModelConfig) : Future[ModelEvalResult] = {
     Future({
       val score = modelEvaluator.evaluate(w)

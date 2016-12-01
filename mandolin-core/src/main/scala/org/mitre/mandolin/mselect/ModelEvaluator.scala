@@ -8,8 +8,17 @@ abstract class ModelEvaluator {
   def evaluate(c: ModelConfig) : Double
 }
 
-class RandomModelEvaluator extends ModelEvaluator {
+// XXX - this is for testing purposes only
+class MockRandomModelEvaluator extends ModelEvaluator {
+  
+  private def pauseTime() = {
+    val nsecs = util.Random.nextInt(10) * 100
+    Thread.sleep(nsecs)
+  }
+  
   def evaluate(c: ModelConfig) : Double = {
-    util.Random.nextDouble()
+    pauseTime() // simulate this taking a while
+    val r = util.Random.nextDouble()
+    r
   }
 }
