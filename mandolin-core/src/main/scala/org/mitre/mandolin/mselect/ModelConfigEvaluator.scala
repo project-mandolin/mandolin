@@ -16,7 +16,7 @@ object WorkPullingPattern {
   case class Terminated(worker: ActorRef) extends Message
   case class Work[T](work: T) extends Message
   // config should end up being a model config/specification
-  case class ModelEvalResult(config: String, result: Double) extends Message
+  case class ModelEvalResult(config: ModelConfig, result: Double) extends Message
 }
 
 /**
@@ -66,22 +66,28 @@ class ModelConfigEvaluator[T] extends Actor {
   }    
 }
 
-class ModelConfigEvalWorker[T: ClassTag](val master: ActorRef, modelScorer: ActorRef) extends Actor {
+/**
+ * This worker actor will actually take work from the master in the form of models to evaluate
+ */
+class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEvaluator: ModelEvaluator) extends Actor {
   import WorkPullingPattern._
   implicit val ec = context.dispatcher
   
   def receive = {
     case WorkAvailable => master ! ProvideWork
-    case Work(w:T) => doWork(w) onComplete { case r => 
-      modelScorer ! r // send result to modelScorer
+    case Work(w: ModelConfig) => doWork(w) onComplete { case r => 
+      println("Worker " + this + " processing configuration ....")
+      modelScorer ! r.get // send result to modelScorer
       master ! ProvideWork }
   }
   
-  def doWork(w: T) : Future[ModelEvalResult] = {
+  def doWork(w: ModelConfig) : Future[ModelEvalResult] = {
     Future({
+      val score = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result
       // send to modelScorer
-      ModelEvalResult("model spec", 0.5)
+      ModelEvalResult(w, score)
     })
   }
 }
+

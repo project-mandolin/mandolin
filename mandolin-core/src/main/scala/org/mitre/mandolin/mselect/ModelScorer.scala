@@ -19,18 +19,21 @@ class ModelScorer extends Actor {
 
   // should receive messages sent from ModelConfigEvaluator
   def receive = {
-    case r @ ModelEvalResult(ms, res) => 
-      evalResults append r
+    case ModelEvalResult(ms, res) => 
+      println("Received score " + res + " from model " + ms)
+      evalResults append ModelEvalResult(ms,res)
       receivedSinceLastScore += 1
+      /*
       if (receivedSinceLastScore > 10) {
         receivedSinceLastScore = 0
         val mspec = buildNewScoringModel()
         currentModel = Some(mspec)
         applyModel(mspec)
       }
+      * 
+      */
   }
-  
-  
+    
   def applyModel(mspec: GLPModelSpec) = {
     // get candidate model configurations
     val candidateConfigs : List[String] = Nil
