@@ -23,7 +23,7 @@ object WorkPullingPattern {
  * THis will take configurations from the ModelConfigQueue
  * It will act as master with workers carrying out the full evaluation
  */
-class ModelConfigEvaluator[T] extends Actor {
+class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
   import WorkPullingPattern._
   val log = LoggerFactory.getLogger(getClass)
   val workers = collection.mutable.Set.empty[ActorRef]
@@ -52,6 +52,7 @@ class ModelConfigEvaluator[T] extends Actor {
     case ProvideWork ⇒ currentEpic match {
       case None ⇒
         log.info("workers asked for work but we've no more work to do")
+        scorer ! ProvideWork  // request work from the scorer
       case Some(epic) ⇒
         val iter = epic.iterator
         if (iter.hasNext)
