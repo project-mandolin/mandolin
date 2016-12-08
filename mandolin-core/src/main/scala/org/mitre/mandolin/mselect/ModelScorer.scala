@@ -15,8 +15,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) exte
   val frequency = 10
   var evalResults = new collection.mutable.ArrayBuffer[ModelEvalResult]
   var receivedSinceLastScore = 0
-  var currentModel : Option[GLPModelSpec] = None
-  var currentSampleSize = 10
+  var currentSampleSize = 5
 
   // should receive messages sent from ModelConfigEvaluator
   def receive = {
@@ -34,8 +33,10 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) exte
       * 
       */
     case ProvideWork => // means that model evaluation is ready to evaluation models
+      println("ModelScorer**** ==> Received ProvideWork")
       val scored = getScoredConfigs(currentSampleSize) map {_._2}
-      val epic = new Epic[ModelConfig] {override def iterator = scored.toIterator}
+      println("Scored vector length = " + scored.length)
+      val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
       sender ! epic
   }
   
@@ -43,16 +44,5 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) exte
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom
     (unscoredConfigs map {s => (acqFn.score(s),s)}).toVector.sortWith((a,b) => a._1 > b._1)
   }
-    
-  def applyModel(mspec: GLPModelSpec) = {
-    // get candidate model configurations
-    val candidateConfigs : List[String] = Nil
-    
-  }
-  
-  def buildNewScoringModel() : GLPModelSpec = {
-    // take evalResults and train a GLP (should be very quick, but must consider case where this is time consuming and spawn thread)
-    throw new RuntimeException("Not implemented yet")
-  }
-  
+      
 }

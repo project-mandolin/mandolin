@@ -15,25 +15,20 @@ class TestSelection extends FlatSpec with Matchers {
     val system = ActorSystem("Simulator")
     
 
+    val numWorkers = 50
     val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction)), name = "scorer")
     val ev = new MockRandomModelEvaluator
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig](scorerActor)), name = "master")
-    val worker1 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker1")
-    val worker2 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker2")
-    val worker3 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker3")
-    
-    master ! RegisterWorker(worker1)
-    master ! RegisterWorker(worker2)
-    master ! RegisterWorker(worker3)
+    val workers = for (i <- 1 to numWorkers) yield system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker"+i)
+
+    workers foreach {w => master ! RegisterWorker(w)}    
     
     master ! ProvideWork // this starts things off
     // master should request work from the scorer if it doesn't have any
 
     Thread.sleep(30000) // wait 30 seconds
     
-    worker1 ! PoisonPill
-    worker2 ! PoisonPill
-    worker3 ! PoisonPill
+    workers foreach { _ ! PoisonPill}    
     
     scorerActor ! PoisonPill
     master ! PoisonPill
