@@ -1,4 +1,4 @@
-package org.mitre.mandolin.modelselection
+package org.mitre.mandolin.mselect
 
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.param.{ParamMap, ParamValidators, Param, Params}

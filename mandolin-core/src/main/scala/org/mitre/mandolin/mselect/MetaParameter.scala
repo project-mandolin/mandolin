@@ -46,6 +46,8 @@ class CategoricalMetaParameter(n: String, vs: CategoricalSet) extends MetaParame
 class ValuedMetaParameter[T <: MPValue](v: T, mp: MetaParameter[T]) {
 
   def getValue = v
+  def getName = mp.name
+
 }
 
 

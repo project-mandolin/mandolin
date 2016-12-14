@@ -1,4 +1,4 @@
-package org.mitre.mandolin.modelselection
+package org.mitre.mandolin.mselect
 
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.tuning.ParamGridBuilder
