@@ -9,7 +9,7 @@ import scala.concurrent.Future
 object WorkPullingPattern {
   sealed trait Message
   trait Epic[T] extends Iterable[T] //used by master to create work (in a streaming way)
-  case object ProvideWork extends Message
+  case class ProvideWork(numConfigs: Int) extends Message
   case object CurrentlyBusy extends Message
   case object WorkAvailable extends Message
   case class RegisterWorker(worker: ActorRef) extends Message
@@ -28,7 +28,7 @@ class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
   val log = LoggerFactory.getLogger(getClass)
   val workers = collection.mutable.Set.empty[ActorRef]
   var currentEpic: Option[Epic[T]] = None
-  
+
   def receive = {
      case epic: Epic[T] ⇒
       if (currentEpic.isDefined)
@@ -49,12 +49,14 @@ class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
       log.info(s"worker $worker died - taking off the set of workers")
       workers.remove(worker)
 
-    case ProvideWork ⇒ currentEpic match {
+    case ProvideWork(numConfigs) ⇒ currentEpic match {
       case None ⇒
         log.info("workers asked for work but we've no more work to do")
-        scorer ! ProvideWork  // request work from the scorer
+        scorer ! ProvideWork(numConfigs) // request work from the scorer
       case Some(epic) ⇒
         val iter = epic.iterator
+
+
         if (iter.hasNext)
           sender ! Work(iter.next)
         else {
@@ -62,9 +64,9 @@ class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
           currentEpic = None
         }
     }
-  
-    case _ => 
-  }    
+
+    case _ =>
+  }
 }
 
 /**
@@ -73,15 +75,15 @@ class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
 class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEvaluator: ModelEvaluator) extends Actor {
   import WorkPullingPattern._
   implicit val ec = context.dispatcher
-  
+
   def receive = {
     case WorkAvailable => master ! ProvideWork
-    case Work(w: ModelConfig) => doWork(w) onComplete { case r => 
+    case Work(w: ModelConfig) => doWork(w) onComplete { case r =>
       println("Worker " + this + " processing configuration ....")
       modelScorer ! r.get // send result to modelScorer
       master ! ProvideWork }
   }
-  
+
   def doWork(w: ModelConfig) : Future[ModelEvalResult] = {
     Future({
       val score = modelEvaluator.evaluate(w)
