@@ -2,6 +2,7 @@ package org.mitre.mandolin.mselect
 
 import akka.actor.Actor
 import org.mitre.mandolin.glp.GLPModelSpec
+import org.slf4j.LoggerFactory
 
 /**
  * Encapsulates functionality to apply Bayesian regression model to "score"
@@ -11,7 +12,8 @@ import org.mitre.mandolin.glp.GLPModelSpec
 class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) extends Actor {
     
   import WorkPullingPattern._
-  
+
+  val log = LoggerFactory.getLogger(getClass)
   val frequency = 10
   var evalResults = new collection.mutable.ArrayBuffer[ModelEvalResult]
   var receivedSinceLastScore = 0
@@ -20,7 +22,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) exte
   // should receive messages sent from ModelConfigEvaluator
   def receive = {
     case ModelEvalResult(ms, res) => 
-      println("Received score " + res + " from model " + ms)
+      log.info("Received score " + res + " from model " + ms)
       evalResults append ModelEvalResult(ms,res)
       receivedSinceLastScore += 1
       /*
@@ -32,10 +34,9 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) exte
       }
       * 
       */
-    case ProvideWork => // means that model evaluation is ready to evaluation models
-      println("ModelScorer**** ==> Received ProvideWork")
-      val scored = getScoredConfigs(currentSampleSize) map {_._2}
-      println("Scored vector length = " + scored.length)
+    case ProvideWork(numConfigs) => // means that model evaluation is ready to evaluation models
+      log.info("Received ProvideWork(" + numConfigs + ")")
+      val scored = getScoredConfigs(2) map {_._2}
       val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
       sender ! epic
   }
