@@ -9,15 +9,13 @@ import org.slf4j.LoggerFactory
  * model configurations - where a score is the estimated performance/accuracy/error
  * of the model on a given dataset.
  */
-class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) extends Actor {
+class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, sampleSize: Int, acqFnThreshold: Int) extends Actor {
     
   import WorkPullingPattern._
 
   val log = LoggerFactory.getLogger(getClass)
-  val frequency = 10
   var evalResults = new collection.mutable.ArrayBuffer[ModelEvalResult]
   var receivedSinceLastScore = 0
-  var currentSampleSize = 5
 
   // should receive messages sent from ModelConfigEvaluator
   def receive = {
@@ -25,18 +23,21 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction) exte
       log.info("Received score " + res + " from model " + ms)
       evalResults append ModelEvalResult(ms,res)
       receivedSinceLastScore += 1
-      /*
-      if (receivedSinceLastScore > 10) {
+      
+      if (receivedSinceLastScore > acqFnThreshold) {
+        log.info("Training acquisition function")
         receivedSinceLastScore = 0
-        val mspec = buildNewScoringModel()
-        currentModel = Some(mspec)
-        applyModel(mspec)
+        acqFn.train(evalResults)
+        log.info("Finished training acquisition function")
+        
+        val scored = getScoredConfigs(sampleSize) map {_._2}
+        val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
+        sender ! epic
       }
-      * 
-      */
-    case ProvideWork(numConfigs) => // means that model evaluation is ready to evaluation models
-      log.info("Received ProvideWork(" + numConfigs + ")")
-      val scored = getScoredConfigs(2) map {_._2}
+
+    case ProvideWork => // means that model evaluation is ready to evaluation models
+      log.info("Received ProvideWork")
+      val scored = getScoredConfigs(sampleSize) map {_._2}
       val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
       sender ! epic
   }
