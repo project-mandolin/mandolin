@@ -55,7 +55,7 @@ class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
         scorer ! ProvideWork(numConfigs) // request work from the scorer
       case Some(epic) ⇒
         val iter = epic.iterator
-        if (iter.hasNext)
+        if (iter.hasNext) {
           sender ! Work(iter.next)
         }
         else {

@@ -4,6 +4,11 @@ import org.mitre.mandolin.glp._
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 
 object LocalGLPOptimizer {
+  
+  def getLocalOptimizer(network: ANNetwork, method: String, lr: Float, numEpochs: Int) = {
+    
+  }
+  
   def getLocalOptimizer(appSettings: GLPModelSettings, network: ANNetwork) = {
     val weights = network.generateRandomWeights
     val sumSquared = network.generateZeroedLayout
