@@ -18,7 +18,7 @@ object ModelSelectionDriver {
   def main(args: Array[String]) : Unit = {
     val system = ActorSystem("Simulator")
 
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction)), name = "scorer")
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction, 10, 10)), name = "scorer")
     val sc = new SparkContext
     val io = new LocalIOAssistant
     val trainFile = args(0)
@@ -33,7 +33,7 @@ object ModelSelectionDriver {
     //master ! RegisterWorker(worker2)
     //master ! RegisterWorker(worker3)
 
-    master ! ProvideWork(1) // this starts things off
+    master ! ProvideWork // this starts things off
     // master should request work from the scorer if it doesn't have any
 
     Thread.sleep(1000*60*30)
