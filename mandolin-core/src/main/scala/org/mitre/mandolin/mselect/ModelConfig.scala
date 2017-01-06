@@ -5,8 +5,7 @@ package org.mitre.mandolin.mselect
  */
 class ModelConfig(
     val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]], 
-    val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]]) {
-
+    val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]])  extends Serializable {
 }
 
 class ModelSpace(realMPs: Vector[RealMetaParameter], catMPs: Vector[CategoricalMetaParameter]) {

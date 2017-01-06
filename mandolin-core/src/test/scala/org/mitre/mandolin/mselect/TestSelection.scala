@@ -1,27 +1,38 @@
 package org.mitre.mandolin.mselect
 
-import org.scalatest._
-import akka.actor.{ActorSystem, Props}
+import scala.Vector
+
+import org.scalatest.FlatSpec
+import org.scalatest.Matchers
+
+import akka.actor.ActorSystem
+import akka.actor.Props
+import akka.actor.actorRef2Scala
+
+import org.slf4j.LoggerFactory
 
 class TestSelection extends FlatSpec with Matchers {
   
-  import akka.actor.PoisonPill
   import WorkPullingPattern._
+  import akka.actor.PoisonPill
   
   val modelSpace = new ModelSpace(Vector(new RealMetaParameter("lr",new RealSet(0.1,1.0))), Vector())
-  def getRandomConfigs = for (i <- 1 to 100) yield modelSpace.drawRandom
   
   "A random evaluator simulation" should "evaluate concurrently" in {
-    val system = ActorSystem("Simulator")
+    val log = LoggerFactory.getLogger(getClass)
+    log.info("Starting simulation")
     
+    val system = ActorSystem("Simulator")
 
-    val numWorkers = 50
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction)), name = "scorer")
+    val numWorkers = 10
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new MockAcquisitionFunction, 100, 2)), name = "scorer")
     val ev = new MockRandomModelEvaluator
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig](scorerActor)), name = "master")
     val workers = for (i <- 1 to numWorkers) yield system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker"+i)
 
-    workers foreach {w => master ! RegisterWorker(w)}    
+    
+    workers foreach {w => master ! RegisterWorker(w)}
+    Thread.sleep(1000)
     
     master ! ProvideWork // this starts things off
     // master should request work from the scorer if it doesn't have any
@@ -32,7 +43,6 @@ class TestSelection extends FlatSpec with Matchers {
     
     scorerActor ! PoisonPill
     master ! PoisonPill
-    
     
     /*
     val res = scorer.evalResults.toVector
