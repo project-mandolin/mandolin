@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory
  * of the model on a given dataset.
  */
 class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, sampleSize: Int, acqFnThreshold: Int) extends Actor {
+  
+  def this(mcs: ModelSpace, af: AcquisitionFunction) = this(mcs, af, 10, 10)
     
   import WorkPullingPattern._
 

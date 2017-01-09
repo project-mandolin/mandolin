@@ -7,7 +7,7 @@ import org.mitre.mandolin.optimize.{ModelWriter, Updater}
 import com.esotericsoftware.kryo.io.{ Input => KInput, Output => KOutput }
 import com.twitter.chill.{ EmptyScalaKryoInstantiator, AllScalaRegistrar }
 import org.mitre.mandolin.util.{ Alphabet, IOAssistant }
-import org.mitre.mandolin.util.{ LocalIOAssistant }
+import org.mitre.mandolin.util.{ LocalIOAssistant, IdentityAlphabet }
 import org.mitre.mandolin.glp.local.LocalGLPOptimizer
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.predict.local.LocalTrainer
@@ -25,12 +25,6 @@ abstract class GLPModelReader {
   def readModel(f: String, io: IOAssistant) : GLPModelSpec
 }
 
-class GLPModelTrainer(_fe: FeatureExtractor[String, GLPFactor], _opt: LocalOptimizerEstimator[GLPFactor,GLPWeights]) 
-extends LocalTrainer[String, GLPFactor, GLPWeights](_fe, _opt) {
-  
-  
-}
-
 object GLPTrainerBuilder extends AbstractProcessor {
   
   def apply(appSettings: GLPModelSettings) : LocalTrainer[String, GLPFactor, GLPWeights] = {
@@ -41,11 +35,49 @@ object GLPTrainerBuilder extends AbstractProcessor {
     new LocalTrainer(fe, optimizer)
   } 
   
-  /*
+  /**
+   * This method creates a local trainer without a feature extractor. Will be used on feature vectors
+   * already constructed as GLPFactor objects.
+   */
   def apply(modelSpec: IndexedSeq[LType]) : LocalTrainer[String, GLPFactor, GLPWeights] = {
-    
+    val (nn, predictor, oc) = getSubComponents(modelSpec)
+    val settings = new GLPModelSettings
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
+    new LocalTrainer(optimizer)
   }
-  * 
-  */
+  
+  def apply(modelSpec: IndexedSeq[LType], fe: FeatureExtractor[String, GLPFactor]) : LocalTrainer[String, GLPFactor, GLPWeights] = {
+    val (nn, predictor, oc) = getSubComponents(modelSpec)
+    val numInputs = modelSpec.head.dim
+    val fa = new IdentityAlphabet(numInputs)
+    val labelAlphabet = new IdentityAlphabet(modelSpec.last.dim)
+    val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, fa, numInputs)
+    val settings = new GLPModelSettings
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
+    new LocalTrainer(fe, optimizer)
+  }
+  
+
+  def apply(modelSpec: IndexedSeq[LType], fa: Alphabet, la: Alphabet, sparse: Boolean = false) : LocalTrainer[String, GLPFactor, GLPWeights] = {
+    val (nn, predictor, oc) = getSubComponents(modelSpec)    
+    val fe = if (sparse)
+      new SparseVecFeatureExtractor(la, fa)
+    else {
+      val numInputs = modelSpec.head.dim
+      new StdVectorExtractorWithAlphabet(la, fa, numInputs)
+    }
+    val settings = new GLPModelSettings
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
+    new LocalTrainer(fe, optimizer)
+  }
+  
+  // XXX - let API here simply create the appropriate settings; seems backwards but most convenient
+  def apply(modelSpec: IndexedSeq[LType], sets: Seq[(String, Any)]) : LocalTrainer[String, GLPFactor, GLPWeights] = {
+    val settings = (new GLPModelSettings).withSets(sets)
+    val (nn, predictor, oc) = getSubComponents(modelSpec)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
+    new LocalTrainer(optimizer)
+  }
+
 }
 
