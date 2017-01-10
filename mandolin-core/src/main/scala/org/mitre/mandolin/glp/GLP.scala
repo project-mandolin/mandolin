@@ -13,6 +13,7 @@ import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTens
 
 class GLPSettings(a: Seq[String]) extends LearnerSettings(a) with OnlineLearnerSettings 
 
+
 /**
  * Maps input lines in a sparse-vector format `<label> <f1>:<val> <f2>:<val> ... `
  * to a dense vector input. This is most efficient if the inputs aren't ''too'' sparse

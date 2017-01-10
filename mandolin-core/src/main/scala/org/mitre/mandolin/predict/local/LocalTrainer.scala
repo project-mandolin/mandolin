@@ -18,9 +18,15 @@ import org.mitre.mandolin.optimize.local.LocalOptimizerEstimator
  * @param persistLevel force Spark caching of results of feature extraction at specified level
  */ 
 class LocalTrainer[IType, Un : ClassTag, W <: Weights[W]](
-    val fe: FeatureExtractor[IType,Un],
+    val fe: Option[FeatureExtractor[IType,Un]],
     val opt: LocalOptimizerEstimator[Un, W]
     ) {
+  
+  def this(_fe: FeatureExtractor[IType, Un], _opt: LocalOptimizerEstimator[Un, W]) = this(Some(_fe), _opt)
+  
+  def this(_opt: LocalOptimizerEstimator[Un, W]) = this(None, _opt)
+  
+  def getFe = fe.get
   
   /**
    * Extracts features and then trains a model with provided distributed optimizer
@@ -29,10 +35,13 @@ class LocalTrainer[IType, Un : ClassTag, W <: Weights[W]](
    * @return weights and loss value (as a 2-tuple)
    */ 
   def trainWeights(rdd: Vector[IType]) : (W, Double) = {
-    val _fe = fe
-    val _opt = opt
-    val fs = rdd map { _fe.extractFeatures }
-    _opt.estimate(fs)
+    fe match {
+      case Some(_fe) =>
+        val _opt = opt
+        val fs = rdd map { _fe.extractFeatures }
+        _opt.estimate(fs)
+      case None => throw new RuntimeException("Feature extractor not provided.  Suggest calling retrainWeights on this object")
+    }
   }
 
   /**
@@ -41,9 +50,12 @@ class LocalTrainer[IType, Un : ClassTag, W <: Weights[W]](
    * @return rdd with training unit representation
    */ 
   def extractFeatures(rdd: Vector[IType]) : Vector[Un] = {
-    val _fe = fe
-    rdd map {v =>
-      _fe.extractFeatures(v) }    
+    fe match {
+      case Some(_fe) =>
+        rdd map {v => _fe.extractFeatures(v) }
+      case None => throw new RuntimeException("Feature extractor not provided. ")
+    }
+        
   }
   
   /**

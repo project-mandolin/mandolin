@@ -1,6 +1,7 @@
 package org.mitre.mandolin.mselect
 
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.scalatest._
 import akka.actor.{ActorSystem, Props}
 
@@ -18,7 +19,9 @@ class TestSelection extends FlatSpec with Matchers {
 
     val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction)), name = "scorer")
     val sc = new SparkContext()
-    val ev = new SparkModelEvaluator(sc)
+    val nt : Broadcast[Vector[String]] = sc.broadcast(Vector())
+    val ntst : Broadcast[Vector[String]] = sc.broadcast(Vector())
+    val ev = new SparkModelEvaluator(sc, nt, ntst)
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig](scorerActor)), name = "master")
     val worker1 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker1")
     val worker2 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker2")

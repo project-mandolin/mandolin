@@ -29,7 +29,7 @@ class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: 
     val trainLines = trainBC.value
     val testLines = testBC.value
     val trainer = new LocalTrainer(fe, optimizer)
-    val evPr = new LocalEvalDecoder(trainer.fe, pr)
+    val evPr = new LocalEvalDecoder(trainer.getFe, pr)
     val trainVectors = trainer.extractFeatures(trainLines)
     val testVectors = evPr.extractFeatures(testLines)
     for (i <- 1 to appSettings.numEpochs) {

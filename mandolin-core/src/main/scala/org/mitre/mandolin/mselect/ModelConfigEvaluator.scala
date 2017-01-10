@@ -14,7 +14,7 @@ object WorkPullingPattern {
   trait Epic[T] extends Iterable[T]
 
   //used by master to create work (in a streaming way)
-  case class ProvideWork(numConfigs: Int) extends Message
+  case class ProvideWork(batchSize: Int) extends Message
 
   case object CurrentlyBusy extends Message
 
@@ -25,6 +25,8 @@ object WorkPullingPattern {
   case class Terminated(worker: ActorRef) extends Message
 
   case class Work[T](work: T) extends Message
+
+  case class Update(acquisitionFunction: AcquisitionFunction) extends Message
 
   // config should end up being a model config/specification
   case class ModelEvalResult(config: Seq[ModelConfig], result: Seq[Double]) extends Message
@@ -44,7 +46,7 @@ class ModelConfigEvaluator[T]() extends Actor {
   var currentEpic: Option[Epic[T]] = None
 
   def receive = {
-    case epic: Epic[T] ⇒
+    case epic: Epic[T] =>
       if (workers.isEmpty) {
         log.error("Got work but there are no workers registered")
         //System.exit(0)
@@ -56,24 +58,24 @@ class ModelConfigEvaluator[T]() extends Actor {
     //  _ ! WorkAvailable
     //}
 
-    case RegisterWorker(worker) ⇒
+    case RegisterWorker(worker) =>
       log.info(s"worker $worker registered")
       context.watch(worker)
       workers += worker
       worker ! WorkAvailable
 
-    case Terminated(worker) ⇒
+    case Terminated(worker) =>
       log.info(s"worker $worker died - taking off the set of workers")
       workers.remove(worker)
 
-    case ProvideWork(numConfigs) ⇒ currentEpic match {
-      case None ⇒
+    case ProvideWork(batchSize) => currentEpic match {
+      case None =>
         log.info("workers asked for work but we've no more work to do")
       //scorer ! ProvideWork(numConfigs) // request work from the scorer
       case Some(epic) ⇒
-        log.info("Received ProvideWork(" + numConfigs + "), checking epic")
+        log.info(s"Received ProvideWork($batchSize), checking epic")
         val iter = epic.iterator
-        val batch = (1 to numConfigs).map { i =>
+        val batch = (1 to batchSize).map { i =>
           if (currentEpic.isDefined && iter.hasNext) {
             Some(iter.next())
           } else {

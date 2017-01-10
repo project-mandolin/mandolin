@@ -17,7 +17,7 @@ class LocalTrainDecoder[IType, U: ClassTag, W <: Weights[W]: ClassTag, R: ClassT
   
   var elapsedTrainingTime = 0.0
   var append = false
-  val evPr = new LocalPosteriorDecoder(trainer.fe, predictor, outputConstructor)
+  val evPr = new LocalPosteriorDecoder(trainer.getFe, predictor, outputConstructor)
   
   def trainAndDecode(train: Vector[IType], test: Vector[IType]) = {
     val (weights,trainLoss) = trainer.trainWeights(train)    
@@ -33,7 +33,7 @@ class LocalTrainTester[IType, U: ClassTag, W <: Weights[W]: ClassTag, R: ClassTa
   val evalFrequency: Int,  
   detailFile: Option[String] = None) {
   
-  val evPr = new LocalEvalDecoder(trainer.fe, predictor)
+  val evPr = new LocalEvalDecoder(trainer.getFe, predictor)
   var elapsedTrainingTime = 0.0
   var append = false
   
@@ -50,6 +50,9 @@ class LocalTrainTester[IType, U: ClassTag, W <: Weights[W]: ClassTag, R: ClassTa
       }
   }
   
+  /**
+   * Trains a model and evaluates/tests it on test data periodically. Evaluations are logged.
+   */
   def trainAndTest(train: Vector[IType], test: Vector[IType]) = {
     val trainVectors = trainer.extractFeatures(train)
     val testVectors  = evPr.extractFeatures(test)
@@ -68,5 +71,23 @@ class LocalTrainTester[IType, U: ClassTag, W <: Weights[W]: ClassTag, R: ClassTa
       logDetails(trainLoss, acc, auRoc, accAt50, accAt30, elapsedTrainingTime, (i * evalFrequency))      
     }
     trainer.retrainWeights(trainVectors, 1)
+  }
+  
+  /**
+   * Takes a train/test split, builds a model on the train set and evaluates on the test
+   * set. By default the score is 1 - auROC.
+   */
+  def extractTrainAndScore(train: Vector[IType], test: Vector[IType]) : Double = {
+    val trVecs = trainer.extractFeatures(train)
+    val testVecs = evPr.extractFeatures(test)
+    trainAndScore(trVecs, testVecs)
+  }
+  
+  def trainAndScore(train: Vector[U], test: Vector[U]) : Double = {
+    val (weights, trainLoss) = trainer.retrainWeights(train, totalEpochs)
+    val confusion = evPr.evalUnits(test, weights)
+    val confMat = confusion.getMatrix
+    val auRoc = if (confMat.dim == 2) confusion.getAreaUnderROC(1) else confusion.getTotalAreaUnderROC()
+    1.0 - auRoc
   }
 }

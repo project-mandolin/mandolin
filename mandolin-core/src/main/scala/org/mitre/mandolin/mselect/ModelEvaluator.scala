@@ -12,7 +12,7 @@ abstract class ModelEvaluator {
 class MockRandomModelEvaluator extends ModelEvaluator {
   
   private def pauseTime() = {
-    val nsecs = util.Random.nextInt(10) * 100
+    val nsecs = util.Random.nextInt(10) * 1000
     Thread.sleep(nsecs)
   }
   

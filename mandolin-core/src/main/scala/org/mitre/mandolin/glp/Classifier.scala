@@ -11,7 +11,32 @@ import org.mitre.mandolin.glp.local.LocalProcessor
 import scala.reflect.ClassTag
 
 class GLPModelSettings(args: Array[String]) extends LearnerSettings(args) 
-  with OnlineLearnerSettings with BatchLearnerSettings with DecoderSettings with DeepNetSettings
+  with OnlineLearnerSettings with BatchLearnerSettings with DecoderSettings with DeepNetSettings {
+  
+  def this() = this(Array())
+
+  /**
+   * Returns a new settings object with the config name `key` set to `v` 
+   */
+  def set(key: String, v: Any) = {
+    val curConfig = this.config
+    val nConf = curConfig.withValue(key, com.typesafe.config.ConfigValueFactory.fromAnyRef(v))
+    new GLPModelSettings(Array()) {
+      override lazy val config = nConf 
+    }
+  }
+  
+  /**
+   * Returns a new settings object with the sequence of tuple arguments values set accordingly
+   */
+  def withSets(avs: Seq[(String, Any)]) : GLPModelSettings = {
+    val nc = avs.foldLeft(this.config){case (ac, v) => ac.withValue(v._1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v._2))}
+    new GLPModelSettings(Array()) {
+      override lazy val config = nc
+    }
+  } 
+  
+}
 
 /**
  * Output constructor for GLP models. Writes a vector of outputs

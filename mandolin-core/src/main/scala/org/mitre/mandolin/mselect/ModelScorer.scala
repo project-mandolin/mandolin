@@ -1,7 +1,6 @@
 package org.mitre.mandolin.mselect
 
 import akka.actor.{ActorRef, Actor}
-import org.mitre.mandolin.glp.GLPModelSpec
 import org.slf4j.LoggerFactory
 
 /**
@@ -9,19 +8,18 @@ import org.slf4j.LoggerFactory
   * model configurations - where a score is the estimated performance/accuracy/error
   * of the model on a given dataset.
   */
-class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, evalMaster: ActorRef) extends Actor {
-
+class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, evalMaster: ActorRef, sampleSize: Int, acqFnThreshold: Int) extends Actor {
+  
+  def this(mcs: ModelSpace, af: AcquisitionFunction) = this(mcs, af, 10, 10)
+    
   import WorkPullingPattern._
 
   val log = LoggerFactory.getLogger(getClass)
-  val frequency = 10
   var evalResults = new collection.mutable.ArrayBuffer[ModelEvalResult]
   var receivedSinceLastScore = 0
-  var currentSampleSize = 10000
-  var sendMoreThreshold = 10001
 
   override def preStart() = {
-    val scored = getScoredConfigs(currentSampleSize) map ( _._2 )
+    val scored = getScoredConfigs(sampleSize) map ( _._2 )
     val epic = new Epic[ModelConfig] {
       override val iterator = scored.toIterator
     }
@@ -34,30 +32,24 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
       log.info("Received score " + res + " from model " + ms)
       evalResults append ModelEvalResult(ms, res)
       receivedSinceLastScore += 1
-
-      if (receivedSinceLastScore > 40) {
-        log.info("Received " + sendMoreThreshold + " results, sending more configs")
+      if (receivedSinceLastScore > acqFnThreshold) {
+        log.info("Training acquisition function")
         receivedSinceLastScore = 0
-        val scored = getScoredConfigs(currentSampleSize) map ( _._2 )
-        val epic = new Epic[ModelConfig] {
-          override val iterator = scored.toIterator
-        }
+        acqFn.train(evalResults)
+        log.info("Finished training acquisition function")
+        
+        val scored = getScoredConfigs(sampleSize) map {_._2}
+        val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
         evalMaster ! epic
-        //val mspec = buildNewScoringModel()
-        //currentModel = Some(mspec)
-        //applyModel(mspec)
       }
 
-    /*case ProvideWork(numConfigs) => // means that model evaluation is ready to evaluation models
-        log.info("Received ProvideWork(" + numConfigs + ")")
-        val scored = getScoredConfigs(currentSampleSize) map {
-          _._2
-        }
-        val epic = new Epic[ModelConfig] {
-          override val iterator = scored.toIterator
-        }
-        sender ! epic
-    }*/
+    /*
+      case ProvideWork => // means that model evaluation is ready to evaluation models
+      log.info("Received ProvideWork")
+      val scored = getScoredConfigs(sampleSize) map {_._2}
+      val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
+      sender ! epic
+      */
   }
 
   def getScoredConfigs(size: Int) = {

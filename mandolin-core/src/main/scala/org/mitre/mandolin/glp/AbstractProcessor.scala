@@ -200,7 +200,7 @@ abstract class AbstractProcessor extends LineParser {
       if (appSettings.scaleInputs) getScaledDenseVecAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.denseVectorSize) 
       else new IdentityAlphabet(appSettings.denseVectorSize, fix = true)
     getComponentsDenseVecs(appSettings.netspec, appSettings.denseVectorSize, la, fa)
-  }
+  }  
 
   def getComponentsDenseVecs(layerSpecs: IndexedSeq[LType]): GLPComponentSet = {
     val (nn, predictor, outConstructor) = getSubComponents(layerSpecs)
