@@ -16,7 +16,7 @@ abstract class LearnerFactory {
 
 class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: ModelConfig) extends LearnerInstance with Serializable {
 
-  def train(trainBC: Broadcast[Vector[String]], testBC: Broadcast[Vector[String]]) : Double = {
+  def train(trainBC: Broadcast[Vector[String]], testBC: Broadcast[Vector[String]]): Double = {
 
     val io = new LocalIOAssistant
     val lp = new LocalProcessor
@@ -31,15 +31,14 @@ class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: 
     val trainer = new LocalTrainer(fe, optimizer)
     val evPr = new LocalEvalDecoder(trainer.fe, pr)
     val trainVectors = trainer.extractFeatures(trainLines)
-    val testVectors  = evPr.extractFeatures(testLines)
+    val testVectors = evPr.extractFeatures(testLines)
     for (i <- 1 to appSettings.numEpochs) {
-      val t = System.nanoTime()
-      val (weights,trainLoss) = trainer.retrainWeights(trainVectors, 1)
+      val (weights, trainLoss) = trainer.retrainWeights(trainVectors, 1)
       val confusion = evPr.evalUnits(testVectors, weights)
       val confMat = confusion.getMatrix
       val acc = confMat.getAccuracy
     }
-    val (weights,trainLoss) = trainer.retrainWeights(trainVectors, 1)
+    val (weights, trainLoss) = trainer.retrainWeights(trainVectors, 1)
     val confusion = evPr.evalUnits(testVectors, weights)
     val confMat = confusion.getMatrix
     val acc = confMat.getAccuracy
@@ -53,7 +52,8 @@ class MandolinLogisticRegressionFactory extends LearnerFactory {
     val cats: Vector[Option[String]] = config.categoricalMetaParamSet.map { param => {
       val paramValue: String = param.getValue.s
       param.getName match {
-        case "method" => Some("mandolin.trainer.optimizer.method="+paramValue)
+        case "method" => Some("mandolin.trainer.optimizer.method=" + paramValue)
+        case "numTrainerThreads" => Some("mandolin.trainer.threads=" + paramValue)
         case _ => None
       }
     }
@@ -62,7 +62,7 @@ class MandolinLogisticRegressionFactory extends LearnerFactory {
     val reals: Vector[Option[String]] = config.realMetaParamSet.map { param => {
       val paramValue: RealValue = param.getValue
       param.getName match {
-        case "lr" => Some("mandolin.trainer.optimizer.initial-learning-rate="+paramValue.toString)
+        case "lr" => Some("mandolin.trainer.optimizer.initial-learning-rate=" + paramValue.v)
         case _ => None
       }
     }

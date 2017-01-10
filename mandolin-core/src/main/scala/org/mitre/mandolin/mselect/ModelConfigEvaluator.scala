@@ -2,6 +2,7 @@ package org.mitre.mandolin.mselect
 
 import akka.actor.Actor
 import akka.actor.ActorRef
+import scala.collection.immutable.IndexedSeq
 import scala.reflect.ClassTag
 import org.slf4j.LoggerFactory
 import scala.concurrent.Future
@@ -26,7 +27,7 @@ object WorkPullingPattern {
   case class Work[T](work: T) extends Message
 
   // config should end up being a model config/specification
-  case class ModelEvalResult(config: ModelConfig, result: Double) extends Message
+  case class ModelEvalResult(config: Seq[ModelConfig], result: Seq[Double]) extends Message
 
 }
 
@@ -34,7 +35,7 @@ object WorkPullingPattern {
   * This will take configurations from the ModelConfigQueue
   * It will act as master with workers carrying out the full evaluation
   */
-class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
+class ModelConfigEvaluator[T]() extends Actor {
 
   import WorkPullingPattern._
 
@@ -44,23 +45,22 @@ class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
 
   def receive = {
     case epic: Epic[T] ⇒
-      if (currentEpic.isDefined)
-        sender ! CurrentlyBusy
-      else if (workers.isEmpty)
-        log.error("Got work but there are no workers registered.")
-      else {
-        log.info("Got epic from ModelScorer")
-        currentEpic = Some(epic)
-        log.info("Telling workers there is work available")
-        workers foreach {
-          _ ! WorkAvailable
-        }
+      if (workers.isEmpty) {
+        log.error("Got work but there are no workers registered")
+        //System.exit(0)
       }
+      log.info("Got new epic from ModelScorer")
+      currentEpic = Some(epic)
+    //log.info("Telling workers there is work available")
+    //workers foreach {
+    //  _ ! WorkAvailable
+    //}
 
     case RegisterWorker(worker) ⇒
       log.info(s"worker $worker registered")
       context.watch(worker)
       workers += worker
+      worker ! WorkAvailable
 
     case Terminated(worker) ⇒
       log.info(s"worker $worker died - taking off the set of workers")
@@ -69,28 +69,33 @@ class ModelConfigEvaluator[T](scorer: ActorRef) extends Actor {
     case ProvideWork(numConfigs) ⇒ currentEpic match {
       case None ⇒
         log.info("workers asked for work but we've no more work to do")
-        scorer ! ProvideWork(numConfigs) // request work from the scorer
+      //scorer ! ProvideWork(numConfigs) // request work from the scorer
       case Some(epic) ⇒
         log.info("Received ProvideWork(" + numConfigs + "), checking epic")
         val iter = epic.iterator
-        if (iter.hasNext) {
-          log.info("Epic had work, sending to worker")
-          sender ! Work(iter.next)
-        } else {
-          log.info(s"done with current epic $epic")
-          currentEpic = None
+        val batch = (1 to numConfigs).map { i =>
+          if (currentEpic.isDefined && iter.hasNext) {
+            Some(iter.next())
+          } else {
+            log.info(s"done with current epic $epic")
+            currentEpic = None
+            None
+          }
+        }.filter(_.isDefined).map(_.get)
+        log.info(s"Sending batch of size ${batch.length} to worker $sender")
+        sender ! Work(batch)
 
-        }
     }
 
     case x => log.info("Received unrecognized message " + x.toString)
   }
+
 }
 
 /**
   * This worker actor will actually take work from the master in the form of models to evaluate
   */
-class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEvaluator: ModelEvaluator) extends Actor {
+class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEvaluator: ModelEvaluator, batchSize: Int) extends Actor {
 
   import WorkPullingPattern._
 
@@ -101,16 +106,17 @@ class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEv
   def receive = {
     case WorkAvailable => {
       log.info(s"Worker $this received work available, asking master to provide work")
-      master ! ProvideWork(1)
+      master ! ProvideWork(batchSize)
     }
-    case Work(w: ModelConfig) => doWork(w) onComplete { case r =>
+    case Work(w: Seq[ModelConfig]) => doWork(w) onComplete { case r =>
       log.info(s"Worker $this processing configuration")
       modelScorer ! r.get // send result to modelScorer
-      master ! ProvideWork(1)
+      master ! ProvideWork(batchSize)
     }
+    case x => log.error("Received unrecognized message " + x)
   }
 
-  def doWork(w: ModelConfig): Future[ModelEvalResult] = {
+  def doWork(w: Seq[ModelConfig]): Future[ModelEvalResult] = {
     Future({
       val score = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result

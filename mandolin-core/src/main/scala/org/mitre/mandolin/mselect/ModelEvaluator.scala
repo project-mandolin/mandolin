@@ -5,7 +5,7 @@ package org.mitre.mandolin.mselect
  * model configuration against a provided dataset, using x-validation, etc.
  */
 abstract class ModelEvaluator {
-  def evaluate(c: ModelConfig) : Double
+  def evaluate(c: Seq[ModelConfig]) : Seq[Double]
 }
 
 // XXX - this is for testing purposes only
@@ -16,9 +16,8 @@ class MockRandomModelEvaluator extends ModelEvaluator {
     Thread.sleep(nsecs)
   }
   
-  def evaluate(c: ModelConfig) : Double = {
+  def evaluate(c: Seq[ModelConfig]) : Seq[Double] = {
     pauseTime() // simulate this taking a while
-    val r = util.Random.nextDouble()
-    r
+    c.map(_=>util.Random.nextDouble())
   }
 }

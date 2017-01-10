@@ -9,8 +9,9 @@ import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
 import org.mitre.mandolin.util.LocalIOAssistant
 
 class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[String]], testBC: Broadcast[Vector[String]]) extends ModelEvaluator with Serializable {
-  override def evaluate(c: ModelConfig): Double = {
-    val configRDD: RDD[ModelConfig] = sc.parallelize(Array(c), 1)
+  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
+
+    val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
     val _trainBC = trainBC
     val _testBC = testBC
     val accuracy = configRDD.map { config => {
@@ -20,8 +21,7 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[String]], 
       acc
     }
     }.collect()
-    accuracy(0)
+    accuracy
   }
-
 }
 
