@@ -17,6 +17,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
   val log = LoggerFactory.getLogger(getClass)
   var evalResults = new collection.mutable.ArrayBuffer[ModelEvalResult]
   var receivedSinceLastScore = 0
+  val startTime = System.currentTimeMillis()
 
   override def preStart() = {
     val scored = getScoredConfigs(sampleSize) map ( _._2 )
@@ -32,6 +33,11 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
       log.info("Received score " + res + " from model " + ms)
       evalResults append ModelEvalResult(ms, res)
       receivedSinceLastScore += 1
+      if (receivedSinceLastScore == sampleSize) {
+        val hours = System.currentTimeMillis() - startTime /1000 /60 /60
+        log.info(s"Total time for $sampleSize configs was $hours hours")
+        System.exit(0)
+      }
       if (receivedSinceLastScore > acqFnThreshold) {
         log.info("Training acquisition function")
         receivedSinceLastScore = 0

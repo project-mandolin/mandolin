@@ -1,7 +1,7 @@
 package org.mitre.mandolin.mselect
 
 import org.apache.spark.SparkContext
-import org.mitre.mandolin.mselect.WorkPullingPattern.{ProvideWork, RegisterWorker}
+import org.mitre.mandolin.mselect.WorkPullingPattern.RegisterWorker
 import org.mitre.mandolin.util.LocalIOAssistant
 import akka.actor.{PoisonPill, ActorSystem, Props}
 
@@ -30,7 +30,7 @@ object ModelSelectionDriver {
     val testBC = sc.broadcast(io.readLines(testFile).toVector)
     val ev = new SparkModelEvaluator(sc, trainBC, testBC)
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction, master, 1000, 1001)), name = "scorer")
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction, master, 3200, 3201)), name = "scorer")
     val workers = 1 to numWorkers map (i => system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, workerBatchSize)), name = "worker" + i))
 
     workers.foreach(worker => master ! RegisterWorker(worker))

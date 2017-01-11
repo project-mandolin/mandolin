@@ -1,11 +1,11 @@
 package org.mitre.mandolin.mselect
 
+import java.util.concurrent.Executors
+
 import akka.actor.Actor
 import akka.actor.ActorRef
-import scala.collection.immutable.IndexedSeq
-import scala.reflect.ClassTag
 import org.slf4j.LoggerFactory
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 object WorkPullingPattern {
 
@@ -101,7 +101,17 @@ class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEv
 
   import WorkPullingPattern._
 
-  implicit val ec = context.dispatcher
+  //implicit val ec: ExecutionContextExecutor = context.dispatcher
+
+  implicit val ec = new ExecutionContext {
+    val threadPool = Executors.newFixedThreadPool(1000)
+
+    override def execute(runnable: Runnable) {
+      threadPool.submit(runnable)
+    }
+
+    override def reportFailure(cause: Throwable) {}
+  }
 
   val log = LoggerFactory.getLogger(getClass)
 
