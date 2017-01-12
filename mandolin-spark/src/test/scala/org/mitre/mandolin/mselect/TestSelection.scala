@@ -17,28 +17,25 @@ class TestSelection extends FlatSpec with Matchers {
     val system = ActorSystem("Simulator")
 
 
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction)), name = "scorer")
+    val numWorkers = 3
     val sc = new SparkContext()
     val nt : Broadcast[Vector[String]] = sc.broadcast(Vector())
     val ntst : Broadcast[Vector[String]] = sc.broadcast(Vector())
     val ev = new SparkModelEvaluator(sc, nt, ntst)
-    val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig](scorerActor)), name = "master")
-    val worker1 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker1")
-    val worker2 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker2")
-    val worker3 = system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev)), name = "worker3")
+    
+    val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]()), name = "master")
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new MockAcquisitionFunction, master, 100, 2)), name = "scorer")
 
-    master ! RegisterWorker(worker1)
-    master ! RegisterWorker(worker2)
-    master ! RegisterWorker(worker3)
+    
+    val workers = for (i <- 1 to numWorkers) yield system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, 1)), name = "worker"+i)
+
+    workers foreach { master ! RegisterWorker(_) }
 
     master ! ProvideWork // this starts things off
     // master should request work from the scorer if it doesn't have any
 
     Thread.sleep(30000) // wait 30 seconds
 
-    worker1 ! PoisonPill
-    worker2 ! PoisonPill
-    worker3 ! PoisonPill
 
     scorerActor ! PoisonPill
     master ! PoisonPill
