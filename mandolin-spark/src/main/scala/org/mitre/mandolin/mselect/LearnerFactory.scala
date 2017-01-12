@@ -73,7 +73,7 @@ class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: 
 }
 
 class MandolinLogisticRegressionFactory extends LearnerFactory {
-  override def getLearnerInstance(config: ModelConfig): LearnerInstance = {
+  def getLearnerInstance(config: ModelConfig): LearnerInstance = {
 
     val cats: Vector[Option[String]] = config.categoricalMetaParamSet.map { param => {
       val paramValue: String = param.getValue.s

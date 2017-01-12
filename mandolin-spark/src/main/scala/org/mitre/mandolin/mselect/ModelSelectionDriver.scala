@@ -4,6 +4,8 @@ import org.apache.spark.SparkContext
 import org.mitre.mandolin.mselect.WorkPullingPattern.RegisterWorker
 import org.mitre.mandolin.util.LocalIOAssistant
 import akka.actor.{PoisonPill, ActorSystem, Props}
+import scala.concurrent.{ExecutionContext }
+import java.util.concurrent.Executors
 
 /**
   * Created by jkraunelis on 1/1/17.
@@ -11,7 +13,7 @@ import akka.actor.{PoisonPill, ActorSystem, Props}
 object ModelSelectionDriver {
 
   def main(args: Array[String]): Unit = {
-    val system = ActorSystem("Simulator")
+    
 
     val sc = new SparkContext
     val io = new LocalIOAssistant
@@ -20,6 +22,8 @@ object ModelSelectionDriver {
     val numWorkers = args(2).toInt
     val numThreads = args(3)
     val workerBatchSize = args(4).toInt
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers))
+    val system = ActorSystem("Simulator")
     // set up model space
     val lrParam = new RealMetaParameter("lr", new RealSet(0.01, 1.0))
     val methodParam = new CategoricalMetaParameter("method", new CategoricalSet(Vector("adagrad", "sgd")))
