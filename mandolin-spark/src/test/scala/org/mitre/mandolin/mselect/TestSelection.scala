@@ -4,6 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.scalatest._
 import akka.actor.{ActorSystem, Props}
+import org.mitre.mandolin.glp.GLPFactor
 
 class TestSelection extends FlatSpec with Matchers {
 
@@ -19,8 +20,8 @@ class TestSelection extends FlatSpec with Matchers {
 
     val numWorkers = 3
     val sc = new SparkContext()
-    val nt : Broadcast[Vector[String]] = sc.broadcast(Vector())
-    val ntst : Broadcast[Vector[String]] = sc.broadcast(Vector())
+    val nt : Broadcast[Vector[GLPFactor]] = sc.broadcast(Vector())
+    val ntst : Broadcast[Vector[GLPFactor]] = sc.broadcast(Vector())
     val ev = new SparkModelEvaluator(sc, nt, ntst)
     
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]()), name = "master")

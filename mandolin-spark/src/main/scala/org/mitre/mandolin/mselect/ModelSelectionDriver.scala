@@ -6,6 +6,7 @@ import org.mitre.mandolin.util.LocalIOAssistant
 import akka.actor.{PoisonPill, ActorSystem, Props}
 import scala.concurrent.{ExecutionContext }
 import java.util.concurrent.Executors
+import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings }
 
 /**
   * Created by jkraunelis on 1/1/17.
@@ -22,6 +23,7 @@ object ModelSelectionDriver {
     val numWorkers = args(2).toInt
     val numThreads = args(3)
     val workerBatchSize = args(4).toInt
+    
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers))
     val system = ActorSystem("Simulator")
     // set up model space
@@ -30,8 +32,16 @@ object ModelSelectionDriver {
     val trainerThreadsParam = new CategoricalMetaParameter("numTrainerThreads", new CategoricalSet(Vector(numThreads)))
     val modelSpace = new ModelSpace(Vector(lrParam), Vector(methodParam, trainerThreadsParam))
     // end model space
-    val trainBC = sc.broadcast(io.readLines(trainFile).toVector)
-    val testBC = sc.broadcast(io.readLines(testFile).toVector)
+    val tfile = "/nfshome/jkraunelis/test.vectors"
+    val trainer = GLPTrainerBuilder((new GLPModelSettings).withSets(Seq(
+        ("mandolin.trainer.train-file", tfile),
+        ("mandolin.trainer.test-file", tfile)
+        )))
+    val featureExtractor = trainer.getFe
+    val trVecs = io.readLines(trainFile) map { l => featureExtractor.extractFeatures(l)}
+    val tstVecs = io.readLines(testFile) map { l => featureExtractor.extractFeatures(l)}
+    val trainBC = sc.broadcast(trVecs.toVector)
+    val testBC = sc.broadcast(tstVecs.toVector)
     val ev = new SparkModelEvaluator(sc, trainBC, testBC)
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")
     val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction, master, 3200, 3201)), name = "scorer")
