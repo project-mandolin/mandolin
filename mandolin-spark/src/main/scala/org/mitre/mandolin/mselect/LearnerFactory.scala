@@ -8,6 +8,7 @@ import org.mitre.mandolin.util.LocalIOAssistant
 
 abstract class LearnerInstance extends LocalProcessor {
   def train(trainBC: Broadcast[Vector[String]], testBC: Broadcast[Vector[String]]): Double
+  def train(trainBC: Vector[String], testBC: Vector[String]): Double
 }
 
 abstract class LearnerFactory {
@@ -41,9 +42,8 @@ class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: 
     val acc = confMat.getAccuracy
     acc
   }
-
-  def train(trainBC: Broadcast[Vector[String]], testBC: Broadcast[Vector[String]]): Double = {
-
+  
+  def train(train: Vector[String], test: Vector[String]) : Double = {
     val io = new LocalIOAssistant
     val lp = new LocalProcessor
     val components: GLPComponentSet = lp.getComponentsViaSettings(appSettings, io)
@@ -52,12 +52,10 @@ class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: 
     val fe = components.featureExtractor
     val pr = components.predictor
 
-    val trainLines = trainBC.value
-    val testLines = testBC.value
     val trainer = new LocalTrainer(fe, optimizer)
     val evPr = new LocalEvalDecoder(trainer.getFe, pr)
-    val trainVectors: Vector[GLPFactor] = trainer.extractFeatures(trainLines)
-    val testVectors = evPr.extractFeatures(testLines)
+    val trainVectors: Vector[GLPFactor] = trainer.extractFeatures(train)
+    val testVectors = evPr.extractFeatures(test)
     for (i <- 1 to appSettings.numEpochs) {
       val (weights, trainLoss) = trainer.retrainWeights(trainVectors, 1)
       val confusion = evPr.evalUnits(testVectors, weights)
@@ -69,6 +67,10 @@ class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: 
     val confMat = confusion.getMatrix
     val acc = confMat.getAccuracy
     acc
+  }
+
+  def train(trainBC: Broadcast[Vector[String]], testBC: Broadcast[Vector[String]]): Double = {
+    train(trainBC.value, testBC.value)    
   }
 }
 

@@ -36,7 +36,7 @@ object ModelSelectionDriver {
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")
     val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction, master, 3200, 3201)), name = "scorer")
     val workers = 1 to numWorkers map (i => system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, workerBatchSize)), name = "worker" + i))
-
+    Thread.sleep(4000)
     workers.foreach(worker => master ! RegisterWorker(worker))
     //master ! ProvideWork(1) // this starts things off
     // master should request work from the scorer if it doesn't have any

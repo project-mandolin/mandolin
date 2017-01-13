@@ -53,16 +53,16 @@ class ModelConfigEvaluator[T]() extends Actor {
       }
       log.info("Got new epic from ModelScorer")
       currentEpic = Some(epic)
-    //log.info("Telling workers there is work available")
-    //workers foreach {
-    //  _ ! WorkAvailable
-    //}
+      log.info("Telling workers there is work available")
+      workers foreach {
+        _ ! WorkAvailable
+      }
 
     case RegisterWorker(worker) =>
       log.info(s"worker $worker registered")
       context.watch(worker)
       workers += worker
-      worker ! WorkAvailable
+      if (currentEpic.isDefined) worker ! WorkAvailable
 
     case Terminated(worker) =>
       log.info(s"worker $worker died - taking off the set of workers")
@@ -85,7 +85,7 @@ class ModelConfigEvaluator[T]() extends Actor {
           }
         }.filter(_.isDefined).map(_.get)
         log.info(s"Sending batch of size ${batch.length} to worker $sender")
-        sender ! Work(batch)
+        if (batch.length > 0) sender ! Work(batch)
 
     }
 
