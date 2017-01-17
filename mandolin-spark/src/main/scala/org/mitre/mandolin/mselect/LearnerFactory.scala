@@ -1,9 +1,10 @@
 package org.mitre.mandolin.mselect
 
 import org.apache.spark.broadcast.Broadcast
-import org.mitre.mandolin.glp.{GLPFactor, GLPComponentSet, GLPModelSettings}
+import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPFactor, GLPWeights, GLPComponentSet, GLPModelSettings}
 import org.mitre.mandolin.glp.local.{LocalGLPOptimizer, LocalProcessor}
-import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
+import org.mitre.mandolin.predict.local.{LocalEvalDecoder, NonExtractingEvalDecoder, LocalTrainer}
+import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.util.LocalIOAssistant
 
 abstract class LearnerInstance[T] extends LocalProcessor {
@@ -15,55 +16,21 @@ abstract class LearnerFactory[T] {
   def getLearnerInstance(config: ModelConfig): LearnerInstance[T]
 }
 
-class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: ModelConfig) extends LearnerInstance[GLPFactor] with Serializable {
+class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: ModelConfig, nn: ANNetwork) 
+extends LearnerInstance[GLPFactor] with Serializable {
 
-  def trainFeats(trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]): Double = {
-    val io = new LocalIOAssistant
-    val lp = new LocalProcessor
-    val components: GLPComponentSet = lp.getComponentsViaSettings(appSettings, io)
-    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, components.ann)
-
-    val fe = components.featureExtractor
-    val pr = components.predictor
-
-    val trainer = new LocalTrainer(fe, optimizer)
-    val evPr = new LocalEvalDecoder(trainer.getFe, pr)
-    val trainVectors = trainBC.value
-    val testVectors = testBC.value
-    for (i <- 1 to appSettings.numEpochs) {
-      val (weights, trainLoss) = trainer.retrainWeights(trainVectors, 1)
-      val confusion = evPr.evalUnits(testVectors, weights)
-      val confMat = confusion.getMatrix
-      val acc = confMat.getAccuracy
-    }
-    val (weights, trainLoss) = trainer.retrainWeights(trainVectors, 1)
-    val confusion = evPr.evalUnits(testVectors, weights)
-    val confMat = confusion.getMatrix
-    val acc = confMat.getAccuracy
-    acc
-  }
-  
   
   def train(train: Vector[GLPFactor], test: Vector[GLPFactor]) : Double = {
     val io = new LocalIOAssistant
     val lp = new LocalProcessor
-    val components: GLPComponentSet = lp.getComponentsViaSettings(appSettings, io)
-    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, components.ann)
 
-    val fe = components.featureExtractor
-    val pr = components.predictor
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)
 
-    val trainer = new LocalTrainer(fe, optimizer)
-    val evPr = new LocalEvalDecoder(trainer.getFe, pr)
-    //val trainVectors: Vector[GLPFactor] = trainer.extractFeatures(train)
-    //val testVectors = evPr.extractFeatures(test)
-    for (i <- 1 to appSettings.numEpochs) {
-      val (weights, trainLoss) = trainer.retrainWeights(train, 1)
-      val confusion = evPr.evalUnits(test, weights)
-      val confMat = confusion.getMatrix
-      val acc = confMat.getAccuracy
-    }
-    val (weights, trainLoss) = trainer.retrainWeights(train, 1)
+    val predictor = new CategoricalGLPPredictor(nn, true)
+
+    val trainer = new LocalTrainer(optimizer)
+    val evPr = new NonExtractingEvalDecoder[GLPFactor,GLPWeights,Int,DiscreteConfusion](predictor)
+    val (weights, trainLoss) = trainer.retrainWeights(train, appSettings.numEpochs)
     val confusion = evPr.evalUnits(test, weights)
     val confMat = confusion.getMatrix
     val acc = confMat.getAccuracy
@@ -98,8 +65,8 @@ class MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
     }
 
     val args: Vector[String] = (cats ++ reals) filter { opt => opt.isDefined } map { opt => opt.get }
-    val fixme = args :+ "mandolin.trainer.train-file=/nfshome/jkraunelis/test.vectors" :+ "mandolin.trainer.test-file=/nfshome/jkraunelis/test.vectors"// :+ "mandolin.trainer.num-hashed-features=1000000" :+ "mandolin.trainer.use-random-features=true"
-    val settings = new GLPModelSettings(fixme.toArray)
-    new MandolinLogisticRegressionInstance(settings, config)
+    // XXX - the above can be simplified with new way to setting up model settings
+    val settings = new GLPModelSettings(args.toArray)
+    new MandolinLogisticRegressionInstance(settings, config, config.mSpec)
   }
 }

@@ -26,19 +26,26 @@ object ModelSelectionDriver {
     
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers))
     val system = ActorSystem("Simulator")
+    
+    val settings = (new GLPModelSettings).withSets(Seq(
+        ("mandolin.trainer.train-file", trainFile),
+        ("mandolin.trainer.test-file", testFile)
+        ))
+        
+    val (trainer, nn) = GLPTrainerBuilder(settings)
+    
+
+    val featureExtractor = trainer.getFe
+    featureExtractor.getAlphabet.ensureFixed // fix the alphabet
+    
     // set up model space
     val lrParam = new RealMetaParameter("lr", new RealSet(0.01, 1.0))
     val methodParam = new CategoricalMetaParameter("method", new CategoricalSet(Vector("adagrad", "sgd")))
     val trainerThreadsParam = new CategoricalMetaParameter("numTrainerThreads", new CategoricalSet(Vector(numThreads)))
-    val modelSpace = new ModelSpace(Vector(lrParam), Vector(methodParam, trainerThreadsParam))
+    val modelSpace = new ModelSpace(Vector(lrParam), Vector(methodParam, trainerThreadsParam), nn)
     // end model space
-    val tfile = "/nfshome/jkraunelis/test.vectors"
-    val trainer = GLPTrainerBuilder((new GLPModelSettings).withSets(Seq(
-        ("mandolin.trainer.train-file", tfile),
-        ("mandolin.trainer.test-file", tfile)
-        )))
-    val featureExtractor = trainer.getFe
-    val trVecs = io.readLines(trainFile) map { l => featureExtractor.extractFeatures(l)}
+
+    val trVecs = io.readLines(trainFile) map { l => featureExtractor.extractFeatures(l)}    
     val tstVecs = io.readLines(testFile) map { l => featureExtractor.extractFeatures(l)}
     val trainBC = sc.broadcast(trVecs.toVector)
     val testBC = sc.broadcast(tstVecs.toVector)

@@ -5,7 +5,7 @@ package org.mitre.mandolin.predict.local
 
 import org.mitre.mandolin.optimize.Weights
 import scala.reflect.ClassTag
-import org.mitre.mandolin.transform.{ FeatureExtractor, LineProcessor }
+import org.mitre.mandolin.transform.{ IdentityFeatureExtractor, FeatureExtractor, LineProcessor }
 import org.mitre.mandolin.predict.{Predictor, OutputConstructor, EvalPredictor, Confusion, ConfusionMatrix}
 
 
@@ -53,6 +53,41 @@ class LocalPosteriorDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, 
   }
 }
 
+class NonExtractingEvalDecoder[U : ClassTag, W <: Weights[W], R : ClassTag, C <: Confusion[C] : ClassTag](
+    pr: EvalPredictor[U, W, R, C]
+    ) {
+  
+  def evalWithoutExtraction(inputs: Vector[U], w: W) : ConfusionMatrix = {
+    val getConf         = 
+      {u : U =>
+        pr.getConfusion(u, w)
+      }
+    val finalConfusion = inputs map { getConf } reduce {_ compose _ }
+    finalConfusion.getMatrix
+  }
+  
+  /**
+   * Evaluate training units (output of feature extractor)
+   * @param units rdd of training/testing units
+   * @param wBc broadcast of weights
+   * @return resulting confusion object
+   */ 
+  def evalUnits(units: Vector[U], w: W) : C = {
+    val getConf = 
+      {u : U =>
+        val r = pr.getConfusion(u, w)
+        r
+      }
+    val confusions = units map { getConf }
+    val finalConfusion = units map { getConf } reduce {_ compose _ }
+    finalConfusion        
+  }
+  
+}
+    
+    
+
+
 /**
  * A decoder the takes and eval predictor to generate results/scores for predictions on a test set
  * @param fe feature extractor
@@ -67,6 +102,8 @@ class LocalEvalDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, C <: 
     fe: FeatureExtractor[IType,U],
     pr: EvalPredictor[U, W, R, C]
     ) {
+  
+
   
   def extractFeatures(inputs: Vector[IType]) : Vector[U] = {
     inputs map fe.extractFeatures    
@@ -86,6 +123,15 @@ class LocalEvalDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, C <: 
       }
     val punits = inputs map { extractFeatures }
     val finalConfusion = punits map { getConf } reduce {_ compose _ }
+    finalConfusion.getMatrix
+  }
+  
+  def evalWithoutFeatureExtraction(inputs: Vector[U], w: W) : ConfusionMatrix = {
+    val getConf         = 
+      {u : U =>
+        pr.getConfusion(u, w)
+      }
+    val finalConfusion = inputs map { getConf } reduce {_ compose _ }
     finalConfusion.getMatrix
   }
   
