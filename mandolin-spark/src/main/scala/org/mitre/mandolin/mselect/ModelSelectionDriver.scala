@@ -51,7 +51,8 @@ object ModelSelectionDriver {
     val testBC = sc.broadcast(tstVecs.toVector)
     val ev = new SparkModelEvaluator(sc, trainBC, testBC)
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new RandomAcquisitionFunction, master, 3200, 3201)), name = "scorer")
+    val acqFun = new BayesianNNAcquisitionFunction
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, acqFun, master, 3200, 3201)), name = "scorer")
     val workers = 1 to numWorkers map (i => system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, workerBatchSize)), name = "worker" + i))
     Thread.sleep(4000)
     workers.foreach(worker => master ! RegisterWorker(worker))
