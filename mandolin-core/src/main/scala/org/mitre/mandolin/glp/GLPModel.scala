@@ -6,7 +6,7 @@ package org.mitre.mandolin.glp
 import org.mitre.mandolin.optimize.{ModelWriter, Updater}
 import com.esotericsoftware.kryo.io.{ Input => KInput, Output => KOutput }
 import com.twitter.chill.{ EmptyScalaKryoInstantiator, AllScalaRegistrar }
-import org.mitre.mandolin.util.{ Alphabet, IOAssistant }
+import org.mitre.mandolin.util.{ Alphabet, IOAssistant, StdAlphabet }
 import org.mitre.mandolin.util.{ LocalIOAssistant, IdentityAlphabet }
 import org.mitre.mandolin.glp.local.LocalGLPOptimizer
 import org.mitre.mandolin.transform.FeatureExtractor
@@ -35,6 +35,14 @@ object GLPTrainerBuilder extends AbstractProcessor {
     (new LocalTrainer(fe, optimizer), components.ann)
   } 
   
+  def apply(mspec: IndexedSeq[LType], lines: Iterator[String]) : (LocalTrainer[String, GLPFactor, GLPWeights], ANNetwork) = {   
+    val io = new LocalIOAssistant
+    val la = new StdAlphabet
+    val gset = getComponentsInducedAlphabet(mspec, lines: Iterator[String], la: Alphabet, false, -1, io)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(new GLPModelSettings ,gset.ann)
+    (new LocalTrainer(gset.featureExtractor, optimizer), gset.ann)
+  }
+  
   /**
    * This method creates a local trainer without a feature extractor. Will be used on feature vectors
    * already constructed as GLPFactor objects.
@@ -46,12 +54,14 @@ object GLPTrainerBuilder extends AbstractProcessor {
     (new LocalTrainer(optimizer), nn)
   }
   
-  def apply(modelSpec: IndexedSeq[LType], fe: FeatureExtractor[String, GLPFactor]) : (LocalTrainer[String, GLPFactor, GLPWeights], ANNetwork) = {
+  /**
+   * This method allows for an arbitrary feature extractor to be used with an arbitrary model spec
+   */
+  def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T, GLPFactor]) : (LocalTrainer[T, GLPFactor, GLPWeights], ANNetwork) = {
     val (nn, predictor, oc) = getSubComponents(modelSpec)
     val numInputs = modelSpec.head.dim
     val fa = new IdentityAlphabet(numInputs)
     val labelAlphabet = new IdentityAlphabet(modelSpec.last.dim)
-    val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, fa, numInputs)
     val settings = new GLPModelSettings
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
     (new LocalTrainer(fe, optimizer), nn)

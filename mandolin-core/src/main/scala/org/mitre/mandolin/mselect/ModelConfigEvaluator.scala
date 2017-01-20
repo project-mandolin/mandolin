@@ -29,7 +29,7 @@ object WorkPullingPattern {
   case class Update(acquisitionFunction: AcquisitionFunction) extends Message
 
   // config should end up being a model config/specification
-  case class ModelEvalResult(config: Seq[ModelConfig], result: Seq[Double]) extends Message
+  case class ModelEvalResult(configResults: Seq[ScoredModelConfig]) extends Message
 
 }
 
@@ -133,7 +133,7 @@ class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEv
       val score = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result
       // send to modelScorer
-      ModelEvalResult(w, score)
+      ModelEvalResult(score zip w map {case (s,c) => ScoredModelConfig(s,c)})
     })
   }
 }

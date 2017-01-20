@@ -1,6 +1,6 @@
 package org.mitre.mandolin.glp
 
-import org.mitre.mandolin.predict.{ EvalPredictor, RegressionConfusion }
+import org.mitre.mandolin.predict.{ OutputConstructor, EvalPredictor, RegressionConfusion }
 import breeze.linalg.{ DenseMatrix => BreezeMat, DenseVector => BreezeVec }
 import breeze.linalg.{inv, diag, sum}
 import breeze.numerics._
@@ -67,6 +67,7 @@ class GLPBayesianRegressor(network: ANNetwork,
     throw new RuntimeException("Confusion doesn't make sense for continuous outputs")
   }
 }
+
 
 /**
  * Main object to run direct tests/examples using Bayesian regression posterior inference

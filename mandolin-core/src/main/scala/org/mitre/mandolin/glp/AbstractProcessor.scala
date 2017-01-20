@@ -174,6 +174,11 @@ abstract class AbstractProcessor extends LineParser {
     val specs = getGLPSpec(confSpecs, idim, odim)
     getSubComponents(specs)
   }
+  
+  def getSubComponents(mspec: IndexedSeq[LType], idim: Int, odim: Int): (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
+    val specs = ANNetwork.fullySpecifySpec(mspec, idim, odim)
+    getSubComponents(specs)
+  }
 
   def getSubComponents(specs: IndexedSeq[LType]): (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
     val nn = ANNetwork(specs)
@@ -224,16 +229,24 @@ abstract class AbstractProcessor extends LineParser {
     val fe = new SparseVecFeatureExtractor(fa, la)
     GLPComponentSet(nn, predictor, outConstructor, fe, la, appSettings.numFeatures,1000)
   }
-
-  def getComponentsInducedAlphabet(confSpecs: List[Map[String, String]], lines: Iterator[String],
+  
+  def getComponentsInducedAlphabet(mspec: IndexedSeq[LType], lines: Iterator[String],
                                    la: Alphabet, scale: Boolean = false, selectedFeatures: Int = -1, io: IOAssistant): GLPComponentSet = {
     val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
     fa.ensureFixed
     la.ensureFixed
-    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, fa.getSize, la.getSize)
-    val isSparse = confSpecs.head("ltype").equals("InputSparse")
+    val (nn, predictor, outConstructor) = getSubComponents(mspec, fa.getSize, la.getSize)
+    val isSparse = mspec(0).designate match {case SparseInputLType => true case _ => false}
     val fe = if (isSparse) new SparseVecFeatureExtractor(fa, la) else new VecFeatureExtractor(fa, la)
     GLPComponentSet(nn, predictor, outConstructor, fe, la, fa.getSize, npts)
+  }
+
+  def getComponentsInducedAlphabet(confSpecs: List[Map[String, String]], lines: Iterator[String],
+                                   la: Alphabet, scale: Boolean, selectedFeatures: Int, io: IOAssistant): GLPComponentSet = {
+    val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
+    fa.ensureFixed
+    val mspec = getGLPSpec(confSpecs, fa.getSize, la.getSize)
+    getComponentsInducedAlphabet(mspec, lines, la, scale, selectedFeatures, io)
   }
 
   def getComponentsInducedAlphabet(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {

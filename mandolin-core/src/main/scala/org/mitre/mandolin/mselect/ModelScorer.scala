@@ -2,6 +2,10 @@ package org.mitre.mandolin.mselect
 
 import akka.actor.{ActorRef, Actor}
 import org.slf4j.LoggerFactory
+import org.mitre.mandolin.util.Alphabet
+
+case class ScoredModelConfig(sc: Double, mc: ModelConfig)
+
 
 /**
   * Encapsulates functionality to apply Bayesian regression model to "score"
@@ -29,9 +33,9 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
 
   // should receive messages sent from ModelConfigEvaluator
   def receive = {
-    case ModelEvalResult(ms, res) =>
-      log.info("Received score " + res + " from model " + ms)
-      evalResults append ModelEvalResult(ms, res)
+    case ModelEvalResult(r)  =>
+
+      evalResults append ModelEvalResult(r)
       receivedSinceLastScore += 1
       if (receivedSinceLastScore == sampleSize) {
         val hours = System.currentTimeMillis() - startTime /1000 /60 /60
@@ -42,21 +46,14 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
         log.info("Training acquisition function")
         receivedSinceLastScore = 0
         acqFn.train(evalResults)
-        log.info("Finished training acquisition function")
-        
+        log.info("Finished training acquisition function")        
         val scored = getScoredConfigs(sampleSize) map {_._2}
         val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
         evalMaster ! epic
       }
-
-    /*
-      case ProvideWork => // means that model evaluation is ready to evaluation models
-      log.info("Received ProvideWork")
-      val scored = getScoredConfigs(sampleSize) map {_._2}
-      val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
-      sender ! epic
-      */
   }
+  
+  
 
   def getScoredConfigs(size: Int) = {
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom
