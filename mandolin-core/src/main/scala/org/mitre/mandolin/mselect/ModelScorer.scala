@@ -12,45 +12,55 @@ case class ScoredModelConfig(sc: Double, mc: ModelConfig)
   * model configurations - where a score is the estimated performance/accuracy/error
   * of the model on a given dataset.
   */
-class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, evalMaster: ActorRef, sampleSize: Int, acqFnThreshold: Int) extends Actor {
+class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, evalMaster: ActorRef, 
+    sampleSize: Int, batchSize: Int, acqFnThreshold: Int, totalEvals: Int) extends Actor {
   
   //def this(mcs: ModelSpace, af: AcquisitionFunction) = this(mcs, af, 10, 10)
     
   import WorkPullingPattern._
 
   val log = LoggerFactory.getLogger(getClass)
-  var evalResults = new collection.mutable.ArrayBuffer[ModelEvalResult]
+  var evalResults = new collection.mutable.ArrayBuffer[ScoredModelConfig]
   var receivedSinceLastScore = 0
+
   val startTime = System.currentTimeMillis()
+  def totalReceived = evalResults.length
 
   override def preStart() = {
-    val scored = getScoredConfigs(sampleSize) map ( _._2 )
+    // send initial "random batch" of configs to evaluate
+    val scored = getScoredConfigs(batchSize) map ( _._2 )
     val epic = new Epic[ModelConfig] {
       override val iterator = scored.toIterator
     }
     evalMaster ! epic
+    log.info("SCORER: Finished pre-start")
   }
 
   // should receive messages sent from ModelConfigEvaluator
   def receive = {
     case ModelEvalResult(r)  =>
 
-      evalResults append ModelEvalResult(r)
-      receivedSinceLastScore += 1
-      if (receivedSinceLastScore == sampleSize) {
+      evalResults ++= r
+      receivedSinceLastScore += r.length
+      log.info("Received model eval result of length " + r.length)
+      if (totalReceived >= totalEvals) {
         val hours = System.currentTimeMillis() - startTime /1000 /60 /60
-        log.info(s"Total time for $sampleSize configs was $hours hours")
+        log.info(s"Total time for $totalEvals configs was $hours hours")
         System.exit(0)
       }
-      if (receivedSinceLastScore > acqFnThreshold) {
+      if (receivedSinceLastScore >= acqFnThreshold) {
         log.info("Training acquisition function")
         receivedSinceLastScore = 0
         acqFn.train(evalResults)
         log.info("Finished training acquisition function")        
-        val scored = getScoredConfigs(sampleSize) map {_._2}
-        val epic = new Epic[ModelConfig] {override val iterator = scored.toIterator}
+        val scored = getScoredConfigs(sampleSize).take(batchSize)
+        log.info("Building new batch to evaluate based on scores: ")
+        scored foreach {case (v,c) => log.info("score: " + v)}
+        val configs = scored map {_._2}
+        val epic = new Epic[ModelConfig] {override val iterator = configs.toIterator}
         evalMaster ! epic
       }
+    case Hello => log.info("SCORER: Received Hello from " + sender.toString())
   }
   
   

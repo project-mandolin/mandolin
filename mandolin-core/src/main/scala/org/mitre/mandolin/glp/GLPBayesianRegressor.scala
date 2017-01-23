@@ -2,7 +2,7 @@ package org.mitre.mandolin.glp
 
 import org.mitre.mandolin.predict.{ OutputConstructor, EvalPredictor, RegressionConfusion }
 import breeze.linalg.{ DenseMatrix => BreezeMat, DenseVector => BreezeVec }
-import breeze.linalg.{inv, diag, sum}
+import breeze.linalg.{pinv, diag, sum}
 import breeze.numerics._
 import org.mitre.mandolin.glp.local.LocalGLPModelReader
 import org.mitre.mandolin.util.LocalIOAssistant
@@ -25,7 +25,7 @@ class GLPBayesianRegressor(network: ANNetwork,
   val designTrans = designMatrix.t
   
   // beta here is residual variance - estimated using MLE solution
-  val freqW = inv(designTrans * designMatrix) * designMatrix.t * designTargets // least squares estimate of weights
+  val freqW = pinv(designTrans * designMatrix) * designMatrix.t * designTargets // least squares estimate of weights
   val yAvg = sum(designTargets) / size
   val xAvg = (designTrans * BreezeVec.ones[Double](size)) / size.toDouble
   // val freqB = yAvg - (freqW.t * xAvg) // bias/intercept
@@ -36,7 +36,7 @@ class GLPBayesianRegressor(network: ANNetwork,
     
   val inDim = designMatrix.cols
   val K = varInv * (designTrans * designMatrix) + diag(BreezeVec.fill(inDim){alpha})
-  val kInv = inv(K)  
+  val kInv = pinv(K)  
   val m =  (kInv * designMatrix.t * meanSubtractedTargets) * varInv  
   
   // println("FreqW => " + freqW.toString)

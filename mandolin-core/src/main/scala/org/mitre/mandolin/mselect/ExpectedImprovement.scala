@@ -8,6 +8,7 @@ import org.mitre.mandolin.transform.{ FeatureExtractor }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor}
 import org.mitre.mandolin.predict.local.{ LocalDecoder, LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalPosteriorDecoder }
+import org.slf4j.LoggerFactory
 
 import breeze.linalg.{ DenseVector => BreezeVec, DenseMatrix => BreezeMat }
 
@@ -15,7 +16,8 @@ import breeze.linalg.{ DenseVector => BreezeVec, DenseMatrix => BreezeMat }
 abstract class AcquisitionFunction {
   def score(configs: Vector[ModelConfig]) : Vector[Double]
   def score(config: ModelConfig) : Double
-  def train(evalResults: ArrayBuffer[ModelEvalResult]) : Unit
+  def train(evalResults: Seq[ScoredModelConfig]) : Unit
+  
 }
 
 abstract class ExpectedImprovement extends AcquisitionFunction {
@@ -24,14 +26,14 @@ abstract class ExpectedImprovement extends AcquisitionFunction {
 
 class RandomAcquisitionFunction extends AcquisitionFunction {
   def score(config: ModelConfig) : Double = util.Random.nextDouble()
-  def train(evalResults: ArrayBuffer[ModelEvalResult]) : Unit = {}
+  def train(evalResults: Seq[ScoredModelConfig]) : Unit = {}
   def score(configs: Vector[ModelConfig]) : Vector[Double] = configs map {_ => util.Random.nextDouble()}
 }
 
 class MockAcquisitionFunction extends AcquisitionFunction {
   def score(configs: Vector[ModelConfig]) : Vector[Double] = configs map {_ => util.Random.nextDouble()}
   def score(config: ModelConfig) : Double = util.Random.nextDouble()
-  def train(evalResults: ArrayBuffer[ModelEvalResult]) : Unit = {
+  def train(evalResults: Seq[ScoredModelConfig]) : Unit = {
     val ms = (util.Random.nextDouble() * 1 * 1000).toLong
     Thread.sleep(ms)
   }
@@ -113,34 +115,46 @@ class BayesianNNAcquisitionFunction extends AcquisitionFunction {
   val alphabetBuilder = new AlphabetBuilder
   var curDecoder : Option[MetaParamDecoder] = None
   
+  val log = LoggerFactory.getLogger(getClass)
+    
+  
   def score(config: ModelConfig) : Double = {
-    curDecoder.get.decode(config)(0)._1
+    curDecoder match {
+      case Some(d) => d.decode(config)(0)._1
+      case None => util.Random.nextDouble()
+    }
   }
   
   def score(configs: Vector[ModelConfig]) : Vector[Double] = {
-    curDecoder.get.decode(configs) map {_._1}
+    curDecoder match {
+      case Some(d) => d.decode(configs) map {_._1}
+      case None => configs map {_ => util.Random.nextDouble()}
+    }
   }
     
   def getMetaTrainer = {
     val fa = alphabetBuilder.build(curData.toSeq)
     fa.ensureFixed
     val fe = new MetaParameterExtractor(fa, fa.getSize)    
-    GLPTrainerBuilder(mspec, fe)
-  }
-    
+    GLPTrainerBuilder(mspec, fe, fa.getSize, 1)
+  }    
   
-  def train(evalResults: ArrayBuffer[ModelEvalResult]) : Unit = {
+  def train(evalResults: Seq[ScoredModelConfig]) : Unit = {
     // update the data
-    evalResults foreach {r => curData ++= r.configResults}
+    curData ++= evalResults
     val (trainer, glp) = getMetaTrainer
     val glpFactors = curData.toVector map { trainer.getFe.extractFeatures }
+    log.info("Glp factors size = " + glpFactors.length)
+    println("BayesianNN: Glp factors size = " + glpFactors.length)
     val (weights,_) = trainer.retrainWeights(glpFactors)
     val dfInVecs = glpFactors map {x =>
       val inV = x.getInput    
       val v = BreezeVec.tabulate(inV.getDim + 1){i => if (i > 0) inV(i-1).toDouble else 1.0} // add in bias to designmatrix
       BreezeMat(v)
-      }
+    }
     val bMat = dfInVecs.reduce{(a,b) => BreezeMat.vertcat(a,b)}  // the design matrix
+    log.info("Design matrix dims = " + bMat.rows + ", " + bMat.cols)
+    println("Design matrix dims = " + bMat.rows + ", " + bMat.cols)
     val dfArray = glpFactors.toArray
     val targetsVec = BreezeVec.tabulate(glpFactors.length){i => dfArray(i).getOutput(0).toDouble} // the target vector
     val predictor = new GLPBayesianRegressor(glp, bMat, targetsVec, 0.8, 0.0, false)

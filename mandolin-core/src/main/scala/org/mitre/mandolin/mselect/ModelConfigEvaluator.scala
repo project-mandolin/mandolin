@@ -27,6 +27,8 @@ object WorkPullingPattern {
   case class Work[T](work: T) extends Message
 
   case class Update(acquisitionFunction: AcquisitionFunction) extends Message
+  
+  case object Hello extends Message
 
   // config should end up being a model config/specification
   case class ModelEvalResult(configResults: Seq[ScoredModelConfig]) extends Message
@@ -97,7 +99,7 @@ class ModelConfigEvaluator[T]() extends Actor {
 /**
   * This worker actor will actually take work from the master in the form of models to evaluate
   */
-class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEvaluator: ModelEvaluator, batchSize: Int) extends Actor {
+class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, modelEvaluator: ModelEvaluator, batchSize: Int) extends Actor {
 
   import WorkPullingPattern._
 
@@ -120,11 +122,13 @@ class ModelConfigEvalWorker(val master: ActorRef, modelScorer: ActorRef, modelEv
       log.info(s"Worker $this received work available, asking master to provide work")
       master ! ProvideWork(batchSize)
     }
-    case Work(w: Seq[ModelConfig]) => doWork(w) onComplete { case r =>
-      log.info(s"Worker $this processing configuration")
-      modelScorer ! r.get // send result to modelScorer
-      master ! ProvideWork(batchSize)
-    }
+    case Work(w: Seq[ModelConfig]) =>
+      modelScorer ! Hello
+      doWork(w) onComplete { case r =>
+        log.info(s"Worker $this processing configuration")      
+        modelScorer ! r.get // send result to modelScorer
+        master ! ProvideWork(batchSize)
+      }
     case x => log.error("Received unrecognized message " + x)
   }
 

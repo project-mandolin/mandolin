@@ -25,7 +25,7 @@ class TestSelection extends FlatSpec with Matchers {
     val ev = new SparkModelEvaluator(sc, nt, ntst)
     
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]()), name = "master")
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new MockAcquisitionFunction, master, 100, 2)), name = "scorer")
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new MockAcquisitionFunction, master, 100, 2, 20, 100)), name = "scorer")
 
     
     val workers = for (i <- 1 to numWorkers) yield system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, 1)), name = "worker"+i)

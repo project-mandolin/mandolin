@@ -27,7 +27,7 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
       val learner = factory.getLearnerInstance(config)
-      val acc = learner.train(_trainBC, _testBC)
+      val acc = learner.train(trData, tstData)
       acc
       }
       accuracies.toIterator

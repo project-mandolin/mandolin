@@ -1,6 +1,5 @@
 package org.mitre.mandolin.mselect
 
-import org.apache.spark.broadcast.Broadcast
 import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPFactor, GLPWeights, GLPComponentSet, GLPModelSettings}
 import org.mitre.mandolin.glp.local.{LocalGLPOptimizer, LocalProcessor}
 import org.mitre.mandolin.predict.local.{LocalEvalDecoder, NonExtractingEvalDecoder, LocalTrainer}
@@ -8,7 +7,6 @@ import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.util.LocalIOAssistant
 
 abstract class LearnerInstance[T] extends LocalProcessor {
-  def train(trainBC: Broadcast[Vector[T]], testBC: Broadcast[Vector[T]]): Double
   def train(trainBC: Vector[T], testBC: Vector[T]): Double
 }
 
@@ -37,9 +35,6 @@ extends LearnerInstance[GLPFactor] with Serializable {
     acc
   }
 
-  def train(trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]): Double = {
-    train(trainBC.value, testBC.value)    
-  }
 }
 
 class MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
