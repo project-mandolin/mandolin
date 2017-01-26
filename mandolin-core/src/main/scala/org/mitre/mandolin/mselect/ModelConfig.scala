@@ -10,7 +10,7 @@ class ModelConfig(
     val mSpec: ANNetwork)  extends Serializable {
 }
 
-class ModelSpace(realMPs: Vector[RealMetaParameter], catMPs: Vector[CategoricalMetaParameter], nn: ANNetwork) {
+class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter], nn: ANNetwork) {
   
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter]) = 
     this(rmps, cmps, ANNetwork(IndexedSeq()))

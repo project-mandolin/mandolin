@@ -13,7 +13,7 @@ case class ScoredModelConfig(sc: Double, mc: ModelConfig)
   * of the model on a given dataset.
   */
 class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, evalMaster: ActorRef, 
-    sampleSize: Int, batchSize: Int, acqFnThreshold: Int, totalEvals: Int) extends Actor {
+    sampleSize: Int, acqFnThreshold: Int, totalEvals: Int) extends Actor {
   
   //def this(mcs: ModelSpace, af: AcquisitionFunction) = this(mcs, af, 10, 10)
     
@@ -28,7 +28,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
 
   override def preStart() = {
     // send initial "random batch" of configs to evaluate
-    val scored = getScoredConfigs(batchSize) map ( _._2 )
+    val scored = getScoredConfigs(sampleSize) map ( _._2 )
     val epic = new Epic[ModelConfig] {
       override val iterator = scored.toIterator
     }
@@ -53,9 +53,9 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
         receivedSinceLastScore = 0
         acqFn.train(evalResults)
         log.info("Finished training acquisition function")        
-        val scored = getScoredConfigs(sampleSize).take(batchSize)
-        log.info("Building new batch to evaluate based on scores: ")
-        scored foreach {case (v,c) => log.info("score: " + v)}
+        val scored = getScoredConfigs(sampleSize)
+        log.info("Building new batch to evaluate based on scores [top 10]: ")
+        scored.take(10) foreach {case (v,c) => log.info("score: " + v)}
         val configs = scored map {_._2}
         val epic = new Epic[ModelConfig] {override val iterator = configs.toIterator}
         evalMaster ! epic

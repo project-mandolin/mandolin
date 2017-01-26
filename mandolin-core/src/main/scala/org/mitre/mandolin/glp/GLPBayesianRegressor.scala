@@ -2,7 +2,7 @@ package org.mitre.mandolin.glp
 
 import org.mitre.mandolin.predict.{ OutputConstructor, EvalPredictor, RegressionConfusion }
 import breeze.linalg.{ DenseMatrix => BreezeMat, DenseVector => BreezeVec }
-import breeze.linalg.{pinv, diag, sum}
+import breeze.linalg.{pinv, diag, sum, inv}
 import breeze.numerics._
 import org.mitre.mandolin.glp.local.LocalGLPModelReader
 import org.mitre.mandolin.util.LocalIOAssistant
@@ -24,8 +24,18 @@ class GLPBayesianRegressor(network: ANNetwork,
       
   val designTrans = designMatrix.t
   
-  // beta here is residual variance - estimated using MLE solution
-  val freqW = pinv(designTrans * designMatrix) * designMatrix.t * designTargets // least squares estimate of weights
+  println("DesignMatrix dims = " + designMatrix)
+
+  val freqW = 
+    if (true) {
+      pinv(designMatrix) * designTargets
+    } else {
+      val rr = designTrans * designMatrix
+      println("Inverting rr = ")
+      println(rr.toString)
+      inv(rr) * designMatrix.t * designTargets // least squares estimate of weights
+    }  
+  
   val yAvg = sum(designTargets) / size
   val xAvg = (designTrans * BreezeVec.ones[Double](size)) / size.toDouble
   // val freqB = yAvg - (freqW.t * xAvg) // bias/intercept
@@ -36,8 +46,11 @@ class GLPBayesianRegressor(network: ANNetwork,
     
   val inDim = designMatrix.cols
   val K = varInv * (designTrans * designMatrix) + diag(BreezeVec.fill(inDim){alpha})
-  val kInv = pinv(K)  
-  val m =  (kInv * designMatrix.t * meanSubtractedTargets) * varInv  
+  println("Inverting K =") 
+  println(K.toString())
+  val kInv = inv(K)  
+  val m =  (kInv * designMatrix.t * meanSubtractedTargets) * varInv
+  //val m = (kInv * meanSubtractedTargets) * varInv
   
   // println("FreqW => " + freqW.toString)
 
@@ -47,7 +60,8 @@ class GLPBayesianRegressor(network: ANNetwork,
     if (numLayers > 1) network.forwardPass(u.getInput, u.getOutput, wts, false)      
     val penultimateOutput = if (numLayers > 1) network.layers(numLayers - 2).getOutput(false).asArray else u.getInput.asArray
     // add the bias input as first element of basis vector
-    val basis = BreezeVec.tabulate[Double](penultimateOutput.length + 1){(i: Int) => if (i > 0) penultimateOutput(i-1).toDouble else 1.0} 
+    val basis = BreezeVec.tabulate[Double](penultimateOutput.length + 1){(i: Int) => if (i > 0) penultimateOutput(i-1).toDouble else 1.0}
+    // println("Basis = " + basis)
     val predMean = (m.t * basis) + meanFn
     val predVar  = basis.t * kInv * basis + variance
     (predMean, predVar)
@@ -86,15 +100,20 @@ object GLPBayesianRegressor {
     val dataFactors = scala.io.Source.fromFile(data).getLines.toList map { l =>
       fe.extractFeatures(l)
     }
+    val glp = model.ann
     val dfInVecs = dataFactors map {x =>
-      val inV = x.getInput    
+      val inV = if (glp.layers.length == 1) x.getInput else {
+        glp.forwardPass(x.getInput, x.getOutput, model.wts, false)
+        glp.layers(glp.layers.length - 2).getOutput(false)
+      }    
       val v = BreezeVec.tabulate(inV.getDim + 1){i => if (i > 0) inV(i-1).toDouble else 1.0} // add in bias to designmatrix
       BreezeMat(v)
       }
     val bMat = dfInVecs.reduce{(a,b) => BreezeMat.vertcat(a,b)}  // the design matrix
     val dfArray = dataFactors.toArray
     val targetsVec = BreezeVec.tabulate(dataFactors.length){i => dfArray(i).getOutput(0).toDouble} // the target vector
-    val predictor = new GLPBayesianRegressor(model.ann, bMat, targetsVec, 0.8, 0.0, false)    
+    println("Targets vec = " + targetsVec)
+    val predictor = new GLPBayesianRegressor(model.ann, bMat, targetsVec, 0.0, 0.0, false)    
     dataFactors foreach {l =>
       val (prMean, prVar) = predictor.getPrediction(l, model.wts)
       // val freqMean = freqPredictor.getPrediction(l, model.wts)

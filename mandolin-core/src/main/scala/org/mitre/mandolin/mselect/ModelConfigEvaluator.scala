@@ -103,18 +103,9 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
 
   import WorkPullingPattern._
 
-  //implicit val ec: ExecutionContextExecutor = context.dispatcher
-
-  implicit val ec = new ExecutionContext {
-    val threadPool = Executors.newFixedThreadPool(1000)
-
-    override def execute(runnable: Runnable) {
-      threadPool.submit(runnable)
-    }
-
-    override def reportFailure(cause: Throwable) {}
-  }
-
+  import scala.concurrent.ExecutionContext.Implicits.global
+  
+  
   val log = LoggerFactory.getLogger(getClass)
 
   def receive = {
@@ -123,9 +114,9 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
       master ! ProvideWork(batchSize)
     }
     case Work(w: Seq[ModelConfig]) =>
-      modelScorer ! Hello
       doWork(w) onComplete { case r =>
-        log.info(s"Worker $this processing configuration")      
+        log.info(s"Worker $this finished configuration; sending result to " + modelScorer)
+        modelScorer ! Hello
         modelScorer ! r.get // send result to modelScorer
         master ! ProvideWork(batchSize)
       }

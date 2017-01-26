@@ -165,9 +165,11 @@ abstract class AbstractProcessor extends LineParser {
 
   def getAlphabet(appSettings: GLPModelSettings, la: Alphabet, io: IOAssistant): (Alphabet, Int) = {
     if (appSettings.useRandom) (new RandomAlphabet(appSettings.numFeatures), 1000)
-    else
+    else {
+      println("Building alphabet with training input data")
       getAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.scaleInputs,
         appSettings.filterFeaturesMI, appSettings.printFeatureFile, io)
+    }
   }
 
   def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int): (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
@@ -231,8 +233,12 @@ abstract class AbstractProcessor extends LineParser {
   }
   
   def getComponentsInducedAlphabet(mspec: IndexedSeq[LType], lines: Iterator[String],
-                                   la: Alphabet, scale: Boolean = false, selectedFeatures: Int = -1, io: IOAssistant): GLPComponentSet = {
-    val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
+                                   la: Alphabet, scale: Boolean = false, selectedFeatures: Int = -1, io: IOAssistant, faO: Option[(Alphabet,Int)] = None): GLPComponentSet = {
+    
+    val (fa,npts) = faO match {
+      case None => getAlphabet(lines, la, scale, selectedFeatures, None, io)
+      case Some(x) => x // don't recompute alphabet if we've done so already
+    }
     fa.ensureFixed
     la.ensureFixed
     val (nn, predictor, outConstructor) = getSubComponents(mspec, fa.getSize, la.getSize)
@@ -246,7 +252,7 @@ abstract class AbstractProcessor extends LineParser {
     val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
     fa.ensureFixed
     val mspec = getGLPSpec(confSpecs, fa.getSize, la.getSize)
-    getComponentsInducedAlphabet(mspec, lines, la, scale, selectedFeatures, io)
+    getComponentsInducedAlphabet(mspec, lines, la, scale, selectedFeatures, io, Some((fa,npts)))
   }
 
   def getComponentsInducedAlphabet(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
@@ -279,6 +285,10 @@ abstract class AbstractProcessor extends LineParser {
 
   def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, GLPFactor)], laOpt: Option[Alphabet]): Unit = {
     laOpt foreach { la =>
+      if (la.getSize < 2) {
+        os.print("ID,response,value\n")
+        outputs foreach {case (s, factor) => os.print(s); os.print(','); os.print(factor.getOutput(0).toString); os.println}
+      } else {
       val labelHeader = la.getMapping.toSeq.sortWith((a, b) => a._2 < b._2).map(_._1) // get label strings sorted by their index
       os.print("ID")
       for (i <- 0 until labelHeader.length) {
@@ -288,7 +298,10 @@ abstract class AbstractProcessor extends LineParser {
       os.print(',')
       os.print("Label")
       os.println
+      outputs foreach { case (s, factor) => os.print(s); os.print(','); os.print(factor.getOneHot.toString); os.println }
+      }
     }
-    outputs foreach { case (s, factor) => os.print(s); os.print(','); os.print(factor.getOneHot.toString); os.println }
+    
+    
   }
 }
