@@ -17,9 +17,7 @@ case class ScoredModelConfig(sc: Double, mc: ModelConfig)
   * of the model on a given dataset.
   */
 class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, evalMaster: ActorRef,
-                  sampleSize: Int, batchSize: Int, acqFnThreshold: Int, totalEvals: Int) extends Actor {
-
-  //def this(mcs: ModelSpace, af: AcquisitionFunction) = this(mcs, af, 10, 10)
+                  sampleSize: Int, acqFnThreshold: Int, totalEvals: Int) extends Actor {
 
   import WorkPullingPattern._
 
@@ -28,14 +26,13 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
   val outWriter = new PrintWriter(new File("mselect-" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(now) + ".csv"))
   var evalResults = new collection.mutable.ArrayBuffer[ScoredModelConfig]
   var receivedSinceLastScore = 0
-
   val startTime = System.currentTimeMillis()
 
   def totalReceived = evalResults.length
 
   override def preStart() = {
     // send initial "random batch" of configs to evaluate
-    val scored = getScoredConfigs(batchSize) map (_._2)
+    val scored = getScoredConfigs(sampleSize) map (_._2)
     val epic = new Epic[ModelConfig] {
       override val iterator = scored.toIterator
     }
@@ -49,7 +46,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
       evalResults ++= r
       receivedSinceLastScore += r.length
       log.info("Received model eval result of length " + r.length)
-      r.foreach( c => outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n"))
+      r.foreach(c => outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n"))
       outWriter.flush
       if (totalReceived >= totalEvals) {
         val hours = (System.currentTimeMillis() - startTime) / 1000 / 60 / 60
@@ -61,9 +58,9 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
         receivedSinceLastScore = 0
         acqFn.train(evalResults)
         log.info("Finished training acquisition function")
-        val scored = getScoredConfigs(sampleSize).take(batchSize)
-        log.info("Building new batch to evaluate based on scores: ")
-        scored foreach { case (v, c) => log.info("score: " + v) }
+        val scored = getScoredConfigs(sampleSize)
+        log.info("Building new batch to evaluate based on scores [top 10]: ")
+        scored.take(10) foreach { case (v, c) => log.info("score: " + v) }
         val configs = scored map {
           _._2
         }

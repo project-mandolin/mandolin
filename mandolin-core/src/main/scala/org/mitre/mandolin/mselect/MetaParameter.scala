@@ -1,6 +1,7 @@
 package org.mitre.mandolin.mselect
 
 abstract class ValueSet[T <: MPValue] extends Serializable {
+  
 }
 
 class CategoricalSet(valueSet: Vector[String]) extends ValueSet[CategoricalValue] with Serializable {
@@ -22,7 +23,7 @@ case class RealValue(v: Double) extends MPValue with Serializable
  * These include hyper-parameters but also parameters that adjust architecture,
  * specify prior distributions, etc.
  */
-abstract class MetaParameter[T <: MPValue](val name: String, val valueSet: ValueSet[T]) extends Serializable {
+abstract class MetaParameter[T <: MPValue](val name: String, valueSet: ValueSet[T]) extends Serializable {
   def drawRandomValue : ValuedMetaParameter[T]
 }
 
@@ -33,10 +34,10 @@ class RealMetaParameter(n: String, vs: RealSet) extends MetaParameter[RealValue]
   }
 }
 
-class CategoricalMetaParameter(n: String, vs: CategoricalSet) extends MetaParameter[CategoricalValue](n, vs) with Serializable {
+class CategoricalMetaParameter(n: String, val valSet: CategoricalSet) extends MetaParameter[CategoricalValue](n, valSet) with Serializable {
 
   def drawRandomValue : ValuedMetaParameter[CategoricalValue] = {
-    new ValuedMetaParameter(CategoricalValue(vs(util.Random.nextInt(vs.size))), this)
+    new ValuedMetaParameter(CategoricalValue(valSet(util.Random.nextInt(valSet.size))), this)
   }
 }
 

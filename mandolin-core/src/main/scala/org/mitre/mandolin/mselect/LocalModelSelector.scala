@@ -1,28 +1,28 @@
 package org.mitre.mandolin.mselect
 
-import org.apache.spark.SparkContext
 import org.mitre.mandolin.mselect.WorkPullingPattern.RegisterWorker
 import org.mitre.mandolin.util.LocalIOAssistant
 import akka.actor.{PoisonPill, ActorSystem, Props}
 import scala.concurrent.{ExecutionContext }
 import java.util.concurrent.Executors
-import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings }
+import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, CategoricalGLPPredictor, GLPFactor, GLPWeights }
+import org.mitre.mandolin.predict.local.NonExtractingEvalDecoder
+import org.mitre.mandolin.predict.DiscreteConfusion
 
-/**
-  * Created by jkraunelis on 1/1/17.
-  */
-object ModelSelectionDriver {
-
+object LocalModelSelector {
+  
   def main(args: Array[String]): Unit = {
     
 
-    val sc = new SparkContext
     val io = new LocalIOAssistant
     val trainFile = args(0)
     val testFile = args(1)
     val numWorkers = args(2).toInt
     val numThreads = args(3)
     val workerBatchSize = args(4).toInt
+    val scoreSampleSize = if (args.length > 5) args(5).toInt else 240
+    val acqFunRelearnSize = if (args.length > 6) args(6).toInt else 8
+    val totalEvals = if (args.length > 7) args(7).toInt else 40
     
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers))
     val system = ActorSystem("Simulator")
@@ -33,28 +33,25 @@ object ModelSelectionDriver {
         ))
         
     val (trainer, nn) = GLPTrainerBuilder(settings)
-    
 
     val featureExtractor = trainer.getFe
     featureExtractor.getAlphabet.ensureFixed // fix the alphabet
     
     // set up model space
-    val lrParam = new RealMetaParameter("lr", new RealSet(0.01, 1.0))
+    val lrParam = new RealMetaParameter("lr", new RealSet(0.1, 0.95))
     val methodParam = new CategoricalMetaParameter("method", new CategoricalSet(Vector("adagrad", "sgd")))
     val trainerThreadsParam = new CategoricalMetaParameter("numTrainerThreads", new CategoricalSet(Vector(numThreads)))
     val modelSpace = new ModelSpace(Vector(lrParam), Vector(methodParam, trainerThreadsParam), nn)
     // end model space
 
-    val trVecs = io.readLines(trainFile) map { l => featureExtractor.extractFeatures(l)}    
-    val tstVecs = io.readLines(testFile) map { l => featureExtractor.extractFeatures(l)}
-    val trainBC = sc.broadcast(trVecs.toVector)
-    val testBC = sc.broadcast(tstVecs.toVector)
-    val ev = new SparkModelEvaluator(sc, trainBC, testBC)
+    val trVecs = (io.readLines(trainFile) map { l => featureExtractor.extractFeatures(l)} toVector)
+    val tstVecs = (io.readLines(testFile) map { l => featureExtractor.extractFeatures(l)} toVector)
+    val ev = new LocalModelEvaluator(trVecs, tstVecs)
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")
     val acqFun = new BayesianNNAcquisitionFunction(modelSpace)
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, acqFun, master, 2400, 32, 640)), name = "scorer")
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, acqFun, master, scoreSampleSize, acqFunRelearnSize, totalEvals)), name = "scorer")
     val workers = 1 to numWorkers map (i => system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, workerBatchSize)), name = "worker" + i))
-    Thread.sleep(4000)
+    Thread.sleep(2000)
     workers.foreach(worker => master ! RegisterWorker(worker))
 
     //master ! ProvideWork(1) // this starts things off

@@ -73,7 +73,8 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
     }
     new GLPWeights(new GLPLayout(wts))
   }
-
+  
+  
   /**
    * Generate an all zero layout of parameters for auxiliary functions such as Adagrad updaters, etc.
    * @author wellner
