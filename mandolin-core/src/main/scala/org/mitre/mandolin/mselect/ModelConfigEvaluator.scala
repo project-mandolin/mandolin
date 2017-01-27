@@ -137,6 +137,7 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
       val score = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result
       // send to modelScorer
+      log.info("Scores: " + score.mkString(" "))
       ModelEvalResult(score zip w map {case (s,c) => ScoredModelConfig(s,c)})
     })
   }
