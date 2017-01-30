@@ -155,6 +155,7 @@ abstract class LearnerSettings(args: Seq[String]) extends AppSettings(args) {
   val progressFile     = asStrOpt("mandolin.trainer.progress-file")
   //val lossFunction     = asStrOpt("mandolin.trainer.loss-function")
   val labelFile        = asStrOpt("mandolin.trainer.label-file")
+  // unused?
   val modelType        = asStrOpt("mandolin.trainer.model-type")
   val ensureSparse     = asBoolean("mandolin.trainer.ensure-sparse")
   val useRandom        = asBoolean("mandolin.trainer.use-random-features")
