@@ -5,7 +5,9 @@ import org.mitre.mandolin.mselect.MandolinLogisticRegressionFactory.MandolinLogi
 import org.mitre.mandolin.util.LocalIOAssistant
 
 
-class SparkModelSelectionDriver(val sc: SparkContext, val ms: ModelSpace, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) extends ModelSelectionDriver(ms, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+class SparkModelSelectionDriver(val sc: SparkContext, val ms: ModelSpace, trainFile: String, testFile: String, 
+    numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) 
+extends ModelSelectionDriver(ms, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
   override val ev = {
     val io = new LocalIOAssistant
     val trVecs = io.readLines(trainFile) map { l => fe.extractFeatures(l) }

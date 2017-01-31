@@ -56,6 +56,10 @@ extends LearnerInstance[GLPFactor] with Serializable {
 
 //trait MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor]
 object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
+  
+  // XXX - factory should know the number of inputs/outputs for the MLP
+  // XXX - specification should come as a meta-parameter in config
+  // XXX - ANN instance created as part of instantiating a config (rather than simple copy of static ANN below)
 
   class MandolinLogisticRegressionModelSpaceBuilder extends ModelSpaceBuilder {
     def defineInitialLearningRates(start: Double, end: Double): ModelSpaceBuilder = {
