@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext
 /**
   * Created by jkraunelis on 1/30/17.
   */
-abstract class ModelSelectionDriver(ms: ModelSpace, trainFile: String, testFile: String, numWorkers: Int, numThreads: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) {
+abstract class ModelSelectionDriver(ms: ModelSpace, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) {
   val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork) = {
     val settings = (new GLPModelSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),

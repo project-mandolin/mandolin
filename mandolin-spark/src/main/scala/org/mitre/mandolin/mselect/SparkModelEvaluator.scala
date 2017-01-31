@@ -22,11 +22,10 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]
       val cvec = cv1.par
       // set tasksupport to allocate N threads so each item is processed concurrently
       cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-      val factory = new MandolinLogisticRegressionFactory
       val trData  = _trainBC.value
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
-      val learner = factory.getLearnerInstance(config)
+      val learner = MandolinLogisticRegressionFactory.getLearnerInstance(config)
       val acc = learner.train(trData, tstData)
       acc
       }
