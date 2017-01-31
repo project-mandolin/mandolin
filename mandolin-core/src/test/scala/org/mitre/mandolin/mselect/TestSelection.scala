@@ -26,7 +26,7 @@ class TestSelection extends FlatSpec with Matchers {
 
     val numWorkers = 10
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]()), name = "master")
-    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new MockAcquisitionFunction, master, 100, 100, 2, 100)), name = "scorer")
+    val scorerActor = system.actorOf(Props(new ModelScorer(modelSpace, new MockAcquisitionFunction, master, 100, 2, 100)), name = "scorer")
     val ev = new MockRandomModelEvaluator
     
     val workers = for (i <- 1 to numWorkers) yield system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, 1)), name = "worker"+i)
