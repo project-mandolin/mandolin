@@ -34,6 +34,9 @@ extends LearnerInstance[GLPFactor] with Serializable {
 }
 
 class MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
+
+
+
   def getLearnerInstance(config: ModelConfig): LearnerInstance[GLPFactor] = {
 
     val cats: List[(String, Any)] = config.categoricalMetaParamSet.foldLeft(Nil:List[(String,Any)]) {case (ac,v) =>
