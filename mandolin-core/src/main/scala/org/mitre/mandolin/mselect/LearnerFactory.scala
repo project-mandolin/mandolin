@@ -6,18 +6,40 @@ import org.mitre.mandolin.predict.local.{LocalEvalDecoder, NonExtractingEvalDeco
 import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.util.LocalIOAssistant
 
-abstract class LearnerInstance[T] extends LocalProcessor {
-  def train(trainBC: Vector[T], testBC: Vector[T]): Double
+import scala.collection.immutable.IndexedSeq
+import scala.collection.mutable
+
+trait LearnerInstance[T] extends LocalProcessor {
+  def train(train: Vector[T], test: Vector[T]): Double
 }
 
-abstract class LearnerFactory[T] {
+trait LearnerFactory[T] {
   def getLearnerInstance(config: ModelConfig): LearnerInstance[T]
+  def getModelSpaceBuilder : ModelSpaceBuilder
+}
+
+trait ModelSpaceBuilder {
+  val reals = new mutable.MutableList[RealMetaParameter]
+  val cats = new mutable.MutableList[CategoricalMetaParameter]
+
+  def withMetaParam(realMP: RealMetaParameter) = {
+    reals += realMP
+    this
+  }
+
+  def withMetaParam(catMP: CategoricalMetaParameter) = {
+    cats += catMP
+    this
+  }
+
+  def build() : ModelSpace = {
+    new ModelSpace(reals.toVector, cats.toVector)
+  }
 }
 
 class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: ModelConfig, nn: ANNetwork) 
 extends LearnerInstance[GLPFactor] with Serializable {
 
-  
   def train(train: Vector[GLPFactor], test: Vector[GLPFactor]) : Double = {
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)
 
@@ -30,10 +52,29 @@ extends LearnerInstance[GLPFactor] with Serializable {
     val acc = confusion.getAccuracy
     acc
   }
-
 }
 
-class MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
+//trait MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor]
+object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
+
+  class MandolinLogisticRegressionModelSpaceBuilder extends ModelSpaceBuilder {
+    def defineInitialLearningRates(start: Double, end: Double): ModelSpaceBuilder = {
+      withMetaParam(new RealMetaParameter("lr", new RealSet(start, end)))
+    }
+
+    def defineOptimizerMethods(methods: String*) = {
+      withMetaParam(new CategoricalMetaParameter("method", new CategoricalSet(methods.toVector)))
+    }
+
+    def defineTrainerThreads(numTrainerThreads : Int) = {
+      withMetaParam(new CategoricalMetaParameter("numTrainerThreads", new CategoricalSet(Vector(numTrainerThreads.toString))))
+    }
+  }
+
+  override def getModelSpaceBuilder() : MandolinLogisticRegressionModelSpaceBuilder = {
+    new MandolinLogisticRegressionModelSpaceBuilder
+  }
+
   def getLearnerInstance(config: ModelConfig): LearnerInstance[GLPFactor] = {
 
     val cats: List[(String, Any)] = config.categoricalMetaParamSet.foldLeft(Nil:List[(String,Any)]) {case (ac,v) =>
@@ -57,4 +98,6 @@ class MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
     val annCopy = config.mSpec.copy() // need to copy the ann so that separate threads aren't overwriting outputs/derivatives/etc.
     new MandolinLogisticRegressionInstance(settings, config, annCopy)
   }
+
+
 }

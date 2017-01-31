@@ -36,9 +36,8 @@ class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor])
     val cvec = configs.par
 
     cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-    val factory = new MandolinLogisticRegressionFactory
-    val accuracies = cvec map {config => 
-      val learner = factory.getLearnerInstance(config)
+    val accuracies = cvec map {config =>
+      val learner = MandolinLogisticRegressionFactory.getLearnerInstance(config)
       val acc = learner.train(trData, tstData)
       acc
     }
