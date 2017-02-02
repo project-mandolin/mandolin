@@ -26,6 +26,8 @@ class GLPModelSettings(args: Array[String]) extends LearnerSettings(args)
     }
   }
   
+  //def withComplexSets(avs: )
+  
   /**
    * Returns a new settings object with the sequence of tuple arguments values set accordingly
    */

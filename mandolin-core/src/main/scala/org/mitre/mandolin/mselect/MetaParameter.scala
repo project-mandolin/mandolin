@@ -22,8 +22,6 @@ class TupleSet2[T1 <: MPValue, T2 <: MPValue](val e1: MetaParameter[T1], val e2:
 class TupleSet3[T1 <: MPValue, T2 <: MPValue, T3 <: MPValue](val e1: MetaParameter[T1], val e2: MetaParameter[T2], val e3: MetaParameter[T3]) extends ValueSet[Tuple3Value[T1,T2,T3]] with Serializable
 class TupleSet4[T1 <: MPValue, T2 <: MPValue, T3 <: MPValue, T4 <: MPValue](val e1: MetaParameter[T1], val e2: MetaParameter[T2], val e3: MetaParameter[T3], val e4: MetaParameter[T4]) 
 extends ValueSet[Tuple4Value[T1,T2,T3,T4]] with Serializable
-// class TupleSet3[T1 <: MPValue,T2 <: MPValue,T3 <: MPValue](val tuple: (ValueSet[T1],ValueSet[T2],ValueSet[T3])) extends Serializable
-// class TupleSet4[T1 <: MPValue,T2 <: MPValue,T3 <: MPValue,T4 <: MPValue](val tuple: (ValueSet[T1],ValueSet[T2],ValueSet[T3],ValueSet[T4])) extends Serializable
 
 abstract class MPValue extends Serializable
 case class CategoricalValue(s: String) extends MPValue with Serializable
@@ -53,6 +51,12 @@ class CategoricalMetaParameter(n: String, val valSet: CategoricalSet) extends Me
 
   def drawRandomValue : ValuedMetaParameter[CategoricalValue] = {
     new ValuedMetaParameter(CategoricalValue(valSet(util.Random.nextInt(valSet.size))), this)
+  }
+}
+
+class IntegerMetaParameter(n: String, vs: IntSet) extends MetaParameter[IntValue](n, vs) with Serializable {
+  def drawRandomValue : ValuedMetaParameter[IntValue] = {
+    new ValuedMetaParameter(IntValue(util.Random.nextInt(vs.upper - vs.lower) + vs.lower), this)
   }
 }
 
@@ -88,6 +92,9 @@ extends MetaParameter[Tuple4Value[T1,T2,T3,T4]](n,ts) with Serializable {
     new ValuedMetaParameter(Tuple4Value[T1,T2,T3,T4](v1,v2,v3,v4), this)
   }
 }
+
+class LayerMetaParameter(_n: String, _ts: TupleSet4[CategoricalValue, IntValue, RealValue, RealValue]) 
+extends Tuple4MetaParameter[CategoricalValue, IntValue, RealValue, RealValue](_n, _ts)
 
 /**
  * A Meta Parameter with a particular instantiated value

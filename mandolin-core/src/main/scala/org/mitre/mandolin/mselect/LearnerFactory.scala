@@ -1,6 +1,7 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPFactor, GLPWeights, GLPComponentSet, GLPModelSettings}
+import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPFactor, GLPWeights, GLPComponentSet, GLPModelSettings,
+  LType, TanHLType, ReluLType, InputLType, SparseInputLType, SoftMaxLType}
 import org.mitre.mandolin.glp.local.{LocalGLPOptimizer, LocalProcessor}
 import org.mitre.mandolin.predict.local.{LocalEvalDecoder, NonExtractingEvalDecoder, LocalTrainer}
 import org.mitre.mandolin.predict.DiscreteConfusion
@@ -21,6 +22,7 @@ trait LearnerFactory[T] {
 trait ModelSpaceBuilder {
   val reals = new mutable.MutableList[RealMetaParameter]
   val cats = new mutable.MutableList[CategoricalMetaParameter]
+  val layers = new mutable.MutableList[LayerMetaParameter]
 
   def withMetaParam(realMP: RealMetaParameter) = {
     reals += realMP
@@ -31,9 +33,14 @@ trait ModelSpaceBuilder {
     cats += catMP
     this
   }
+  
+  def withMetaParam(layerMP: LayerMetaParameter) = {
+    layers += layerMP
+    this
+  }
 
   def build() : ModelSpace = {
-    new ModelSpace(reals.toVector, cats.toVector)
+    new ModelSpace(reals.toVector, cats.toVector, layers.toVector)
   }
 }
 
@@ -57,9 +64,6 @@ extends LearnerInstance[GLPFactor] with Serializable {
 //trait MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor]
 object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
   
-  // XXX - factory should know the number of inputs/outputs for the MLP
-  // XXX - specification should come as a meta-parameter in config
-  // XXX - ANN instance created as part of instantiating a config (rather than simple copy of static ANN below)
 
   class MandolinLogisticRegressionModelSpaceBuilder extends ModelSpaceBuilder {
     def defineInitialLearningRates(start: Double, end: Double): ModelSpaceBuilder = {
@@ -72,6 +76,16 @@ object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
 
     def defineTrainerThreads(numTrainerThreads : Int) = {
       withMetaParam(new CategoricalMetaParameter("numTrainerThreads", new CategoricalSet(Vector(numTrainerThreads.toString))))
+    }
+    
+    def defineModelTopology(n: String, lowBound: Int, upBound: Int) = {
+      withMetaParam(new LayerMetaParameter(
+          n,
+          new TupleSet4(
+          new CategoricalMetaParameter("ltype", new CategoricalSet(Vector("TanHLType","ReluLType"))),
+          new IntegerMetaParameter("dim", new IntSet(lowBound, upBound)),
+          new RealMetaParameter("l1", new RealSet(0.0, 0.01)),
+          new RealMetaParameter("l2", new RealSet(0.0, 0.01)))))
     }
   }
 
@@ -96,11 +110,23 @@ object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
         case _ => ac
       }    
     }
+    
+    def getSpec(vs: ValuedMetaParameter[Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]]) : LType = {
+      val lsp = vs.getValue
+      val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
+      val dim = lsp.v2.v
+      val l1 = lsp.v3.v
+      val l2 = lsp.v4.v
+      LType(lt, dim, l1 = l1.toFloat, l2 = l2.toFloat)            
+      }
 
+    val mspecValued = config.ms map {m => m.drawRandomValue} map getSpec
+    // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
+    val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  mspecValued ++ Vector(LType(SoftMaxLType))
+    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals) toSeq 
     val settings = new GLPModelSettings().withSets(allParams)
-    val annCopy = config.mSpec.copy() // need to copy the ann so that separate threads aren't overwriting outputs/derivatives/etc.
-    new MandolinLogisticRegressionInstance(settings, config, annCopy)
+    new MandolinLogisticRegressionInstance(settings, config, net)
   }
 
 
