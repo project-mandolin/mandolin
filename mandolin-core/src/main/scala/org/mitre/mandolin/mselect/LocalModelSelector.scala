@@ -9,7 +9,8 @@ import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, Categorical
 import org.mitre.mandolin.predict.local.NonExtractingEvalDecoder
 import org.mitre.mandolin.predict.DiscreteConfusion
 
-class LocalModelSelector(val ms: ModelSpace, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) extends ModelSelectionDriver(ms, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+class LocalModelSelector(val msb: ModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) 
+extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
   override val ev = {
     val io = new LocalIOAssistant
     val trVecs = (io.readLines(trainFile) map { l => fe.extractFeatures(l) } toVector)

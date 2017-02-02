@@ -12,8 +12,8 @@ import scala.concurrent.ExecutionContext
 /**
   * Created by jkraunelis on 1/30/17.
   */
-abstract class ModelSelectionDriver(ms: ModelSpace, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) {
-  val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork) = {
+abstract class ModelSelectionDriver(msb: ModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) {
+  val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int) = {
     val settings = (new GLPModelSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
       ("mandolin.trainer.test-file", testFile)
@@ -22,10 +22,14 @@ abstract class ModelSelectionDriver(ms: ModelSpace, trainFile: String, testFile:
     val (trainer, nn) = GLPTrainerBuilder(settings)
     val featureExtractor = trainer.getFe
     featureExtractor.getAlphabet.ensureFixed // fix the alphabet
-    (featureExtractor, nn)
+    val numInputs = nn.inLayer.getNumberOfOutputs // these will then be gathered dynamically from the trainFile
+    val numOutputs = nn.outLayer.getNumberOfOutputs // ditto
+    (featureExtractor, nn, numInputs, numOutputs)
   }
 
-  val ev: ModelEvaluator
+  // now build the model space after we know the number of inputs and outptus from reading in training set
+  val ms: ModelSpace = msb.build(numInputs, numOutputs)
+  val ev: ModelEvaluator   
 
   def search( ) : Unit = {
 

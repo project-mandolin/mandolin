@@ -9,7 +9,7 @@ import org.mitre.mandolin.glp.{ANNetwork, TanHLType, ReluLType, LType, InputLTyp
 class ModelConfig(
                    val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
                    val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
-                   val ms : Vector[Tuple4MetaParameter[CategoricalValue, IntValue, RealValue, RealValue]],
+                   val ms : Vector[LayerMetaParameter],
                    val inDim: Int,
                    val outDim: Int) extends Serializable {
                    // val inSpec : ValuedMetaParameter[Tuple2Value[CategoricalValue,RealValue]],
@@ -35,7 +35,7 @@ class ModelConfig(
  * @author wellner@mitre.org
  */
 class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter], 
-    val ms: Vector[Tuple4MetaParameter[CategoricalValue, IntValue, RealValue, RealValue]],
+    val ms: Vector[LayerMetaParameter],
     val inputDim: Int = 0,
     val outputDim: Int = 0) {
   

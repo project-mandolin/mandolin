@@ -39,8 +39,10 @@ trait ModelSpaceBuilder {
     this
   }
 
-  def build() : ModelSpace = {
-    new ModelSpace(reals.toVector, cats.toVector, layers.toVector)
+  def build() : ModelSpace = build(0,0)  
+  
+  def build(idim: Int, odim: Int) : ModelSpace = {
+    new ModelSpace(reals.toVector, cats.toVector, layers.toVector, idim, odim)
   }
 }
 
@@ -82,7 +84,7 @@ object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
       withMetaParam(new LayerMetaParameter(
           n,
           new TupleSet4(
-          new CategoricalMetaParameter("ltype", new CategoricalSet(Vector("TanHLType","ReluLType"))),
+          new CategoricalMetaParameter("ltype", new CategoricalSet(Vector("TanHLType"))),
           new IntegerMetaParameter("dim", new IntSet(lowBound, upBound)),
           new RealMetaParameter("l1", new RealSet(0.0, 0.01)),
           new RealMetaParameter("l2", new RealSet(0.0, 0.01)))))
