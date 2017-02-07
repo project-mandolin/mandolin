@@ -182,6 +182,7 @@ trait BatchLearnerSettings extends LearnerSettings {
   val densityRatio = asDouble("mandolin.trainer.density-ratio")  
 }
 
+
 /**
  * Online learning-specific settings
  */ 

@@ -22,20 +22,12 @@ extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSi
 object LocalModelSelector {
   
   def main(args: Array[String]): Unit = {
-    val trainFile = args(0)
-    val testFile = args(1)
-    val numWorkers = args(2).toInt
-    val numThreads = args(3)
-    val workerBatchSize = args(4).toInt
-    val scoreSampleSize = if (args.length > 5) args(5).toInt else 240
-    val acqFunRelearnSize = if (args.length > 6) args(6).toInt else 8
-    val totalEvals = if (args.length > 7) args(7).toInt else 40
-
-    // set up model space
-    val lrParam = new RealMetaParameter("lr", new RealSet(0.1, 0.95))
-    val methodParam = new CategoricalMetaParameter("method", new CategoricalSet(Vector("adagrad", "sgd")))
-    val trainerThreadsParam = new CategoricalMetaParameter("numTrainerThreads", new CategoricalSet(Vector(numThreads)))
-    //val modelSpace = new ModelSpace(Vector(lrParam), Vector(methodParam, trainerThreadsParam), nn)
-    // end model space
+    val appSettings = new GLPModelSettings(args) with ModelSelectionSettings    
+    val trainFile = appSettings.trainFile.get
+    val testFile = appSettings.testFile.getOrElse(trainFile)
+    val builder = GenericModelFactory.getModelSpaceBuilder(appSettings.modelSpace)    
+    val selector = new LocalModelSelector(builder, trainFile, testFile, 
+        appSettings.numWorkers, appSettings.workerBatchSize, appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals)
+    selector.search()
   }
 }

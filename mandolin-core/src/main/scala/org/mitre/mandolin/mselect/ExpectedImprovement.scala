@@ -66,11 +66,13 @@ class AlphabetBuilder extends MetaParameterHandler {
     val cats = modelSpace.catMPs.toVector
     val reals = modelSpace.realMPs
     val fa = new StdAlphabet
-    reals foreach {r => fa.ofString(r.name)}
+    reals foreach {r =>
+      fa.ofString(r.name)}
     cats foreach {c =>
       val s = c.valSet.size
       for (i <- 0 until s - 1) { // this excludes LAST value to avoid dummy encoded categorical variables being perfectly correlated resulting in Singular Matrix
-        fa.ofString(c.name+"_"+c.valSet(i))  
+        val ss = c.name+"_"+c.valSet(i)
+        fa.ofString(ss)  
       }      
     }
     fa.ensureFixed

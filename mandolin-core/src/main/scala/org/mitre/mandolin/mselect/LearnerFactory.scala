@@ -46,7 +46,50 @@ trait ModelSpaceBuilder {
   }
 }
 
-class MandolinLogisticRegressionInstance(appSettings: GLPModelSettings, config: ModelConfig, nn: ANNetwork) 
+
+object GenericModelFactory extends LearnerFactory[GLPFactor] {
+  class GenericModelSpaceBuilder extends ModelSpaceBuilder {
+    
+    def withRealMetaParams(rs: Vector[RealMetaParameter]) = rs foreach withMetaParam 
+    def withCategoricalMetaParams(cats: Vector[CategoricalMetaParameter]) = cats foreach withMetaParam     
+      
+  }
+  
+  override def getModelSpaceBuilder() : GenericModelSpaceBuilder = {
+    new GenericModelSpaceBuilder
+  }
+  
+  def getModelSpaceBuilder(ms: ModelSpace) : GenericModelSpaceBuilder = {
+    val mm = new GenericModelSpaceBuilder
+    mm.withCategoricalMetaParams(ms.catMPs)
+    mm.withRealMetaParams(ms.realMPs)
+    mm
+  }
+  
+  def getSpec(vs: ValuedMetaParameter[Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]]) : LType = {
+      val lsp = vs.getValue
+      val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
+      val dim = lsp.v2.v
+      val l1 = lsp.v3.v
+      val l2 = lsp.v4.v
+      LType(lt, dim, l1 = l1.toFloat, l2 = l2.toFloat)            
+      }
+  
+  def getLearnerInstance(config: ModelConfig) : LearnerInstance[GLPFactor] = {
+    val cats: List[(String,Any)] = config.categoricalMetaParamSet.toList map {cm => (cm.getName,cm.getValue.s)}
+    val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
+    
+    val mspecValued = config.ms map {m => m.drawRandomValue} map getSpec
+    // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
+    val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  mspecValued ++ Vector(LType(SoftMaxLType))
+    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
+    val allParams : Seq[(String,Any)] = (cats ++ reals) toSeq 
+    val settings = new GLPModelSettings().withSets(allParams)
+    new MandolinModelInstance(settings, config, net)
+  }
+}
+
+class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, nn: ANNetwork) 
 extends LearnerInstance[GLPFactor] with Serializable {
 
   def train(train: Vector[GLPFactor], test: Vector[GLPFactor]) : Double = {
@@ -128,7 +171,7 @@ object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
     val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals) toSeq 
     val settings = new GLPModelSettings().withSets(allParams)
-    new MandolinLogisticRegressionInstance(settings, config, net)
+    new MandolinModelInstance(settings, config, net)
   }
 
 
