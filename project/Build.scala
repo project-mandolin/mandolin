@@ -87,7 +87,7 @@ object MandolinBuild extends Build {
       "com.typesafe" % "config" % "1.2.1",
       "colt" % "colt" % "1.2.0",
       "com.twitter" %% "chill" % "0.7.2",
-      "org.scalanlp" %% "breeze" % "0.12",
+      "org.scalanlp" %% "breeze" % "0.12", 
       "com.typesafe.akka" %% "akka-actor" % "2.4.11",
       "com.typesafe.akka" %% "akka-agent" % "2.4.11",
       versionDependencies(scalaVersion.value)
@@ -98,9 +98,9 @@ object MandolinBuild extends Build {
   def sparkDependencySettings : Seq[Setting[_]] = {
     Seq(
       libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-core" % "2.0.0",
-      "org.apache.spark" %% "spark-sql"  % "2.0.0",
-      "org.apache.spark" %% "spark-mllib"  % "2.0.0"
+      "org.apache.spark" %% "spark-core" % "2.1.0",
+      "org.apache.spark" %% "spark-sql"  % "2.1.0",
+      "org.apache.spark" %% "spark-mllib"  % "2.1.0"
       )
     )
   }  
