@@ -107,6 +107,7 @@ extends LearnerInstance[GLPFactor] with Serializable {
 }
 
 //trait MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor]
+/*
 object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
   
 
@@ -176,3 +177,4 @@ object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
 
 
 }
+*/

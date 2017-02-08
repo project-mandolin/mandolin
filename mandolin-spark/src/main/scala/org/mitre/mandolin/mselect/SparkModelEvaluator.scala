@@ -25,7 +25,7 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]
       val trData  = _trainBC.value
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
-      val learner = MandolinLogisticRegressionFactory.getLearnerInstance(config)
+      val learner = GenericModelFactory.getLearnerInstance(config)
       val acc = learner.train(trData, tstData)
       acc
       }

@@ -49,6 +49,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
       r.foreach(c => outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n"))
       outWriter.flush
       if (totalReceived >= totalEvals) {
+        outWriter.close()
         val hours = (System.currentTimeMillis() - startTime) / 1000 / 60 / 60
         log.info(s"Total time for $totalEvals configs was $hours hours")
         System.exit(0)

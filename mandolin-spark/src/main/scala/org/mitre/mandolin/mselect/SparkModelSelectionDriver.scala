@@ -1,10 +1,9 @@
 package org.mitre.mandolin.mselect
 
 import org.apache.spark.SparkContext
-import org.mitre.mandolin.mselect.MandolinLogisticRegressionFactory.MandolinLogisticRegressionModelSpaceBuilder
-import org.mitre.mandolin.mselect.ModelSpaceBuilder
 import org.mitre.mandolin.util.LocalIOAssistant
 
+import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, CategoricalGLPPredictor, GLPFactor, GLPWeights }
 
 class SparkModelSelectionDriver(val sc: SparkContext, val msb: ModelSpaceBuilder, trainFile: String, testFile: String, 
     numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) 
@@ -20,6 +19,22 @@ extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSi
   }
 }
 
+
+object SparkModelSelectionDriver {
+  
+  def main(args: Array[String]) : Unit = {
+    val appSettings = new GLPModelSettings(args) with ModelSelectionSettings
+    val sc = new SparkContext
+    val trainFile = appSettings.trainFile.get
+    val testFile = appSettings.testFile.getOrElse(trainFile)
+    val builder = GenericModelFactory.getModelSpaceBuilder(appSettings.modelSpace)    
+    val selector = new SparkModelSelectionDriver(sc, builder, trainFile, testFile,
+        appSettings.numWorkers, appSettings.workerBatchSize, appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals)
+    selector.search()
+  }
+  
+}
+/*
 object SparkModelSelectionDriver {
 
   def main(args: Array[String]): Unit = {
@@ -42,3 +57,4 @@ object SparkModelSelectionDriver {
     new SparkModelSelectionDriver(sc, builder, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals)
   }
 }
+*/
