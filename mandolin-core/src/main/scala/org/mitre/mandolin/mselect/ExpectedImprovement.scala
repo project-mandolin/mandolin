@@ -56,6 +56,10 @@ trait MetaParameterHandler {
       val fid = fa.ofString(rmp.getName)
       dv foreach { case dv => dv(fid) = rmp.getValue.v.toFloat }
       }
+    c.intMetaParamSet map { imp => 
+      val fid = fa.ofString(imp.getName)
+      dv foreach { case dv => dv(fid) = imp.getValue.v.toFloat }
+      }
     dv
   }   
 }
@@ -63,11 +67,13 @@ trait MetaParameterHandler {
 class AlphabetBuilder extends MetaParameterHandler {
   
   def build(modelSpace: ModelSpace) = {
-    val cats = modelSpace.catMPs.toVector
+    val cats = modelSpace.catMPs
     val reals = modelSpace.realMPs
+    val ints = modelSpace.intMPs
     val fa = new StdAlphabet
     reals foreach {r =>
       fa.ofString(r.name)}
+    ints foreach { r => fa.ofString(r.name) }
     cats foreach {c =>
       val s = c.valSet.size
       for (i <- 0 until s - 1) { // this excludes LAST value to avoid dummy encoded categorical variables being perfectly correlated resulting in Singular Matrix
@@ -192,7 +198,7 @@ class BayesianNNAcquisitionFunction(ms: ModelSpace) extends AcquisitionFunction 
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {
     // update the data
     curData = evalResults.toVector
-    bestScore = curData.maxBy{_.sc}.sc // current best score - larger scores always better
+    bestScore = curData.maxBy{_.sc}.sc // current best score - LARGER! scores always better here
     val (trainer, glp) = getMetaTrainer
     log.info("Number of layers = " + glp.numLayers)
     for (i <- 0 until glp.numLayers) {

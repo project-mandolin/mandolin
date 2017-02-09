@@ -125,7 +125,6 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
     case Work(w: Seq[ModelConfig]) =>
       doWork(w) onComplete { case r =>
         log.info(s"Worker $this finished configuration; sending result to " + modelScorer)
-        modelScorer ! Hello
         modelScorer ! r.get // send result to modelScorer
         master ! ProvideWork(batchSize)
       }

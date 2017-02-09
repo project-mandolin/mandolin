@@ -85,12 +85,13 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
   def getLearnerInstance(config: ModelConfig) : LearnerInstance[GLPFactor] = {
     val cats: List[(String,Any)] = config.categoricalMetaParamSet.toList map {cm => (cm.getName,cm.getValue.s)}
     val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
+    val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
     
     val mspecValued = config.ms map {m => m.drawRandomValue} map getSpec
     // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
     val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  mspecValued ++ Vector(LType(SoftMaxLType))
     val net = ANNetwork(fullSpec, config.inDim, config.outDim)
-    val allParams : Seq[(String,Any)] = (cats ++ reals) toSeq 
+    val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
     val settings = new GLPModelSettings().withSets(allParams)
     new MandolinModelInstance(settings, config, net)
   }

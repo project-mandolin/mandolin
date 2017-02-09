@@ -26,7 +26,6 @@ trait ModelSelectionSettings extends LearnerSettings {
       val (l,u) = c.getIntList("range").toList match {case a :: b :: Nil => (a,b) case _ => throw new RuntimeException("invalid range")}
       new IntegerMetaParameter(key, new IntSet(l,u))
       }
-    println("MODEL SPACE: ints = " + ints.toVector.length)
     new ModelSpace(reals.toVector, cats.toVector, ints.toVector)
   }
   
