@@ -16,7 +16,7 @@ class TestSelection extends FlatSpec with Matchers {
   import WorkPullingPattern._
   import akka.actor.PoisonPill
   
-  val modelSpace = new ModelSpace(Vector(new RealMetaParameter("lr",new RealSet(0.1,1.0))), Vector())
+  val modelSpace = new ModelSpace(Vector(new RealMetaParameter("lr",new RealSet(0.1,1.0))), Vector(), Vector())
   
   "A random evaluator simulation" should "evaluate concurrently" in {
     val log = LoggerFactory.getLogger(getClass)

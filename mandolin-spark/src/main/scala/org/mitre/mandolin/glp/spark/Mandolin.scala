@@ -1,4 +1,4 @@
-package org.mitre.mandolin.glp.spark
+  package org.mitre.mandolin.glp.spark
 
 import org.mitre.mandolin.glp.GLPModelSettings
 import org.mitre.mandolin.glp.local.LocalProcessor

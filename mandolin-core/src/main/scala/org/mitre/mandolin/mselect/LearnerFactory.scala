@@ -22,6 +22,7 @@ trait LearnerFactory[T] {
 trait ModelSpaceBuilder {
   val reals = new mutable.MutableList[RealMetaParameter]
   val cats = new mutable.MutableList[CategoricalMetaParameter]
+  val ints = new mutable.MutableList[IntegerMetaParameter]
   val layers = new mutable.MutableList[LayerMetaParameter]
 
   def withMetaParam(realMP: RealMetaParameter) = {
@@ -33,6 +34,10 @@ trait ModelSpaceBuilder {
     cats += catMP
     this
   }
+  def withMetaParam(intMP: IntegerMetaParameter) = {
+    ints += intMP
+    this
+  }
   
   def withMetaParam(layerMP: LayerMetaParameter) = {
     layers += layerMP
@@ -42,7 +47,7 @@ trait ModelSpaceBuilder {
   def build() : ModelSpace = build(0,0)  
   
   def build(idim: Int, odim: Int) : ModelSpace = {
-    new ModelSpace(reals.toVector, cats.toVector, layers.toVector, idim, odim)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, layers.toVector, idim, odim)
   }
 }
 
@@ -51,7 +56,8 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
   class GenericModelSpaceBuilder extends ModelSpaceBuilder {
     
     def withRealMetaParams(rs: Vector[RealMetaParameter]) = rs foreach withMetaParam 
-    def withCategoricalMetaParams(cats: Vector[CategoricalMetaParameter]) = cats foreach withMetaParam     
+    def withCategoricalMetaParams(cats: Vector[CategoricalMetaParameter]) = cats foreach withMetaParam
+    def withIntegerMetaParams(ints: Vector[IntegerMetaParameter]) = ints foreach withMetaParam
       
   }
   
@@ -63,6 +69,7 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     val mm = new GenericModelSpaceBuilder
     mm.withCategoricalMetaParams(ms.catMPs)
     mm.withRealMetaParams(ms.realMPs)
+    mm.withIntegerMetaParams(ms.intMPs)
     mm
   }
   
@@ -73,7 +80,7 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
       val l1 = lsp.v3.v
       val l2 = lsp.v4.v
       LType(lt, dim, l1 = l1.toFloat, l2 = l2.toFloat)            
-      }
+   }
   
   def getLearnerInstance(config: ModelConfig) : LearnerInstance[GLPFactor] = {
     val cats: List[(String,Any)] = config.categoricalMetaParamSet.toList map {cm => (cm.getName,cm.getValue.s)}

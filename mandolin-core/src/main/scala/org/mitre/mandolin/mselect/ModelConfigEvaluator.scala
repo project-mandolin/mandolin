@@ -103,8 +103,17 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
 
   import WorkPullingPattern._
 
-  import scala.concurrent.ExecutionContext.Implicits.global
+  //import scala.concurrent.ExecutionContext.Implicits.global
   
+  implicit val ec = new ExecutionContext {
+    val threadPool = Executors.newFixedThreadPool(128);
+
+    def execute(runnable: Runnable) {
+        threadPool.submit(runnable)
+    }
+
+    def reportFailure(t: Throwable) {}
+  }
   
   val log = LoggerFactory.getLogger(getClass)
 

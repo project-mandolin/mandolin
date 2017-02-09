@@ -9,6 +9,7 @@ import org.mitre.mandolin.glp.{ANNetwork, TanHLType, ReluLType, LType, InputLTyp
 class ModelConfig(
                    val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
                    val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
+                   val intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],
                    val ms : Vector[LayerMetaParameter],
                    val inDim: Int,
                    val outDim: Int) extends Serializable {
@@ -23,8 +24,11 @@ class ModelConfig(
       val reals = realMetaParamSet.map { mp =>
       mp.getName + ":" + mp.getValue.v
     }.mkString(" ")
-    val cats = categoricalMetaParamSet.map { mp => mp.getName + ":" + mp.getValue.s }.mkString(" ")
-    reals + " " + cats
+    val cats = categoricalMetaParamSet.map { mp => mp.getName + "_" + mp.getValue.s }.mkString(" ")
+    val ints = intMetaParamSet map { mp =>
+      mp.getName + ":" + mp.getValue.v
+      } mkString(" ")
+    reals + " " + ints + " " + cats
   }
 }
 
@@ -34,19 +38,21 @@ class ModelConfig(
  * which can be gleaned from the data automatically rather than specified by the user.
  * @author wellner@mitre.org
  */
-class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter], 
+class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter],
+    val intMPs: Vector[IntegerMetaParameter],
     val ms: Vector[LayerMetaParameter],
     val inputDim: Int = 0,
     val outputDim: Int = 0) {
   
   
-  def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter]) =
-    this(rmps, cmps, Vector())
+  def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
+    this(rmps, cmps, ints, Vector())
 
   def drawRandom: ModelConfig = {
     val realValued = realMPs map { mp => mp.drawRandomValue }
-    val catValued = catMPs map { mp => mp.drawRandomValue }    
-    new ModelConfig(realValued, catValued, ms, inputDim, outputDim)
+    val catValued = catMPs map { mp => mp.drawRandomValue }
+    val intValued = intMPs map {mp => mp.drawRandomValue } 
+    new ModelConfig(realValued, catValued, intValued, ms, inputDim, outputDim)
   }
 }
 
