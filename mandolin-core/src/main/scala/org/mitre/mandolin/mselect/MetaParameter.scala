@@ -40,7 +40,7 @@ abstract class MetaParameter[T <: MPValue](val name: String, valueSet: ValueSet[
   def drawRandomValue : ValuedMetaParameter[T]
 }
 
-class RealMetaParameter(n: String, vs: RealSet) extends MetaParameter[RealValue](n, vs) with Serializable {
+class RealMetaParameter(n: String, val vs: RealSet) extends MetaParameter[RealValue](n, vs) with Serializable {
 
   def drawRandomValue : ValuedMetaParameter[RealValue] = {
     new ValuedMetaParameter(RealValue(util.Random.nextDouble() * vs.getDiff + vs.lower), this)
@@ -54,7 +54,7 @@ class CategoricalMetaParameter(n: String, val valSet: CategoricalSet) extends Me
   }
 }
 
-class IntegerMetaParameter(n: String, vs: IntSet) extends MetaParameter[IntValue](n, vs) with Serializable {
+class IntegerMetaParameter(n: String, val vs: IntSet) extends MetaParameter[IntValue](n, vs) with Serializable {
   def drawRandomValue : ValuedMetaParameter[IntValue] = {
     new ValuedMetaParameter(IntValue(util.Random.nextInt(vs.upper - vs.lower) + vs.lower), this)
   }
