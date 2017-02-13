@@ -29,6 +29,10 @@ trait ModelSelectionSettings extends LearnerSettings {
       val (l,u) = getIntPair(c.getIntList("range").toList) 
       IntegerMetaParameter(key, IntSet(l,u))
       }
+    // this defines a vector of "topology meta parameters"
+    // each topologyMetaParameter defines a space of topologies for a fixed number of layers
+    // a topologySpaceMetaParameter is then a set/vector of these
+    // this allows for the space to be tailored/bounded in a reasonable way for different
     val layers = cobj.getConfigList("layers") map {l =>
       val key = l.getString("name") // just the layer name
       val topo = l.getConfigList("topology")
