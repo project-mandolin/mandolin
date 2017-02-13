@@ -10,7 +10,7 @@ class ModelConfig(
                    val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
                    val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
                    val intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],
-                   val ms : Vector[LayerMetaParameter],
+                   val ms : TopologySpaceMetaParameter,
                    val inDim: Int,
                    val outDim: Int) extends Serializable {
                    // val inSpec : ValuedMetaParameter[Tuple2Value[CategoricalValue,RealValue]],
@@ -40,18 +40,18 @@ class ModelConfig(
  */
 class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter],
     val intMPs: Vector[IntegerMetaParameter],
-    val ms: Vector[LayerMetaParameter],
+    val ms: TopologySpaceMetaParameter,
     val inputDim: Int = 0,
     val outputDim: Int = 0) {
-  
-  
+    
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
-    this(rmps, cmps, ints, Vector())
+    this(rmps, cmps, ints, new TopologySpaceMetaParameter(""))
 
   def drawRandom: ModelConfig = {
     val realValued = realMPs map { mp => mp.drawRandomValue }
     val catValued = catMPs map { mp => mp.drawRandomValue }
-    val intValued = intMPs map {mp => mp.drawRandomValue } 
+    val intValued = intMPs map {mp => mp.drawRandomValue }
+    val topology = ms.drawRandomValue
     new ModelConfig(realValued, catValued, intValued, ms, inputDim, outputDim)
   }
 }

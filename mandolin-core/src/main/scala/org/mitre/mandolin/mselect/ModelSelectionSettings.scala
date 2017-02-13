@@ -7,6 +7,9 @@ import scala.collection.JavaConversions._
 
 trait ModelSelectionSettings extends LearnerSettings {
   
+  private def getIntPair(li: List[Integer]) = li match {case a :: b :: Nil => (a.toInt, b.toInt) case _ => throw new RuntimeException("Invalid integer range")}
+  private def getDoublePair(li: List[java.lang.Double]) = li match {case a :: b :: Nil => (a.toDouble, b.toDouble) case _ => throw new RuntimeException("Invalid integer range")}
+  
   def buildModelSpaceFromConfig() = {
     val cobj = config.getConfig("mandolin.model-selection")
         
@@ -14,19 +17,38 @@ trait ModelSelectionSettings extends LearnerSettings {
       val key = c.getString("name")
       // these values should be strings
       val values = c.getStringList("values") 
-      new CategoricalMetaParameter(key, new CategoricalSet(values.toVector))
+      CategoricalMetaParameter(key, CategoricalSet(values.toVector))
     }
     val reals = cobj.getConfigList("real") map {c =>
       val key = c.getString("name")
-      val (l,u) = c.getDoubleList("range").toList match {case a :: b :: Nil => (a.toDouble,b.toDouble) case _ => throw new RuntimeException("invalid range")}
-      new RealMetaParameter(key, new RealSet(l,u))
+      val (l,u) = getDoublePair(c.getDoubleList("range").toList)
+      RealMetaParameter(key, RealSet(l,u))
       }
     val ints =  cobj.getConfigList("int") map {c =>
       val key = c.getString("name")
-      val (l,u) = c.getIntList("range").toList match {case a :: b :: Nil => (a,b) case _ => throw new RuntimeException("invalid range")}
-      new IntegerMetaParameter(key, new IntSet(l,u))
+      val (l,u) = getIntPair(c.getIntList("range").toList) 
+      IntegerMetaParameter(key, IntSet(l,u))
       }
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector)
+    val layers = cobj.getConfigList("layers") map {l =>
+      val key = l.getString("name") // just the layer name
+      val topo = l.getConfigList("topology")
+      val topoLayers = topo map { t =>
+        val lt = t.getStringList("ltype")
+        val (lDim,uDim) = getIntPair(t.getIntList("dim").toList)
+        val (ll1,ul1) = getDoublePair(t.getDoubleList("l1-pen").toList) 
+        val (ll2,ul2) = getDoublePair(t.getDoubleList("l2-pen").toList)
+        new LayerMetaParameter("layer",
+            TupleSet4 (
+              CategoricalMetaParameter("ltype", CategoricalSet(lt.toVector)),
+              IntegerMetaParameter("dim", IntSet(lDim, uDim)), 
+              RealMetaParameter("l1pen", RealSet(ll1, ul1)),
+              RealMetaParameter("l2pen", RealSet(ll2, ul2)) ))
+        } 
+      new TopologyMetaParameter(key, topoLayers.toVector)
+      }
+    val ll = ListSet(layers.toVector)
+    val topoSpace = new TopologySpaceMetaParameter("topoSpace", ll)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topoSpace)
   }
   
   val modelSpace = buildModelSpaceFromConfig()

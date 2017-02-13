@@ -23,7 +23,7 @@ trait ModelSpaceBuilder {
   val reals = new mutable.MutableList[RealMetaParameter]
   val cats = new mutable.MutableList[CategoricalMetaParameter]
   val ints = new mutable.MutableList[IntegerMetaParameter]
-  val layers = new mutable.MutableList[LayerMetaParameter]
+  val layers = new mutable.MutableList[TopologyMetaParameter]
 
   def withMetaParam(realMP: RealMetaParameter) = {
     reals += realMP
@@ -39,7 +39,7 @@ trait ModelSpaceBuilder {
     this
   }
   
-  def withMetaParam(layerMP: LayerMetaParameter) = {
+  def withMetaParam(layerMP: TopologyMetaParameter) = {
     layers += layerMP
     this
   }
@@ -47,7 +47,8 @@ trait ModelSpaceBuilder {
   def build() : ModelSpace = build(0,0)  
   
   def build(idim: Int, odim: Int) : ModelSpace = {
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, layers.toVector, idim, odim)
+    val topoSpace = new TopologySpaceMetaParameter("space", ListSet(layers.toVector))
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topoSpace, idim, odim)
   }
 }
 
@@ -73,8 +74,7 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     mm
   }
   
-  def getSpec(vs: ValuedMetaParameter[Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]]) : LType = {
-      val lsp = vs.getValue
+  def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
       val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
       val dim = lsp.v2.v
       val l1 = lsp.v3.v
@@ -87,7 +87,7 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
     val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
     
-    val mspecValued = config.ms map {m => m.drawRandomValue} map getSpec
+    val mspecValued = config.ms.drawRandomValue.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}
     // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
     val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  mspecValued ++ Vector(LType(SoftMaxLType))
     val net = ANNetwork(fullSpec, config.inDim, config.outDim)
