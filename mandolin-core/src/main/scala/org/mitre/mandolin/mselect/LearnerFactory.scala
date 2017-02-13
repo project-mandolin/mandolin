@@ -23,7 +23,7 @@ trait ModelSpaceBuilder {
   val reals = new mutable.MutableList[RealMetaParameter]
   val cats = new mutable.MutableList[CategoricalMetaParameter]
   val ints = new mutable.MutableList[IntegerMetaParameter]
-  val layers = new mutable.MutableList[TopologyMetaParameter]
+  var topo : Option[TopologySpaceMetaParameter] = None
 
   def withMetaParam(realMP: RealMetaParameter) = {
     reals += realMP
@@ -39,16 +39,15 @@ trait ModelSpaceBuilder {
     this
   }
   
-  def withMetaParam(layerMP: TopologyMetaParameter) = {
-    layers += layerMP
+  def withMetaParam(t: TopologySpaceMetaParameter) = {
+    topo = Some(t)
     this
   }
 
   def build() : ModelSpace = build(0,0)  
   
   def build(idim: Int, odim: Int) : ModelSpace = {
-    val topoSpace = new TopologySpaceMetaParameter("space", ListSet(layers.toVector))
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topoSpace, idim, odim)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, idim, odim)    
   }
 }
 
@@ -59,7 +58,7 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     def withRealMetaParams(rs: Vector[RealMetaParameter]) = rs foreach withMetaParam 
     def withCategoricalMetaParams(cats: Vector[CategoricalMetaParameter]) = cats foreach withMetaParam
     def withIntegerMetaParams(ints: Vector[IntegerMetaParameter]) = ints foreach withMetaParam
-      
+    def withTopologyMetaParam(topo: TopologySpaceMetaParameter) = withMetaParam(topo)  
   }
   
   override def getModelSpaceBuilder() : GenericModelSpaceBuilder = {
@@ -71,6 +70,7 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     mm.withCategoricalMetaParams(ms.catMPs)
     mm.withRealMetaParams(ms.realMPs)
     mm.withIntegerMetaParams(ms.intMPs)
+    ms.ms foreach {ms => mm.withTopologyMetaParam(ms) }
     mm
   }
   
@@ -87,9 +87,11 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
     val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
     
-    val mspecValued = config.ms.drawRandomValue.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}
+    val mspecValued = config.ms map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
+    val hiddenLayers = mspecValued.getOrElse(Vector())
+    
     // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
-    val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  mspecValued ++ Vector(LType(SoftMaxLType))
+    val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  hiddenLayers ++ Vector(LType(SoftMaxLType))
     val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
     val settings = new GLPModelSettings().withSets(allParams)

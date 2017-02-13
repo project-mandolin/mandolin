@@ -10,7 +10,7 @@ class ModelConfig(
                    val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
                    val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
                    val intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],
-                   val ms : TopologySpaceMetaParameter,
+                   val ms : Option[ValuedMetaParameter[ListValue[SetValue[LayerMetaParameter]]]],
                    val inDim: Int,
                    val outDim: Int) extends Serializable {
                    // val inSpec : ValuedMetaParameter[Tuple2Value[CategoricalValue,RealValue]],
@@ -28,7 +28,9 @@ class ModelConfig(
     val ints = intMetaParamSet map { mp =>
       mp.getName + ":" + mp.getValue.v
       } mkString(" ")
-    reals + " " + ints + " " + cats
+    val layerInfo = ms map {lm => lm.getValue.v.s}
+    val numHiddenLayers = layerInfo.getOrElse(Vector()).size 
+    reals + " " + ints + " " + cats + " numHiddenLayers:" + numHiddenLayers
   }
 }
 
@@ -40,19 +42,23 @@ class ModelConfig(
  */
 class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter],
     val intMPs: Vector[IntegerMetaParameter],
-    val ms: TopologySpaceMetaParameter,
+    val ms: Option[TopologySpaceMetaParameter],
     val inputDim: Int = 0,
     val outputDim: Int = 0) {
     
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
-    this(rmps, cmps, ints, new TopologySpaceMetaParameter(""))
+    this(rmps, cmps, ints, None)
 
   def drawRandom: ModelConfig = {
     val realValued = realMPs map { mp => mp.drawRandomValue }
     val catValued = catMPs map { mp => mp.drawRandomValue }
     val intValued = intMPs map {mp => mp.drawRandomValue }
-    val topology = ms.drawRandomValue
-    new ModelConfig(realValued, catValued, intValued, ms, inputDim, outputDim)
+    if (ms.isDefined) {
+      val topology = ms.get.drawRandomValue
+      new ModelConfig(realValued, catValued, intValued, Some(topology), inputDim, outputDim)
+    } else {
+      new ModelConfig(realValued, catValued, intValued, None, inputDim, outputDim)
+    }
   }
 }
 

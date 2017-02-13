@@ -33,7 +33,8 @@ trait ModelSelectionSettings extends LearnerSettings {
     // each topologyMetaParameter defines a space of topologies for a fixed number of layers
     // a topologySpaceMetaParameter is then a set/vector of these
     // this allows for the space to be tailored/bounded in a reasonable way for different
-    val layers = cobj.getConfigList("layers") map {l =>
+    val layers = try {
+      val vec = cobj.getConfigList("layers") map {l =>    
       val key = l.getString("name") // just the layer name
       val topo = l.getConfigList("topology")
       val topoLayers = topo map { t =>
@@ -50,9 +51,10 @@ trait ModelSelectionSettings extends LearnerSettings {
         } 
       new TopologyMetaParameter(key, topoLayers.toVector)
       }
+      vec.toVector} catch {case _: Throwable => Vector()}
     val ll = ListSet(layers.toVector)
-    val topoSpace = new TopologySpaceMetaParameter("topoSpace", ll)
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topoSpace)
+    val sp = if (ll.size > 0) Some(new TopologySpaceMetaParameter("topoSpace", ll)) else None
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp)
   }
   
   val modelSpace = buildModelSpaceFromConfig()
