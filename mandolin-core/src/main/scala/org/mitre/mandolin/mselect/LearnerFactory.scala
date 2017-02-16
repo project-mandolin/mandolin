@@ -46,9 +46,9 @@ trait ModelSpaceBuilder {
 
   def build() : ModelSpace = build(0,0)  
   
-  def build(idim: Int, odim: Int, sparse: Boolean = true) : ModelSpace = {    
+  def build(idim: Int, odim: Int, sparse: Boolean = true, appSettings: Option[GLPModelSettings] = None) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim)    
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appSettings)    
   }
 }
 
@@ -91,11 +91,10 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     val mspecValued = config.ms map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
     val hiddenLayers = mspecValued.getOrElse(Vector())
     
-    // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
     val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
     val net = ANNetwork(fullSpec, config.inDim, config.outDim) // val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
-    val settings = new GLPModelSettings().withSets(allParams)
+    val settings = config.optionalSettings.getOrElse(new GLPModelSettings()).withSets(allParams)
     new MandolinModelInstance(settings, config, net)
   }
 }
@@ -104,16 +103,13 @@ class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, 
 extends LearnerInstance[GLPFactor] with Serializable {
 
   def train(train: Vector[GLPFactor], test: Vector[GLPFactor]) : Double = {
-    println("Training and evaluating with inDim = " + nn.inLayer.dim)
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)
     val predictor = new CategoricalGLPPredictor(nn, true)
     val trainer = new LocalTrainer(optimizer)
     val evPr = new NonExtractingEvalDecoder[GLPFactor,GLPWeights,Int,DiscreteConfusion](predictor)
-    // XXX - breaking on retraining 
     val (weights, trainLoss) = trainer.retrainWeights(train, appSettings.numEpochs)    
     val confusion = evPr.evalWithoutExtraction(test, weights)    
     val acc = confusion.getAccuracy
-    println("Finished with accuracy .. " + acc)
     acc
   }
 }

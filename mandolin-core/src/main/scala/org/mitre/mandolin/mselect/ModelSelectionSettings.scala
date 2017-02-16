@@ -2,11 +2,11 @@ package org.mitre.mandolin.mselect
 
 import org.mitre.mandolin.glp.{LType, InputLType, SoftMaxLType, SparseInputLType, LinearLType }
 import com.typesafe.config.{ConfigList, ConfigValueType}
-import org.mitre.mandolin.config.LearnerSettings
+import org.mitre.mandolin.glp.GLPModelSettings
 
 import scala.collection.JavaConversions._
 
-trait ModelSelectionSettings extends LearnerSettings {
+trait ModelSelectionSettings extends GLPModelSettings {
   
   private def getIntPair(li: List[Integer]) = li match {case a :: b :: Nil => (a.toInt, b.toInt) case _ => throw new RuntimeException("Invalid integer range")}
   private def getDoublePair(li: List[java.lang.Double]) = li match {case a :: b :: Nil => (a.toDouble, b.toDouble) case _ => throw new RuntimeException("Invalid integer range")}
@@ -72,7 +72,7 @@ trait ModelSelectionSettings extends LearnerSettings {
       vec.toVector} catch {case _: Throwable => Vector()}
     val ll = ListSet(layers.toVector)
     val sp = if (ll.size > 0) Some(new TopologySpaceMetaParameter("topoSpace", ll)) else None
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0, Some(this))
   }
   
   val modelSpace = buildModelSpaceFromConfig()

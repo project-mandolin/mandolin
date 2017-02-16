@@ -1,10 +1,12 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.{ANNetwork, TanHLType, ReluLType, LType, InputLType, SparseInputLType, SoftMaxLType}
+import org.mitre.mandolin.glp.{GLPModelSettings,ANNetwork, TanHLType, ReluLType, LType, InputLType, SparseInputLType, SoftMaxLType}
 
 
 /**
   * A configuration is a set of MetaParameters set to particular values.
+  * A GLP model setting can be passed in so that all the static (unchanging) learning
+  * settings are provided as part of the model config.
   */
 class ModelConfig(
                    val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
@@ -14,7 +16,8 @@ class ModelConfig(
                    val inLType : LType,
                    val outLType: LType,
                    val inDim: Int,
-                   val outDim: Int) extends Serializable {
+                   val outDim: Int,
+                   val optionalSettings: Option[GLPModelSettings] = None) extends Serializable {
                    // val inSpec : ValuedMetaParameter[Tuple2Value[CategoricalValue,RealValue]],
                    //val hiddenSpec : Vector[ValuedMetaParameter[Tuple4Value[CategoricalValue,IntValue,RealValue,RealValue]]],
                    //val outSpec : ValuedMetaParameter[Tuple3Value[CategoricalValue,RealValue,RealValue]],
@@ -48,7 +51,8 @@ class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[Cate
     val inLType: LType,
     val outLType: LType,
     val idim: Int,
-    val odim: Int) {
+    val odim: Int,
+    val settings: Option[GLPModelSettings] = None) {
     
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
     this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0)
@@ -59,9 +63,9 @@ class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[Cate
     val intValued = intMPs map {mp => mp.drawRandomValue }
     if (ms.isDefined) {
       val topology = ms.get.drawRandomValue
-      new ModelConfig(realValued, catValued, intValued, Some(topology), inLType, outLType, idim, odim)
+      new ModelConfig(realValued, catValued, intValued, Some(topology), inLType, outLType, idim, odim, settings)
     } else {
-      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim)
+      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings)
     }
   }
 }

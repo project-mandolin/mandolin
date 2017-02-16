@@ -3,7 +3,7 @@ package org.mitre.mandolin.mselect
 import java.util.concurrent.Executors
 
 import akka.actor.{Props, ActorSystem}
-import org.mitre.mandolin.glp.{GLPTrainerBuilder, GLPModelSettings, ANNetwork, GLPFactor}
+import org.mitre.mandolin.glp.{GLPTrainerBuilder, GLPModelSettings, ANNetwork, GLPFactor, SparseInputLType}
 import org.mitre.mandolin.mselect.WorkPullingPattern.RegisterWorker
 import org.mitre.mandolin.transform.FeatureExtractor
 
@@ -14,7 +14,8 @@ import scala.concurrent.ExecutionContext
   */
 abstract class ModelSelectionDriver(msb: ModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None) {
-  val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int) = {
+  
+  val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int, sparse: Boolean) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
       ("mandolin.trainer.test-file", testFile)
@@ -25,11 +26,12 @@ abstract class ModelSelectionDriver(msb: ModelSpaceBuilder, trainFile: String, t
     featureExtractor.getAlphabet.ensureFixed // fix the alphabet
     val numInputs = nn.inLayer.getNumberOfOutputs // these will then be gathered dynamically from the trainFile
     val numOutputs = nn.outLayer.getNumberOfOutputs // ditto
-    (featureExtractor, nn, numInputs, numOutputs)
+    val isSparse = nn.inLayer.ltype.designate match {case SparseInputLType => true case _ => false}
+    (featureExtractor, nn, numInputs, numOutputs, isSparse)
   }
 
   // now build the model space after we know the number of inputs and outptus from reading in training set
-  val ms: ModelSpace = msb.build(numInputs, numOutputs)
+  val ms: ModelSpace = msb.build(numInputs, numOutputs, sparse, appSettings)
   val ev: ModelEvaluator   
 
   def search( ) : Unit = {
