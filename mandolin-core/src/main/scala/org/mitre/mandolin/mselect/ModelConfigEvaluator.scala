@@ -101,6 +101,8 @@ class ModelConfigEvaluator[T]() extends Actor {
   */
 class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, modelEvaluator: ModelEvaluator, batchSize: Int) extends Actor {
 
+  var busy : Boolean = false
+
   import WorkPullingPattern._
 
   //import scala.concurrent.ExecutionContext.Implicits.global
@@ -120,18 +122,20 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
   def receive = {
     case WorkAvailable => {
       log.info(s"Worker $this received work available, asking master to provide work")
-      master ! ProvideWork(batchSize)
+      if (!busy) master ! ProvideWork(batchSize)
     }
     case Work(w: Seq[ModelConfig]) =>
       doWork(w) onComplete { case r =>
         log.info(s"Worker $this finished configuration; sending result to " + modelScorer)
         modelScorer ! r.get // send result to modelScorer
+        busy = false
         master ! ProvideWork(batchSize)
       }
     case x => log.error("Received unrecognized message " + x)
   }
 
   def doWork(w: Seq[ModelConfig]): Future[ModelEvalResult] = {
+    busy = true
     Future({
       val score = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result
