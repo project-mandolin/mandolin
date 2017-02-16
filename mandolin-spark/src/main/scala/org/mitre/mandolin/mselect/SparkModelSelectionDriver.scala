@@ -6,8 +6,15 @@ import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, CategoricalGLPPredictor, GLPFactor, GLPWeights }
 
 class SparkModelSelectionDriver(val sc: SparkContext, val msb: ModelSpaceBuilder, trainFile: String, testFile: String, 
-    numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) 
-extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+    numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+    appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None) 
+extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals, appSettings) {
+  
+  def this(sc: SparkContext, _msb: ModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
+    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
+  }
+  
   override val ev = {
     val io = new LocalIOAssistant
     val trVecs = io.readLines(trainFile) map { l => fe.extractFeatures(l) }
@@ -28,8 +35,7 @@ object SparkModelSelectionDriver {
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)
     val builder = GenericModelFactory.getModelSpaceBuilder(appSettings.modelSpace)    
-    val selector = new SparkModelSelectionDriver(sc, builder, trainFile, testFile,
-        appSettings.numWorkers, appSettings.workerBatchSize, appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals)
+    val selector = new SparkModelSelectionDriver(sc, builder, appSettings)
     selector.search()
   }
   
