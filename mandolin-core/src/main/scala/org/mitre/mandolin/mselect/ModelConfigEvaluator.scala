@@ -24,7 +24,9 @@ object WorkPullingPattern {
 
   case class Terminated(worker: ActorRef) extends Message
 
-  case class Work[T](work: T) extends Message
+  case class Work[T](work: T, generation: Int) extends Message
+
+  case class CancelTraining(generation: Int) extends Message
 
   case class Update(acquisitionFunction: AcquisitionFunction) extends Message
   
@@ -46,6 +48,7 @@ class ModelConfigEvaluator[T]() extends Actor {
   val log = LoggerFactory.getLogger(getClass)
   val workers = collection.mutable.Set.empty[ActorRef]
   var currentEpic: Option[Epic[T]] = None
+  var generation : Int = 0
 
   def receive = {
     case epic: Epic[T] =>
@@ -54,7 +57,11 @@ class ModelConfigEvaluator[T]() extends Actor {
         //System.exit(0)
       }
       log.info("Got new epic from ModelScorer")
+      workers foreach {
+        _ ! CancelTraining(generation)
+      }
       currentEpic = Some(epic)
+      generation += 1
       log.info("Telling workers there is work available")
       workers foreach {
         _ ! WorkAvailable
@@ -87,7 +94,7 @@ class ModelConfigEvaluator[T]() extends Actor {
           }
         }.filter(_.isDefined).map(_.get)
         log.info(s"Sending batch of size ${batch.length} to worker $sender")
-        if (batch.length > 0) sender ! Work(batch)
+        if (batch.length > 0) sender ! Work(batch, generation)
 
     }
 
@@ -124,20 +131,23 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
       log.info(s"Worker $this received work available, asking master to provide work")
       if (!busy) master ! ProvideWork(batchSize)
     }
-    case Work(w: Seq[ModelConfig]) =>
-      doWork(w) onComplete { case r =>
+    case Work(w: Seq[ModelConfig], gen: Int) =>
+      doWork(w, gen) onComplete { case r =>
         log.info(s"Worker $this finished configuration; sending result of " + r.get.configResults.seq(0).sc + " to " + modelScorer)
         modelScorer ! r.get // send result to modelScorer
         busy = false
         master ! ProvideWork(batchSize)
       }
+    case CancelTraining(gen: Int) =>
+      modelEvaluator.cancel(gen)
+      busy = false
     case x => log.error("Received unrecognized message " + x)
   }
 
-  def doWork(w: Seq[ModelConfig]): Future[ModelEvalResult] = {
+  def doWork(w: Seq[ModelConfig], gen: Int): Future[ModelEvalResult] = {
     busy = true
     Future({
-      val score = modelEvaluator.evaluate(w)
+      val score = modelEvaluator.evaluate(w, gen)
       // actually get the model configs evaluation result
       // send to modelScorer
       log.info("Scores: " + score.mkString(" "))

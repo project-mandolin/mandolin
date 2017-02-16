@@ -12,7 +12,8 @@ import scala.concurrent.forkjoin.ForkJoinPool
  * model configuration against a provided dataset, using x-validation, etc.
  */
 abstract class ModelEvaluator {
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double]
+  def evaluate(c: Seq[ModelConfig], generation: Int) : Seq[Double]
+  def cancel(generation: Int)
 }
 
 // XXX - this is for testing purposes only
@@ -23,14 +24,16 @@ class MockRandomModelEvaluator extends ModelEvaluator {
     Thread.sleep(nsecs)
   }
   
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double] = {
+  def evaluate(c: Seq[ModelConfig], generation : Int) : Seq[Double] = {
     pauseTime() // simulate this taking a while
     c.map(_=>util.Random.nextDouble())
   }
+
+  def cancel(generation: Int) {}
 }
 
 class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
-  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
+  override def evaluate(c: Seq[ModelConfig], generation : Int): Seq[Double] = {
 
     val configs = c.toList
     val cvec = configs.par
@@ -43,4 +46,5 @@ class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor])
     }
     accuracies.seq
   }
+   def cancel(generation: Int) {}
 }
