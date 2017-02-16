@@ -47,20 +47,35 @@ trait MetaParameterHandler {
    */
   protected def configToFeatures(c: ModelConfig, fa: Alphabet, nfs: Int) : Option[DenseVec] = {
     val dv = if (nfs > 0) Some(DenseVec.zeros(nfs)) else None
-    c.categoricalMetaParamSet map { cmp =>
+    c.categoricalMetaParamSet foreach { cmp =>
       val ss = cmp.getValue.s
       val fid = fa.ofString(cmp.getName+"_"+ss)
       if (fid >= 0) dv foreach { case dv => dv(fid) = 1.0f } // unit features for categorical meta-parameters
     }
-    c.realMetaParamSet map {rmp =>
+    c.realMetaParamSet foreach {rmp =>
       val fid = fa.ofString(rmp.getName)
       dv foreach { case dv => dv(fid) = fa.getValue(fid, rmp.getValue.v).toFloat }
       }
-    c.intMetaParamSet map { imp => 
+    c.intMetaParamSet foreach { imp => 
       val fid = fa.ofString(imp.getName)
       dv foreach { case dv => dv(fid) = fa.getValue(fid,imp.getValue.v).toFloat }
       }
-    c.ms
+    
+    c.topo foreach { topo =>
+      val numLayers = topo.length
+      val fidLayers = fa.ofString("num_layers")
+      dv foreach {dv => dv(fidLayers) = fa.getValue(fidLayers,numLayers).toFloat }
+      // now number of total weights
+      var totalWeights = 0
+      for (i <- 0 until topo.length) {
+        val n = if (i == 0) topo(i).dim * c.inDim else topo(i).dim * topo(i-1).dim
+        totalWeights += n        
+      }
+      totalWeights += (topo(topo.length - 1).dim * c.outDim)
+      val fidTotalWeight = fa.ofString("total_weights")
+      dv foreach {dv => dv(fidTotalWeight) = fa.getValue(fidTotalWeight, totalWeights).toFloat }
+    }
+
     dv
   }   
 }
@@ -87,6 +102,57 @@ class AlphabetBuilder extends MetaParameterHandler {
         fa.ofString(ss)  
       }      
     }
+    modelSpace.topoMPs foreach { topoSpace =>
+      val items = topoSpace.liSet.li
+      var minLayers = 100
+      var maxLayers = 0
+      var minWeights = Integer.MAX_VALUE
+      var maxWeights = 0
+      items foreach {it =>
+        it.valueSet match {
+          case SetValue(x) => 
+            if (x.size < minLayers) minLayers = x.size
+            if (x.size > maxLayers) maxLayers = x.size
+            var localMinWeights = 0
+            var localMaxWeights = 0
+            if (x.length > 0) {
+              for (i <- 0 until x.length) {                
+                val (l1min, l1max) = x(i).valueSet match {
+                  case TupleSet4(a,b,c,d) => b.valueSet match {
+                    case IntSet(l,u) => (l,u)                      
+                  }
+                }
+                if (i == 0) {
+                  localMinWeights += modelSpace.idim * l1min
+                  localMaxWeights += modelSpace.idim * l1max
+                } else {
+                  val (l0min, l0max) = x(i-1).valueSet match {
+                    case TupleSet4(a,b,c,d) => b.valueSet match {
+                      case IntSet(l,u) => (l,u)                      
+                    }
+                   }
+                  localMinWeights += l1min * l0min
+                  localMaxWeights += l1max * l0max
+                }          
+                if (i == x.length - 1) { // weights for last hidden to output layer connection
+                  localMinWeights += l1min * modelSpace.odim
+                  localMaxWeights += l1max * modelSpace.odim
+                }
+              }
+            } else { // just for a linear model
+              localMinWeights = modelSpace.idim * modelSpace.odim
+            }
+            if (localMinWeights < minWeights) minWeights = localMinWeights
+            if (localMaxWeights > maxWeights) maxWeights = localMaxWeights
+        }
+        }
+      // set minimum and maximum values of these features (for scaling)
+      fa.ofString("num_layers", minLayers)
+      fa.ofString("num_layers", maxLayers)
+      fa.ofString("total_weights", minWeights)
+      fa.ofString("total_weights", maxWeights)
+    }
+    
     fa.ensureFixed
     fa
   }
@@ -213,7 +279,6 @@ class BayesianNNAcquisitionFunction(ms: ModelSpace) extends AcquisitionFunction 
     
     // XXX - should eventually optimize this to avoid recomputing features over entire set of instances each time
     val glpFactors = curData map { trainer.getFe.extractFeatures }
-    log.info("Glp factors size = " + glpFactors.length)
 
     // numIterations should probably be dynamic based on MLP and/or number of data points
     val (weights,_) = trainer.retrainWeights(glpFactors, numIterations)

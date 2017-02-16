@@ -12,7 +12,7 @@ class ModelConfig(
                    val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
                    val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
                    val intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],
-                   val ms : Option[ValuedMetaParameter[ListValue[SetValue[LayerMetaParameter]]]],
+                   val topo : Option[Vector[LType]],
                    val inLType : LType,
                    val outLType: LType,
                    val inDim: Int,
@@ -33,9 +33,19 @@ class ModelConfig(
     val ints = intMetaParamSet map { mp =>
       mp.getName + ":" + mp.getValue.v
       } mkString(" ")
-    val layerInfo = ms map {lm => lm.getValue.v.s}
-    val numHiddenLayers = layerInfo.getOrElse(Vector()).size 
-    reals + " " + ints + " " + cats + " numHiddenLayers:" + numHiddenLayers
+    val layerInfo = topo 
+    val numHiddenLayers = layerInfo.getOrElse(Vector()).size
+    var totalWeights = 0
+    layerInfo match {
+        case Some(ls) =>
+          for (i <- 0 until ls.length) {
+            val n = if (i == 0) inDim * ls(i).dim else ls(i).dim * ls(i-1).dim 
+            totalWeights += n
+          }
+          totalWeights += ls(ls.length - 1).dim * outDim // add output weights
+        case None => totalWeights = inDim * outDim
+      }
+    reals + " " + ints + " " + cats + " numHiddenLayers:" + numHiddenLayers + " totalWeights:" + totalWeights
   }
 }
 
@@ -47,12 +57,20 @@ class ModelConfig(
  */
 class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter],
     val intMPs: Vector[IntegerMetaParameter],
-    val ms: Option[TopologySpaceMetaParameter],
+    val topoMPs: Option[TopologySpaceMetaParameter],
     val inLType: LType,
     val outLType: LType,
     val idim: Int,
     val odim: Int,
     val settings: Option[GLPModelSettings] = None) {
+  
+  def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
+      val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
+      val dim = lsp.v2.v
+      val l1 = lsp.v3.v
+      val l2 = lsp.v4.v
+      LType(lt, dim, l1 = l1.toFloat, l2 = l2.toFloat)            
+   }    
     
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
     this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0)
@@ -61,9 +79,10 @@ class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[Cate
     val realValued = realMPs map { mp => mp.drawRandomValue }
     val catValued = catMPs map { mp => mp.drawRandomValue }
     val intValued = intMPs map {mp => mp.drawRandomValue }
-    if (ms.isDefined) {
-      val topology = ms.get.drawRandomValue
-      new ModelConfig(realValued, catValued, intValued, Some(topology), inLType, outLType, idim, odim, settings)
+    if (topoMPs.isDefined) {
+      val topology = topoMPs.get.drawRandomValue
+      val mspecValued = topology.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}
+      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings)
     } else {
       new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings)
     }

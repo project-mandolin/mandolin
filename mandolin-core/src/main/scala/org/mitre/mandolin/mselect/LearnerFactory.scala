@@ -71,25 +71,17 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     mm.withCategoricalMetaParams(ms.catMPs)
     mm.withRealMetaParams(ms.realMPs)
     mm.withIntegerMetaParams(ms.intMPs)
-    ms.ms foreach {ms => mm.withTopologyMetaParam(ms) }
+    ms.topoMPs foreach {ms => mm.withTopologyMetaParam(ms) }
     mm
   }
-  
-  def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
-      val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
-      val dim = lsp.v2.v
-      val l1 = lsp.v3.v
-      val l2 = lsp.v4.v
-      LType(lt, dim, l1 = l1.toFloat, l2 = l2.toFloat)            
-   }
   
   def getLearnerInstance(config: ModelConfig) : LearnerInstance[GLPFactor] = {
     val cats: List[(String,Any)] = config.categoricalMetaParamSet.toList map {cm => (cm.getName,cm.getValue.s)}
     val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
     val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
     
-    val mspecValued = config.ms map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
-    val hiddenLayers = mspecValued.getOrElse(Vector())
+    //val mspecValued = config.topoMPs map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
+    val hiddenLayers = config.topo.getOrElse(Vector())
     
     val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
     val net = ANNetwork(fullSpec, config.inDim, config.outDim) // val net = ANNetwork(fullSpec, config.inDim, config.outDim)

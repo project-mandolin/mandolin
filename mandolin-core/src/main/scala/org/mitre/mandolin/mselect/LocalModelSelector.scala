@@ -16,7 +16,7 @@ extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSi
   // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
   def this(_msb: ModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
-    this(_msb, appSettings.trainFile.get, appSettings.trainFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
+    this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
   

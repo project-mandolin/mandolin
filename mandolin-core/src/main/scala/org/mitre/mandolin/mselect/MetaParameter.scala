@@ -46,7 +46,7 @@ case class SetValue[T](s: Vector[T]) extends ValueSet[SetValue[T]] with MPValue 
  * These include hyper-parameters but also parameters that adjust architecture,
  * specify prior distributions, etc.
  */
-sealed abstract class MetaParameter[T <: MPValue](val name: String, valueSet: ValueSet[T]) extends Serializable {
+sealed abstract class MetaParameter[T <: MPValue](val name: String, val valueSet: ValueSet[T]) extends Serializable {
   def drawRandomValue : ValuedMetaParameter[T]
 }
 
@@ -127,10 +127,10 @@ class LayerMetaParameter(_n: String, _ts: TupleSet4[CategoricalValue, IntValue, 
 extends Tuple4MetaParameter[CategoricalValue, IntValue, RealValue, RealValue](_n, _ts)
 
 // MPValue is a trait - and so we can add this to any metaparameter that also needs to serve as a value type
-class TopologyMetaParameter(_n: String, _layers: Vector[LayerMetaParameter])
-extends MetaParameter[SetValue[LayerMetaParameter]](_n, SetValue(_layers)) with MPValue {
+class TopologyMetaParameter(_n: String, val layers: Vector[LayerMetaParameter])
+extends MetaParameter[SetValue[LayerMetaParameter]](_n, SetValue(layers)) with MPValue {
   def drawRandomValue : ValuedMetaParameter[SetValue[LayerMetaParameter]] = 
-    new ValuedMetaParameter(SetValue(_layers), this)
+    new ValuedMetaParameter(SetValue(layers), this)
 }
 
 class TopologySpaceMetaParameter(_n: String, _topos: ListSet[SetValue[LayerMetaParameter]])

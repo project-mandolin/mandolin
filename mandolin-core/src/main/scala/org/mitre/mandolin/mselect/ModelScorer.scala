@@ -47,6 +47,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
       receivedSinceLastScore += r.length
       log.info("Received model eval result of length " + r.length)
       r.foreach(c => outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n"))
+      outWriter.flush()
       if (totalReceived >= totalEvals) {
         outWriter.close()
         val hours = (System.currentTimeMillis() - startTime) / 1000.0 / 60 / 60
