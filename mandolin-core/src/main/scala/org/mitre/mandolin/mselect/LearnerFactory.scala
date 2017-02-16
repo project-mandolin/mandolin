@@ -46,8 +46,9 @@ trait ModelSpaceBuilder {
 
   def build() : ModelSpace = build(0,0)  
   
-  def build(idim: Int, odim: Int) : ModelSpace = {
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, idim, odim)    
+  def build(idim: Int, odim: Int, sparse: Boolean = true) : ModelSpace = {    
+    val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim)    
   }
 }
 
@@ -91,8 +92,8 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     val hiddenLayers = mspecValued.getOrElse(Vector())
     
     // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
-    val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  hiddenLayers ++ Vector(LType(SoftMaxLType))
-    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
+    val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
+    val net = ANNetwork(fullSpec, config.inDim, config.outDim) // val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
     val settings = new GLPModelSettings().withSets(allParams)
     new MandolinModelInstance(settings, config, net)
@@ -103,15 +104,16 @@ class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, 
 extends LearnerInstance[GLPFactor] with Serializable {
 
   def train(train: Vector[GLPFactor], test: Vector[GLPFactor]) : Double = {
+    println("Training and evaluating with inDim = " + nn.inLayer.dim)
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)
-
     val predictor = new CategoricalGLPPredictor(nn, true)
-
     val trainer = new LocalTrainer(optimizer)
     val evPr = new NonExtractingEvalDecoder[GLPFactor,GLPWeights,Int,DiscreteConfusion](predictor)
-    val (weights, trainLoss) = trainer.retrainWeights(train, appSettings.numEpochs)
-    val confusion = evPr.evalWithoutExtraction(test, weights)
+    // XXX - breaking on retraining 
+    val (weights, trainLoss) = trainer.retrainWeights(train, appSettings.numEpochs)    
+    val confusion = evPr.evalWithoutExtraction(test, weights)    
     val acc = confusion.getAccuracy
+    println("Finished with accuracy .. " + acc)
     acc
   }
 }

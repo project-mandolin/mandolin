@@ -1,5 +1,6 @@
 package org.mitre.mandolin.mselect
 
+import org.mitre.mandolin.glp.{LType, InputLType, SoftMaxLType, SparseInputLType, LinearLType }
 import com.typesafe.config.{ConfigList, ConfigValueType}
 import org.mitre.mandolin.config.LearnerSettings
 
@@ -12,6 +13,23 @@ trait ModelSelectionSettings extends LearnerSettings {
   
   def buildModelSpaceFromConfig() = {
     val cobj = config.getConfig("mandolin.model-selection")
+    
+    val (inLType, outLType) = {
+      val (is, os) = config.getConfigList("mandolin.trainer.specification").toList match {
+        case a :: rest => (a, rest.reverse.head)
+        }
+      val inLType = is.getString("ltype") match {
+        case "Input" => LType(InputLType)
+        case "InputSparse" => LType(SparseInputLType)
+        case a => throw new RuntimeException("Invalid LType " + a)
+      }
+      val outLType = os.getString("ltype") match {
+        case "SoftMax" => LType(SoftMaxLType)
+        case "Linear" => LType(LinearLType)
+        case a => throw new RuntimeException("Invalid LType " + a)
+      }
+      (inLType, outLType)
+    }
         
     val cats = cobj.getConfigList("categorical") map {c => 
       val key = c.getString("name")
@@ -54,7 +72,7 @@ trait ModelSelectionSettings extends LearnerSettings {
       vec.toVector} catch {case _: Throwable => Vector()}
     val ll = ListSet(layers.toVector)
     val sp = if (ll.size > 0) Some(new TopologySpaceMetaParameter("topoSpace", ll)) else None
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0)
   }
   
   val modelSpace = buildModelSpaceFromConfig()

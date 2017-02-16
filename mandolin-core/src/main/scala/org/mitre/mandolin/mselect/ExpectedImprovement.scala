@@ -60,6 +60,7 @@ trait MetaParameterHandler {
       val fid = fa.ofString(imp.getName)
       dv foreach { case dv => dv(fid) = fa.getValue(fid,imp.getValue.v).toFloat }
       }
+    c.ms
     dv
   }   
 }

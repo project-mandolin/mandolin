@@ -46,11 +46,8 @@ class GLPBayesianRegressor(network: ANNetwork,
     
   val inDim = designMatrix.cols
   val K = varInv * (designTrans * designMatrix) + diag(BreezeVec.fill(inDim){alpha})
-  println("Inverting K =") 
-  println(K.toString())
   val kInv = inv(K)  
   val m =  (kInv * designMatrix.t * meanSubtractedTargets) * varInv
-  //val m = (kInv * meanSubtractedTargets) * varInv
   
   // println("FreqW => " + freqW.toString)
 

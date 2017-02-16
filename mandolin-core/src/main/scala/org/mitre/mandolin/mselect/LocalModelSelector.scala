@@ -9,8 +9,17 @@ import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, Categorical
 import org.mitre.mandolin.predict.local.NonExtractingEvalDecoder
 import org.mitre.mandolin.predict.DiscreteConfusion
 
-class LocalModelSelector(val msb: ModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int) 
-extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+class LocalModelSelector(val msb: ModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+    appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None) 
+extends ModelSelectionDriver(msb, trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals, appSettings) {
+  
+  // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
+  // in various parameters
+  def this(_msb: ModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
+    this(_msb, appSettings.trainFile.get, appSettings.trainFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
+  }
+  
   override val ev = {
     val io = new LocalIOAssistant
     val trVecs = (io.readLines(trainFile) map { l => fe.extractFeatures(l) } toVector)
@@ -23,11 +32,8 @@ object LocalModelSelector {
   
   def main(args: Array[String]): Unit = {
     val appSettings = new GLPModelSettings(args) with ModelSelectionSettings    
-    val trainFile = appSettings.trainFile.get
-    val testFile = appSettings.testFile.getOrElse(trainFile)
     val builder = GenericModelFactory.getModelSpaceBuilder(appSettings.modelSpace)    
-    val selector = new LocalModelSelector(builder, trainFile, testFile, 
-        appSettings.numWorkers, appSettings.workerBatchSize, appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals)
+    val selector = new LocalModelSelector(builder, appSettings)
     selector.search()
   }
 }
