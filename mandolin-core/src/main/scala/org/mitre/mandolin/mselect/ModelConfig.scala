@@ -29,7 +29,7 @@ class ModelConfig(
       val reals = realMetaParamSet.map { mp =>
       mp.getName + ":" + mp.getValue.v
     }.mkString(" ")
-    val cats = categoricalMetaParamSet.map { mp => mp.getName + "_" + mp.getValue.s }.mkString(" ")
+    val cats = categoricalMetaParamSet.map { mp => mp.getName + ":" + mp.getValue.s }.mkString(" ")
     val ints = intMetaParamSet map { mp =>
       mp.getName + ":" + mp.getValue.v
       } mkString(" ")
