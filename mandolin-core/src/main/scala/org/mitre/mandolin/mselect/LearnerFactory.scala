@@ -23,7 +23,7 @@ trait ModelSpaceBuilder {
   val reals = new mutable.MutableList[RealMetaParameter]
   val cats = new mutable.MutableList[CategoricalMetaParameter]
   val ints = new mutable.MutableList[IntegerMetaParameter]
-  val layers = new mutable.MutableList[LayerMetaParameter]
+  var topo : Option[TopologySpaceMetaParameter] = None
 
   def withMetaParam(realMP: RealMetaParameter) = {
     reals += realMP
@@ -39,15 +39,16 @@ trait ModelSpaceBuilder {
     this
   }
   
-  def withMetaParam(layerMP: LayerMetaParameter) = {
-    layers += layerMP
+  def withMetaParam(t: TopologySpaceMetaParameter) = {
+    topo = Some(t)
     this
   }
 
   def build() : ModelSpace = build(0,0)  
   
-  def build(idim: Int, odim: Int) : ModelSpace = {
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, layers.toVector, idim, odim)
+  def build(idim: Int, odim: Int, sparse: Boolean = true) : ModelSpace = {    
+    val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim)    
   }
 }
 
@@ -58,7 +59,7 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     def withRealMetaParams(rs: Vector[RealMetaParameter]) = rs foreach withMetaParam 
     def withCategoricalMetaParams(cats: Vector[CategoricalMetaParameter]) = cats foreach withMetaParam
     def withIntegerMetaParams(ints: Vector[IntegerMetaParameter]) = ints foreach withMetaParam
-      
+    def withTopologyMetaParam(topo: TopologySpaceMetaParameter) = withMetaParam(topo)  
   }
   
   override def getModelSpaceBuilder() : GenericModelSpaceBuilder = {
@@ -70,11 +71,11 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     mm.withCategoricalMetaParams(ms.catMPs)
     mm.withRealMetaParams(ms.realMPs)
     mm.withIntegerMetaParams(ms.intMPs)
+    ms.ms foreach {ms => mm.withTopologyMetaParam(ms) }
     mm
   }
   
-  def getSpec(vs: ValuedMetaParameter[Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]]) : LType = {
-      val lsp = vs.getValue
+  def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
       val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
       val dim = lsp.v2.v
       val l1 = lsp.v3.v
@@ -87,10 +88,12 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
     val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
     
-    val mspecValued = config.ms map {m => m.drawRandomValue} map getSpec
+    val mspecValued = config.ms map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
+    val hiddenLayers = mspecValued.getOrElse(Vector())
+    
     // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
-    val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  mspecValued ++ Vector(LType(SoftMaxLType))
-    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
+    val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
+    val net = ANNetwork(fullSpec, config.inDim, config.outDim) // val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
     val settings = new GLPModelSettings().withSets(allParams)
     new MandolinModelInstance(settings, config, net)
@@ -101,15 +104,16 @@ class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, 
 extends LearnerInstance[GLPFactor] with Serializable {
 
   def train(train: Vector[GLPFactor], test: Vector[GLPFactor]) : Double = {
+    println("Training and evaluating with inDim = " + nn.inLayer.dim)
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)
-
     val predictor = new CategoricalGLPPredictor(nn, true)
-
     val trainer = new LocalTrainer(optimizer)
     val evPr = new NonExtractingEvalDecoder[GLPFactor,GLPWeights,Int,DiscreteConfusion](predictor)
-    val (weights, trainLoss) = trainer.retrainWeights(train, appSettings.numEpochs)
-    val confusion = evPr.evalWithoutExtraction(test, weights)
+    // XXX - breaking on retraining 
+    val (weights, trainLoss) = trainer.retrainWeights(train, appSettings.numEpochs)    
+    val confusion = evPr.evalWithoutExtraction(test, weights)    
     val acc = confusion.getAccuracy
+    println("Finished with accuracy .. " + acc)
     acc
   }
 }

@@ -4,7 +4,7 @@ import scala.collection.mutable.ArrayBuffer
 import WorkPullingPattern._
 import org.mitre.mandolin.glp.{ GLPBayesianRegressor, GLPWeights, GLPFactor, GLPTrainerBuilder, LinearLType, 
   LType, InputLType, SparseInputLType, TanHLType }
-import org.mitre.mandolin.util.{ StdAlphabet, Alphabet, IdentityAlphabet, DenseTensor1 => DenseVec }
+import org.mitre.mandolin.util.{ AlphabetWithUnitScaling, StdAlphabet, Alphabet, IdentityAlphabet, DenseTensor1 => DenseVec }
 import org.mitre.mandolin.transform.{ FeatureExtractor }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor}
@@ -54,12 +54,13 @@ trait MetaParameterHandler {
     }
     c.realMetaParamSet map {rmp =>
       val fid = fa.ofString(rmp.getName)
-      dv foreach { case dv => dv(fid) = rmp.getValue.v.toFloat }
+      dv foreach { case dv => dv(fid) = fa.getValue(fid, rmp.getValue.v).toFloat }
       }
     c.intMetaParamSet map { imp => 
       val fid = fa.ofString(imp.getName)
-      dv foreach { case dv => dv(fid) = imp.getValue.v.toFloat }
+      dv foreach { case dv => dv(fid) = fa.getValue(fid,imp.getValue.v).toFloat }
       }
+    c.ms
     dv
   }   
 }
@@ -70,10 +71,15 @@ class AlphabetBuilder extends MetaParameterHandler {
     val cats = modelSpace.catMPs
     val reals = modelSpace.realMPs
     val ints = modelSpace.intMPs
-    val fa = new StdAlphabet
+    val fa = new AlphabetWithUnitScaling
     reals foreach {r =>
-      fa.ofString(r.name)}
-    ints foreach { r => fa.ofString(r.name) }
+      fa.ofString(r.name, r.vs.lower) // add lowest value
+      fa.ofString(r.name, r.vs.upper) // add highest
+      }
+    ints foreach { r => 
+      fa.ofString(r.name, r.vs.lower)
+      fa.ofString(r.name, r.vs.upper)
+    }
     cats foreach {c =>
       val s = c.valSet.size
       for (i <- 0 until s - 1) { // this excludes LAST value to avoid dummy encoded categorical variables being perfectly correlated resulting in Singular Matrix
