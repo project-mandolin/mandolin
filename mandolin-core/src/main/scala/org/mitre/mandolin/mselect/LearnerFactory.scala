@@ -48,7 +48,14 @@ trait ModelSpaceBuilder {
   
   def build(idim: Int, odim: Int, sparse: Boolean = true, appSettings: Option[GLPModelSettings] = None) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appSettings)    
+    // XXX - eventually pull out important parameters to preserve here and pass into model space
+    /*
+    val opts : Option[Seq[(String,Any)]] = appSettings map { a =>
+      Seq(("mandolin.trainer.specification",a.netspec))
+    } 
+    * 
+    */
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, None)    
   }
 }
 
@@ -84,9 +91,10 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     val hiddenLayers = config.topo.getOrElse(Vector())
     
     val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
-    val net = ANNetwork(fullSpec, config.inDim, config.outDim) // val net = ANNetwork(fullSpec, config.inDim, config.outDim)
+    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
-    val settings = config.optionalSettings.getOrElse(new GLPModelSettings()).withSets(allParams)
+    val completeParams = allParams ++ config.fixedSettingValues  // add in fixed settings
+    val settings = (new GLPModelSettings()).withSets(completeParams)
     new MandolinModelInstance(settings, config, net)
   }
 }

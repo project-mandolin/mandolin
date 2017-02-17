@@ -46,7 +46,9 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
       evalResults ++= r
       receivedSinceLastScore += r.length
       log.info("Received model eval result of length " + r.length)
-      r.foreach(c => outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n"))
+      r.foreach{c =>
+        log.info("accuracy:" + c.sc + " " + c.mc + "\n")
+        outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n")}
       outWriter.flush()
       if (totalReceived >= totalEvals) {
         outWriter.close()

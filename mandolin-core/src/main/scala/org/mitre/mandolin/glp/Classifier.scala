@@ -11,7 +11,7 @@ import org.mitre.mandolin.glp.local.LocalProcessor
 import scala.reflect.ClassTag
 
 class GLPModelSettings(args: Array[String]) extends LearnerSettings(args) 
-  with OnlineLearnerSettings with BatchLearnerSettings with DecoderSettings with DeepNetSettings {
+  with OnlineLearnerSettings with BatchLearnerSettings with DecoderSettings with DeepNetSettings with Serializable {
   
   def this() = this(Array())
 

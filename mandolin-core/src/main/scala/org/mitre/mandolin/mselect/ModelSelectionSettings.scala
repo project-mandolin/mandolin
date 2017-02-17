@@ -72,7 +72,7 @@ trait ModelSelectionSettings extends GLPModelSettings {
       vec.toVector} catch {case _: Throwable => Vector()}
     val ll = ListSet(layers.toVector)
     val sp = if (ll.size > 0) Some(new TopologySpaceMetaParameter("topoSpace", ll)) else None
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0, Some(this))
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0, None)
   }
   
   val modelSpace = buildModelSpaceFromConfig()

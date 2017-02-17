@@ -17,7 +17,8 @@ class ModelConfig(
                    val outLType: LType,
                    val inDim: Int,
                    val outDim: Int,
-                   val optionalSettings: Option[GLPModelSettings] = None) extends Serializable {
+                   val fixedSettingValues : Seq[(String,Any)]) extends Serializable {
+
                    // val inSpec : ValuedMetaParameter[Tuple2Value[CategoricalValue,RealValue]],
                    //val hiddenSpec : Vector[ValuedMetaParameter[Tuple4Value[CategoricalValue,IntValue,RealValue,RealValue]]],
                    //val outSpec : ValuedMetaParameter[Tuple3Value[CategoricalValue,RealValue,RealValue]],
@@ -62,7 +63,7 @@ class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[Cate
     val outLType: LType,
     val idim: Int,
     val odim: Int,
-    val settings: Option[GLPModelSettings] = None) {
+    val settings: Option[Seq[(String,Any)]]) extends Serializable {
   
   def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
       val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
@@ -73,7 +74,7 @@ class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[Cate
    }    
     
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
-    this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0)
+    this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0, None)
 
   def drawRandom: ModelConfig = {
     val realValued = realMPs map { mp => mp.drawRandomValue }
@@ -82,9 +83,9 @@ class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[Cate
     if (topoMPs.isDefined) {
       val topology = topoMPs.get.drawRandomValue
       val mspecValued = topology.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}
-      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings)
+      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings.getOrElse(Seq()))
     } else {
-      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings)
+      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings.getOrElse(Seq()))
     }
   }
 }
