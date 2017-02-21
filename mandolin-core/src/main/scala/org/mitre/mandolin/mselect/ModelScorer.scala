@@ -54,6 +54,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
         System.exit(0)
       }
       if (receivedSinceLastScore >= acqFnThreshold) {
+        outWriter.print("*"*20+"\n")
         log.info("Training acquisition function")
         receivedSinceLastScore = 0
         acqFn.train(evalResults)
@@ -71,7 +72,6 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
       }
     case Hello => log.info("SCORER: Received Hello from " + sender.toString())
   }
-
 
   def getScoredConfigs(size: Int) = {
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom
