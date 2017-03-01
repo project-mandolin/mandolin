@@ -27,9 +27,12 @@ object MandolinBuild extends Build {
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
 
+  // The MXNet library comes pre-built and resides in mandolin/mandolin-mx/lib
+  // In addition, the native code is pre-built in mandolin/mandolin-mx/native  
   lazy val mandolinMx = Project(id = "mandolin-mx", base = file("mandolin-mx")).
                             settings(mxNetSettings:_*).
-                            settings(mxNetDependencySettings:_*).
+			    // uncomment the following if using dependency management 
+                            // settings(mxNetDependencySettings:_*).
                             settings(assemblyProjSettings("mx"):_*).
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
