@@ -10,7 +10,7 @@ object MandolinBuild extends Build {
 
   lazy val root = Project(id = "mandolin", base = file(".")).
                             settings(rootSettings:_*).
-                            aggregate(mandolinCore, mandolinSpark)
+                            aggregate(mandolinCore, mandolinSpark, mandolinMx)
 
   lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
                             settings(coreSettings:_*).
@@ -27,13 +27,22 @@ object MandolinBuild extends Build {
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
 
+  lazy val mandolinMx = Project(id = "mandolin-mx", base = file("mandolin-mx")).
+                            settings(mxNetSettings:_*).
+                            settings(mxNetDependencySettings:_*).
+                            settings(assemblyProjSettings("mx"):_*).
+                            //settings(siteSettings:_*).
+                            settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
+
+  
+
   def rootSettings = sharedSettings ++ Seq( name := "mandolin" )
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre.mandolin",
-    version := "0.3.3-SNAPSHOT",
-    scalaVersion := "2.11.7",
-    crossScalaVersions := Seq("2.10.5","2.11.7"),
+    version := "0.3.4-SNAPSHOT",
+    scalaVersion := "2.11.8",
+    crossScalaVersions := Seq("2.10.5","2.11.8"),
     publishTo := {
        val nexus = "https://oss.sonatype.org/"
        if (isSnapshot.value)
@@ -64,6 +73,7 @@ object MandolinBuild extends Build {
     resolvers += "Akka Repository" at "http://repo.akka.io/releases/",
     resolvers += "Secured Central Repository" at "https://repo1.maven.org/maven2",
     resolvers += "Snapshot Repo" at "https://oss.sonatype.org/content/repositories/snapshots/",
+    resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository",
     externalResolvers := Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false),
     javacOptions ++= Seq("-source","1.7","-target","1.7"),
     scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value+"/src/root-doc.txt", "-unchecked")
@@ -75,6 +85,10 @@ object MandolinBuild extends Build {
 
   def sparkSettings : Seq[Setting[_]] = sharedSettings ++ Seq(  
     name := "mandolin-spark"
+  )
+
+  def mxNetSettings : Seq[Setting[_]] = sharedSettings ++ Seq(
+    name := "mandolin-mx"
   )
 
   def coreDependencySettings : Seq[Setting[_]] = {
@@ -103,7 +117,14 @@ object MandolinBuild extends Build {
       "org.apache.spark" %% "spark-mllib"  % "2.1.0"
       )
     )
-  }  
+  }
+
+  def mxNetDependencySettings : Seq[Setting[_]] = {
+    Seq(
+      libraryDependencies ++= Seq(
+        "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT")
+    )
+  }
 
   def versionDependencies(v:String) = v match {
     case "2.10.5" => "net.ceedubs" %% "ficus" % "1.0.1"
@@ -114,8 +135,7 @@ object MandolinBuild extends Build {
     test in assembly := {},
     jarName in assembly := ("mandolin-"+subProj+"-assembly-" + version.value + "_" + scalaVersion.value + ".jar"),
     logLevel in assembly := Level.Error, 
-    mergeStrategy in assembly := conflictRobustMergeStrategy,
-    mainClass in assembly := Some("org.mitre.mandolin.app.Driver")
+    mergeStrategy in assembly := conflictRobustMergeStrategy
   )
 
   def siteSettings : Seq[Setting[_]] = 

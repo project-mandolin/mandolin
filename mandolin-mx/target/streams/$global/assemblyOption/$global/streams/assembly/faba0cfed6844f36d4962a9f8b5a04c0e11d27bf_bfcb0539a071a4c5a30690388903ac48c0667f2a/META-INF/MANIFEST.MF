@@ -1,0 +1,42 @@
+Manifest-Version: 1.0
+Archiver-Version: Plexus Archiver
+Created-By: 1.6.0_15 (Sun Microsystems Inc.)
+Built-By: Henri
+Build-Jdk: 1.6.0_15
+Specification-Title: Objenesis
+Specification-Version: 1.2
+Specification-Vendor: Joe Walnes, Henri Tremblay, Leonardo Mesquita
+Implementation-Title: Objenesis
+Implementation-Version: 1.2
+Implementation-Vendor-Id: org.objenesis
+Implementation-Vendor: Joe Walnes, Henri Tremblay, Leonardo Mesquita
+Export-Package: org.objenesis.instantiator.jrockit;uses:="org.objenesi
+ s,org.objenesis.instantiator";version="1.2",org.objenesis.instantiato
+ r.perc;uses:="org.objenesis,org.objenesis.instantiator";version="1.2"
+ ,org.objenesis;uses:="org.objenesis.instantiator,org.objenesis.strate
+ gy";version="1.2",org.objenesis.strategy;uses:="org.objenesis.instant
+ iator,org.objenesis.instantiator.perc,org.objenesis,org.objenesis.ins
+ tantiator.basic,org.objenesis.instantiator.gcj,org.objenesis.instanti
+ ator.sun,org.objenesis.instantiator.jrockit";version="1.2",org.objene
+ sis.instantiator;version="1.2",org.objenesis.instantiator.basic;uses:
+ ="org.objenesis,org.objenesis.instantiator";version="1.2",org.objenes
+ is.instantiator.gcj;uses:="org.objenesis,org.objenesis.instantiator";
+ version="1.2",org.objenesis.instantiator.sun;uses:="org.objenesis,org
+ .objenesis.instantiator";version="1.2"
+Tool: Bnd-0.0.311
+Bundle-Name: Objenesis
+Bundle-Vendor: Joe Walnes, Henri Tremblay, Leonardo Mesquita
+Bundle-Version: 1.2
+Bnd-LastModified: 1251326927496
+Bundle-ManifestVersion: 2
+Bundle-License: http://www.apache.org/licenses/LICENSE-2.0.txt
+Bundle-Description: A library for instantiating Java objects
+Import-Package: org.objenesis;version="1.2",org.objenesis.instantiator
+ ;version="1.2",org.objenesis.instantiator.basic;version="1.2",org.obj
+ enesis.instantiator.gcj;version="1.2",org.objenesis.instantiator.jroc
+ kit;version="1.2",org.objenesis.instantiator.perc;version="1.2",org.o
+ bjenesis.instantiator.sun;version="1.2",org.objenesis.strategy;versio
+ n="1.2"
+Bundle-SymbolicName: org.objenesis
+Originally-Created-By: 1.6.0_15 (Sun Microsystems Inc.)
+

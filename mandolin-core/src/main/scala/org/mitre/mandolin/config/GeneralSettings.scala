@@ -39,6 +39,12 @@ abstract class GeneralSettings(args: Seq[String]) {
     try {
       config.getString(key) match { case "" | "null" | "NULL" => None case s => Some(s) }    
     } catch {case e: Throwable => None}
+
+  protected def asIntOpt(key: String) : Option[Int] = {
+    try {
+      Some(config.getInt(key))
+    } catch {case e: Throwable => None}    
+  }
   
   protected def asStr(key: String) = {
     config.getString(key)            
