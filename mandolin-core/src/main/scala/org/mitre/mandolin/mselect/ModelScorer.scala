@@ -23,7 +23,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, eval
 
   val log = LoggerFactory.getLogger(getClass)
   val now = Calendar.getInstance.getTime
-  val outWriter = new PrintWriter(new File("mselect-" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(now) + ".csv"))
+  val outWriter = new PrintWriter(new File("mselect.csv"))//new PrintWriter(new File("mselect-" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(now) + ".csv"))
   var evalResults = new collection.mutable.ArrayBuffer[ScoredModelConfig]
   var receivedSinceLastScore = 0
   val startTime = System.currentTimeMillis()

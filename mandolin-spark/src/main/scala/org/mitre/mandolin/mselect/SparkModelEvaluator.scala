@@ -16,6 +16,7 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]
 
   override def evaluate(c: Seq[ModelConfig], generation: Int): Seq[Double] = {
     sc.setJobGroup("Generation " + generation, "["+c.map { config => "{"+config.toString()+"}" }.mkString(",")+"]", true)
+    val startTime = System.currentTimeMillis()
     val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
     val _trainBC = trainBC
     val _testBC = testBC
@@ -33,7 +34,10 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]
       }
       accuracies.toIterator
     }.collect()
-    accuracy.toSeq
+    val stopTime = System.currentTimeMillis()
+    val results = accuracy.toSeq
+    results.foreach{ acc => log.info("accuracy:"+acc+" time:"+(stopTime-startTime))}
+    results
   }
 
   def cancel(generation: Int) = {

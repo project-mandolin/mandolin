@@ -57,9 +57,9 @@ class ModelConfigEvaluator[T]() extends Actor {
         //System.exit(0)
       }
       log.info("Got new epic from ModelScorer")
-      workers foreach {
-        _ ! CancelTraining(generation)
-      }
+      //workers foreach {
+      //  _ ! CancelTraining(generation)
+      //}
       currentEpic = Some(epic)
       generation += 1
       log.info("Telling workers there is work available")
