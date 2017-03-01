@@ -1,0 +1,4 @@
+org.netlib.arpack
+org.netlib.blas
+org.netlib.err
+org.netlib.lapack

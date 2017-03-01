@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Implementation-Vendor: net.ceedubs
+Implementation-Title: ficus
+Implementation-Version: 1.1.2
+Implementation-Vendor-Id: net.ceedubs
+Specification-Vendor: net.ceedubs
+Specification-Title: ficus
+Implementation-URL: https://github.com/ceedubs/ficus
+Specification-Version: 1.1.2
+

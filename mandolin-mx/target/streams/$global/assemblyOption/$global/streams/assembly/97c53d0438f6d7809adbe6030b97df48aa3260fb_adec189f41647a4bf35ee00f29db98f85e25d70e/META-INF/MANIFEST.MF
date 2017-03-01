@@ -1,0 +1,20 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1475256293600
+Bundle-Description: akka-agent
+Bundle-License: http://www.apache.org/licenses/LICENSE-2.0;description=A
+ pache License, Version 2.0
+Bundle-ManifestVersion: 2
+Bundle-Name: akka-agent
+Bundle-SymbolicName: com.typesafe.akka.agent
+Bundle-Vendor: Lightbend Inc.
+Bundle-Version: 2.4.11
+Created-By: 1.8.0_45 (Oracle Corporation)
+Export-Package: akka.agent;uses:="akka.util,scala,scala.concurrent,scala
+ .concurrent.stm,scala.reflect,scala.runtime";version="2.4.11"
+Import-Package: akka.util;version="[2.4,2.5)",scala;version="[2.11,2.12)
+ ",scala.concurrent;version="[2.11,2.12)",scala.concurrent.stm;version="
+ [2.11,2.12)",scala.reflect;version="[2.11,2.12)",scala.runtime;version=
+ "[2.11,2.12)"
+Private-Package: reference.conf
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"
+Tool: Bnd-2.4.0.201411031534

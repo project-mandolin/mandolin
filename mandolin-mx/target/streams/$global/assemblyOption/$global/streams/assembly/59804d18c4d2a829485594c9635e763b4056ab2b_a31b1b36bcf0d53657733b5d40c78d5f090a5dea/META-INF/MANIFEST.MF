@@ -1,0 +1,21 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1441018947925
+Bundle-ManifestVersion: 2
+Bundle-Name: org.scala-lang.modules.scala-java8-compat
+Bundle-SymbolicName: org.scala-lang.modules.scala-java8-compat
+Bundle-Version: 0.7.0
+Created-By: 1.8.0_31 (Oracle Corporation)
+Export-Package: scala.compat.java8;version="0.7.0";uses:="scala,scala.co
+ llection,scala.concurrent,scala.reflect,scala.runtime",scala.compat.jav
+ a8.FunctionConverters;version="0.7.0";uses:="scala,scala.compat.java8,s
+ cala.reflect,scala.runtime",scala.compat.java8.functionConverterImpls;v
+ ersion="0.7.0";uses:="scala,scala.reflect,scala.runtime",scala.compat.j
+ ava8.runtime;version="0.7.0";uses:="scala,scala.reflect,scala.runtime",
+ scala.compat.java8.wrappers;version="0.7.0"
+Import-Package: scala;version="[2.11,3)",scala.collection;version="[2.11
+ ,3)",scala.collection.mutable;version="[2.11,3)",scala.concurrent;versi
+ on="[2.11,3)",scala.concurrent.impl;version="[2.11,3)",scala.reflect;ve
+ rsion="[2.11,3)",scala.runtime;version="[2.11,3)",scala.util;version="[
+ 2.11,3)"
+Private-Package: scala-java8-compat.properties,scala.concurrent.java8
+Tool: Bnd-2.1.0.20130426-122213

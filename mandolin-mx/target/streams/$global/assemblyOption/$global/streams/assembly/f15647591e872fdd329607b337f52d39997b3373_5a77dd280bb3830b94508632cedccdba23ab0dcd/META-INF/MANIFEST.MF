@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Implementation-Vendor: org.rogach
+Implementation-Title: scallop
+Implementation-Version: 0.9.5
+Implementation-Vendor-Id: org.rogach
+Specification-Vendor: org.rogach
+Specification-Title: scallop
+Implementation-URL: https://github.com/scallop/scallop
+Specification-Version: 0.9.5
+
