@@ -240,7 +240,7 @@ object TrainImageNet {
 
     val weights = new MxNetWeights(1.0f)
     val evaluator = new MxNetEvaluator(net, ctx, dataShape, batchSize, Some("model"))
-    evaluator.evaluateTrainingMiniBatch(trIter, weights, updater, 50)
+    evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, 50)
     
     ()
   }

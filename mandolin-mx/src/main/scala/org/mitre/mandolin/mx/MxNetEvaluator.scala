@@ -56,34 +56,16 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
   
   def copy() = throw new RuntimeException("MxNetEvaluator should/can not be copied")
   
-  def evaluateTrainingMiniBatch(units: Iterator[DataBatch], weights: MxNetWeights, u: MxNetOptimizer, epochCnt: Int = 0) : MxNetLossGradient = {
-    val (tr,tst) = units match {
-        case dataIter: ml.dmlc.mxnet.DataIter => (dataIter, dataIter) 
-        case u: Iterator[DataBatch] => 
-          val it = new GenMxIter(units, batchSz, shape)
-          val tst = new GenMxIter(units, batchSz, shape)
-          (it, tst)
-      }
+  def evaluateTrainingMiniBatch(tr: DataIter, tst: DataIter, weights: MxNetWeights, u: MxNetOptimizer, epochCnt: Int = 0) : MxNetLossGradient = {    
     var acc = 0.0
-    for (i <- 0 until 1) {
-      val metric = new Accuracy()
-      if (i < 1) {        
-        val ff = new FeedForward(net, ctx, optimizer = u.optimizer, initializer = new Xavier(rndType = "gaussian", factorType = "in", magnitude = 2.0f), 
+    val metric = new Accuracy()
+    val ff = new FeedForward(net, ctx, optimizer = u.optimizer, initializer = new Xavier(rndType = "gaussian", factorType = "in", magnitude = 2.0f), 
             numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
-        ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
-            batchEndCallback = new Speedometer(batchSz, 50))
+    ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
+          batchEndCallback = new Speedometer(batchSz, 50))
         weights.setArgParams(ff.getArgParams)
         weights.setAuxParams(ff.getAuxParams)
-        acc = metric.get._2.toDouble 
-      }
-      else {
-        val ff = new FeedForward(net, ctx, optimizer = u.optimizer, numEpoch=i+1, beginEpoch=i, argParams = weights.getArgParams, auxParams = weights.getAuxParams, batchSize = batchSz)
-        ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = null, batchEndCallback = new Speedometer(batchSz, 50))
-        weights.setArgParams(ff.getArgParams)
-        weights.setAuxParams(ff.getAuxParams)
-        acc = metric.get._2.toDouble
-      }                  
-    }
+    acc = metric.get._2.toDouble                       
     new MxNetLossGradient(acc)
   }
 }

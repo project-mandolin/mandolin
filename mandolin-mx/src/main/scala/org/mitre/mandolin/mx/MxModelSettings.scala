@@ -1,10 +1,11 @@
 package org.mitre.mandolin.mx
 
-import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
+//import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
+import org.mitre.mandolin.glp.GLPModelSettings
 import com.typesafe.config.{Config}
 import net.ceedubs.ficus.Ficus._
 
-class MxModelSettings(a: Seq[String]) extends LearnerSettings(a) with OnlineLearnerSettings {
+class MxModelSettings(a: Seq[String]) extends GLPModelSettings(a.toArray) {
 
   // input type: 1) glp, 2) ndarray, 3) recordio ... others?
   val inputType = asStrOpt("mandolin.mx.input-type")

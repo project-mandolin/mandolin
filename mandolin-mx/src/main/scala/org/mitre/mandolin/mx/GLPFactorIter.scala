@@ -102,6 +102,9 @@ class GLPFactorIter(
       while (instNum < batchSize && points.hasNext) {
         val point = points.next()
         val features = point.getInput.asArray
+        //print("Feature vec: ")
+        //for (i <- 0 until features.length) print(" " + features(i))
+        //println
         require(features.length == dimension.product,
           s"Dimension mismatch: ${features.length} != $dimension")
         dataBuilder.slice(instNum).set(features)

@@ -1,7 +1,9 @@
 package org.mitre.mandolin.mx.local
 
-import org.mitre.mandolin.mx.{ MxModelSettings, SymbolBuilder, MxNetOptimizer, MxNetWeights, MxNetEvaluator }
-import ml.dmlc.mxnet.{ Context, Shape, IO, FactorScheduler, Model }
+import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPFactor }
+import org.mitre.mandolin.util.LocalIOAssistant
+import org.mitre.mandolin.mx.{ GLPFactorIter, MxModelSettings, SymbolBuilder, MxNetOptimizer, MxNetWeights, MxNetEvaluator }
+import ml.dmlc.mxnet.{ DataIter, Context, Shape, IO, FactorScheduler, Model }
 import ml.dmlc.mxnet.optimizer.SGD
 
 object MxMain {
@@ -56,7 +58,33 @@ object MxMain {
     val updater = new MxNetOptimizer(sgd)
     val weights = new MxNetWeights(1.0f)
     val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, Some("model"))
-    evaluator.evaluateTrainingMiniBatch(trIter, weights, updater, appSettings.numEpochs)
+    evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
+    Model.saveCheckpoint(appSettings.modelFile.get, appSettings.numEpochs, sym, weights.getArgParams, weights.getAuxParams)
+  }
+  
+  def getVecIOs(appSettings: MxModelSettings) : (Vector[GLPFactor], Vector[GLPFactor], Int) = {
+    val io = new LocalIOAssistant
+    val components = GLPTrainerBuilder.getComponentsViaSettings(appSettings, io)
+    val featureExtractor = components.featureExtractor
+    val trFile = appSettings.trainFile.get
+    val tstFile = appSettings.testFile.getOrElse(trFile)
+    val trVecs = (io.readLines(trFile) map { l => featureExtractor.extractFeatures(l) } toVector)
+    val tstVecs = (io.readLines(tstFile) map { l => featureExtractor.extractFeatures(l) } toVector)
+    (trVecs, tstVecs, featureExtractor.getNumberOfFeatures)
+  }
+  
+  def trainGlpModel(appSettings: MxModelSettings) = {
+    val devices = getDeviceArray(appSettings)
+    val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)        
+    val (trVecs, tstVecs, nfs) = getVecIOs(appSettings)
+    val shape = Shape(nfs)
+    val trIter = new GLPFactorIter(trVecs.toIterator, shape, appSettings.miniBatchSize)
+    val tstIter = new GLPFactorIter(tstVecs.toIterator, shape, appSettings.miniBatchSize)    
+    val sgd = new SGD(learningRate = 0.1f, momentum = 0.9f, wd = 0.00001f)
+    val updater = new MxNetOptimizer(sgd)
+    val weights = new MxNetWeights(1.0f)
+    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, Some("model"))
+    evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
     Model.saveCheckpoint(appSettings.modelFile.get, appSettings.numEpochs, sym, weights.getArgParams, weights.getAuxParams)
   }
   
@@ -67,7 +95,8 @@ object MxMain {
       case "train" => 
         appSettings.inputType match {
           case Some("recordio") => trainImageModel(appSettings)
-          case _ => throw new RuntimeException("Only image models with 'recordio' format currently supported")
+          case _ => trainGlpModel(appSettings)
+          // case _ => throw new RuntimeException("Only image models with 'recordio' format currently supported")
         }
       case _ => throw new RuntimeException("Only 'train' mode currently supported")
     }
