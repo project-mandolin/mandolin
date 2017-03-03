@@ -167,7 +167,6 @@ object ANNetwork {
     val (inLayer, sp) = specs(0).designate match {
       case SparseInputLType => (new SparseInputLayer(specs(0).dim, specs(0).drO), true)
       case InputLType       => (new DenseInputLayer(specs(0).dim, specs(0).drO), false)
-      case SparseSeqInputLType(vs) => (new SparseInputLayer(specs(0).dim), true)
       case _                        => throw new RuntimeException("Invalid input layer specification: " + specs(0))
     }
 
@@ -178,14 +177,6 @@ object ANNetwork {
         val lt = specs(i)
         val d = lt.dim        
         lt.designate match {
-          case SeqEmbeddingLType(sl) =>
-            val prev = specs(i-1)
-            prev.designate match { // look at previous layer; check that it's sparse sequence input and get vocab size              
-              case SparseSeqInputLType(vs) =>
-                new SeqEmbeddingLayer(i, d, vs, lt, sl)
-              case _ => throw new RuntimeException("Embedding layer must follow SparseSeqInputLType")
-            }     
-          case EmbeddingLType    => new EmbeddingLayer(i, d, prevDim, lt)                        
           case TanHLType         => WeightLayer.getTanHLayer(lt, prevDim, i)
           case LogisticLType     => WeightLayer.getLogisticLayer(lt, prevDim, (i == lastInd), i)
           case LinearLType       => WeightLayer.getLinearLayer(lt, prevDim, (i == lastInd), i, sp)
@@ -194,8 +185,6 @@ object ANNetwork {
           case ReluLType         => WeightLayer.getReluLayer(lt, prevDim, i)          
           case SoftMaxLType           =>
             specs(i-1).designate match {
-              case SeqEmbeddingLType(sl) =>
-                WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim * sl, i, olSp, true)
               case EmbeddingLType => WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim, i, olSp, true)
               case _ => WeightLayer.getOutputLayer(new SoftMaxLoss(d), lt, prevDim, i, olSp)
             }            
@@ -205,7 +194,6 @@ object ANNetwork {
           case TransLogLType          => WeightLayer.getOutputLayer(new TransLogLoss(d), lt, prevDim, i, olSp)
           case TLogisticLType         => WeightLayer.getOutputLayer(new TLogisticLoss(d), lt, prevDim, i, olSp)
           case LinearOutLType         => WeightLayer.getOutputLayer(new SquaredErrorLoss(d), lt, prevDim, i, olSp)
-          case NegSampledSoftMaxLType(inDim,ss,freqFile) => new NegSampledSoftMaxLayer(i, d, inDim, ss, lt)
           case _                                  => throw new RuntimeException("Invalid non-input layer specification: " + specs(i))
         }
       }

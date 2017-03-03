@@ -16,8 +16,6 @@ import org.mitre.mandolin.util.{
 sealed abstract class LayerDesignate extends Serializable
 case object InputLType extends LayerDesignate
 case object SparseInputLType extends LayerDesignate
-case class SparseSeqInputLType(vocabSize: Int) extends LayerDesignate
-case class SeqEmbeddingLType(seqLen: Int) extends LayerDesignate
 case object EmbeddingLType extends LayerDesignate
 case object DynamicConvLType extends LayerDesignate
 case object TanHLType extends LayerDesignate

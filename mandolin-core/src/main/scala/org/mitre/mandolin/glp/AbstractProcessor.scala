@@ -59,9 +59,6 @@ abstract class AbstractProcessor extends LineParser {
       ltype match {
         case "Input"        => LType(InputLType, dim, dropOut)
         case "InputSparse"  => LType(SparseInputLType, dim, dropOut)
-        case "SeqInputSparse" => LType(SparseSeqInputLType(dim), dim, dropOut)
-        case "SeqEmbedding" => LType(SeqEmbeddingLType(seqLen),dim,dropOut)
-        case "Embedding"    => LType(EmbeddingLType, dim, dropOut)
         case "TanH"         => LType(TanHLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Logistic"     => LType(LogisticLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Linear"       =>
