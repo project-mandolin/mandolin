@@ -47,10 +47,11 @@ class MxModelCheckPoint(prefix: String, freq: Int = 1) extends EpochEndCallback 
   }
 }
 
-class MxNetEvaluator(val net: Symbol, val ctx: Array[Context], shape: Shape, batchSz: Int, checkPointPrefix: Option[String] = None)
+class MxNetEvaluator(val net: Symbol, val ctx: Array[Context], shape: Shape, batchSz: Int, 
+    checkPointPrefix: Option[String] = None, checkPointFreq: Int = 1)
 extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetOptimizer] {
   
-  val checkPointer = checkPointPrefix match {case Some(p) => new MxModelCheckPoint(p, 1) case None => null}
+  val checkPointer = checkPointPrefix match {case Some(p) => new MxModelCheckPoint(p, checkPointFreq) case None => null}
   def evaluateTrainingUnit(unit: DataBatch, weights: MxNetWeights, u: MxNetOptimizer) : MxNetLossGradient = 
     throw new RuntimeException("Closed evaluator MxNetEvaluator does not implement singleton point evaluations")   
   
@@ -104,7 +105,7 @@ extends TrainingUnitEvaluator[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetO
   def copy() = throw new RuntimeException("MxNetEvaluator should/can not be copied")
 }
 
-class MxNetOptimizer(val optimizer: SGD) extends Updater[MxNetWeights, MxNetLossGradient, MxNetOptimizer] {
+class MxNetOptimizer(val optimizer: ml.dmlc.mxnet.Optimizer) extends Updater[MxNetWeights, MxNetLossGradient, MxNetOptimizer] {
   def asArray: Array[Float] = throw new RuntimeException("Unimplemented")
   def compose(u: org.mitre.mandolin.mx.MxNetOptimizer): org.mitre.mandolin.mx.MxNetOptimizer = {
     this

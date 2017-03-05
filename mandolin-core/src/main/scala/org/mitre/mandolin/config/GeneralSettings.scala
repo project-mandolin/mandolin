@@ -46,6 +46,12 @@ abstract class GeneralSettings(args: Seq[String]) {
     } catch {case e: Throwable => None}    
   }
   
+  protected def asFloatOpt(key: String) : Option[Float] = {
+    try {
+      Some(config.getDouble(key).toFloat)
+    } catch {case e: Throwable => None}
+  }
+  
   protected def asStr(key: String) = {
     config.getString(key)            
   }

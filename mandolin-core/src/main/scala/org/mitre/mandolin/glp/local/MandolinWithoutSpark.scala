@@ -5,7 +5,7 @@ import org.mitre.mandolin.glp.GLPModelSettings
 /**
  * @author wellner
  */
-object MandolinWithoutSpark {
+object MandolinWithoutSpark extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]): Unit = {
     val appSettings = new GLPModelSettings(args)

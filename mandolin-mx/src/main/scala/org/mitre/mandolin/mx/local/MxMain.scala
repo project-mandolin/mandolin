@@ -4,9 +4,9 @@ import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPFactor }
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.mx.{ GLPFactorIter, MxModelSettings, SymbolBuilder, MxNetOptimizer, MxNetWeights, MxNetEvaluator }
 import ml.dmlc.mxnet.{ DataIter, Context, Shape, IO, FactorScheduler, Model }
-import ml.dmlc.mxnet.optimizer.SGD
+import ml.dmlc.mxnet.optimizer._
 
-object MxMain {
+object MxMain extends org.mitre.mandolin.config.LogInit {
   
   def getDeviceArray(appSettings: MxModelSettings) : Array[Context] = {
     val gpuContexts = appSettings.gpus map {i => Context.gpu(i)}
@@ -57,7 +57,7 @@ object MxMain {
     val sgd = new SGD(learningRate = 0.01f, momentum = 0.9f, wd = 0.0001f, clipGradient = 8.0f, lrScheduler = scheduler)
     val updater = new MxNetOptimizer(sgd)
     val weights = new MxNetWeights(1.0f)
-    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, Some("model"))
+    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, appSettings.modelFile, appSettings.saveFreq.getOrElse(1))
     evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
     Model.saveCheckpoint(appSettings.modelFile.get, appSettings.numEpochs, sym, weights.getArgParams, weights.getAuxParams)
   }
@@ -73,22 +73,38 @@ object MxMain {
     (trVecs, tstVecs, featureExtractor.getNumberOfFeatures)
   }
   
+  def getOptimizer(appSettings: MxModelSettings) = {
+    val lr = appSettings.mxInitialLearnRate.getOrElse(appSettings.initialLearnRate)
+    val rescale = appSettings.mxRescaleGrad.getOrElse(1.0f)
+    appSettings.mxOptimizer match {      
+      case Some("nag") => new NAG(learningRate = lr, momentum = appSettings.mxMomentum.getOrElse(0.9f), wd = 0.0001f)
+      case Some("adadelta") => new AdaDelta(rho = appSettings.mxRho.getOrElse(0.05f), rescaleGradient = rescale)
+      case Some("rmsprop") => new RMSProp(learningRate = lr, rescaleGradient = rescale)
+      case Some("adam") => new Adam(learningRate = lr, clipGradient = appSettings.mxGradClip.getOrElse(0f))
+      case Some("adagrad") => new AdaGrad(learningRate = lr, rescaleGradient = rescale)
+      case Some("sgld") => new SGLD(learningRate = lr, rescaleGradient = rescale, clipGradient = appSettings.mxGradClip.getOrElse(0f))
+      case _ => new SGD(learningRate = lr, momentum = appSettings.mxMomentum.getOrElse(0.9f), wd = 0.0001f)
+    }
+  }
+  
   def trainGlpModel(appSettings: MxModelSettings) = {
     val devices = getDeviceArray(appSettings)
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)        
     val (trVecs, tstVecs, nfs) = getVecIOs(appSettings)
     val shape = Shape(nfs)
     val trIter = new GLPFactorIter(trVecs.toIterator, shape, appSettings.miniBatchSize)
-    val tstIter = new GLPFactorIter(tstVecs.toIterator, shape, appSettings.miniBatchSize)    
-    val sgd = new SGD(learningRate = 0.1f, momentum = 0.9f, wd = 0.00001f)
-    val updater = new MxNetOptimizer(sgd)
+    val tstIter = new GLPFactorIter(tstVecs.toIterator, shape, appSettings.miniBatchSize)
+    val lr = appSettings.initialLearnRate
+    val opt = getOptimizer(appSettings)
+    val updater = new MxNetOptimizer(opt)
     val weights = new MxNetWeights(1.0f)
-    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, Some("model"))
+    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, appSettings.modelFile, appSettings.saveFreq.getOrElse(1))
     evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
     Model.saveCheckpoint(appSettings.modelFile.get, appSettings.numEpochs, sym, weights.getArgParams, weights.getAuxParams)
   }
   
   def main(args: Array[String]) : Unit = {
+    
     val appSettings = new MxModelSettings(args)
     val mode = appSettings.appMode
     mode match {
