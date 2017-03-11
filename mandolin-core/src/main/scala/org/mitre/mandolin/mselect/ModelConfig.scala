@@ -3,28 +3,30 @@ package org.mitre.mandolin.mselect
 import org.mitre.mandolin.glp.{GLPModelSettings,ANNetwork, TanHLType, ReluLType, LType, InputLType, SparseInputLType, SoftMaxLType}
 
 
+abstract class AbstractModelConfig(
+    val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
+                   val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
+                   val intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],
+                   val inDim: Int,
+                   val outDim: Int,
+                   val fixedSettingValues : Seq[(String,Any)]
+    )
 /**
   * A configuration is a set of MetaParameters set to particular values.
   * A GLP model setting can be passed in so that all the static (unchanging) learning
   * settings are provided as part of the model config.
   */
 class ModelConfig(
-                   val realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
-                   val categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
-                   val intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],
+                   _realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
+                   _categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
+                   _intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],                   
                    val topo : Option[Vector[LType]],
                    val inLType : LType,
                    val outLType: LType,
-                   val inDim: Int,
-                   val outDim: Int,
-                   val fixedSettingValues : Seq[(String,Any)]) extends Serializable {
-
-                   // val inSpec : ValuedMetaParameter[Tuple2Value[CategoricalValue,RealValue]],
-                   //val hiddenSpec : Vector[ValuedMetaParameter[Tuple4Value[CategoricalValue,IntValue,RealValue,RealValue]]],
-                   //val outSpec : ValuedMetaParameter[Tuple3Value[CategoricalValue,RealValue,RealValue]],
-                   
-                   //
-                   //val nn: ANNetwork) extends Serializable {
+                   _inDim: Int,
+                   _outDim: Int,
+                   _fixedSettingValues : Seq[(String,Any)]) 
+                   extends AbstractModelConfig(_realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, _inDim, _outDim, _fixedSettingValues) with Serializable {
 
   override def toString(): String = {
       val reals = realMetaParamSet.map { mp =>
@@ -50,20 +52,31 @@ class ModelConfig(
   }
 }
 
+abstract class AbstractModelSpace(
+    val realMPs: Vector[RealMetaParameter], 
+    val catMPs: Vector[CategoricalMetaParameter],
+    val intMPs: Vector[IntegerMetaParameter],
+    val idim: Int,
+    val odim: Int,
+    val settings: Option[Seq[(String,Any)]]) {
+  def drawRandom : ModelConfig
+}
+
 /**
  * Defines a space of model configurations as sets of MetaParameter objects - real,
  * categorical or complex. It also includes optional hard-coded input and output dimensions,
  * which can be gleaned from the data automatically rather than specified by the user.
  * @author wellner@mitre.org
  */
-class ModelSpace(val realMPs: Vector[RealMetaParameter], val catMPs: Vector[CategoricalMetaParameter],
-    val intMPs: Vector[IntegerMetaParameter],
+class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[CategoricalMetaParameter],
+    _intMPs: Vector[IntegerMetaParameter],
     val topoMPs: Option[TopologySpaceMetaParameter],
     val inLType: LType,
     val outLType: LType,
-    val idim: Int,
-    val odim: Int,
-    val settings: Option[Seq[(String,Any)]]) extends Serializable {
+    _idim: Int,
+    _odim: Int,
+    _settings: Option[Seq[(String,Any)]]) 
+    extends AbstractModelSpace(_realMPs, _catMPs, _intMPs, _idim, _odim, _settings) with Serializable {
   
   def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
       val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}

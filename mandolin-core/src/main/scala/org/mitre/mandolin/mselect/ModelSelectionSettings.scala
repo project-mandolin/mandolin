@@ -2,6 +2,7 @@ package org.mitre.mandolin.mselect
 
 import org.mitre.mandolin.glp.{LType, InputLType, SoftMaxLType, SparseInputLType, LinearLType }
 import com.typesafe.config.{ConfigList, ConfigValueType}
+import org.mitre.mandolin.config.GeneralLearnerSettings
 import org.mitre.mandolin.glp.GLPModelSettings
 
 import scala.collection.JavaConversions._

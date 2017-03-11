@@ -44,9 +44,13 @@ trait ModelSpaceBuilder {
     this
   }
 
-  def build() : ModelSpace = build(0,0)  
   
-  def build(idim: Int, odim: Int, sparse: Boolean = true, appSettings: Option[GLPModelSettings] = None) : ModelSpace = {    
+}
+
+trait MandolinModelSpaceBuilder extends ModelSpaceBuilder {
+  def build() : ModelSpace = build(0,0,false, None)  
+  
+  def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[GLPModelSettings]) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
     // XXX - eventually pull out important parameters to preserve here and pass into model space
     /*
@@ -60,8 +64,8 @@ trait ModelSpaceBuilder {
 }
 
 
-object GenericModelFactory extends LearnerFactory[GLPFactor] {
-  class GenericModelSpaceBuilder extends ModelSpaceBuilder {
+object MandolinModelFactory extends LearnerFactory[GLPFactor] {
+  class MandolinGenericModelSpaceBuilder extends MandolinModelSpaceBuilder {
     
     def withRealMetaParams(rs: Vector[RealMetaParameter]) = rs foreach withMetaParam 
     def withCategoricalMetaParams(cats: Vector[CategoricalMetaParameter]) = cats foreach withMetaParam
@@ -69,12 +73,12 @@ object GenericModelFactory extends LearnerFactory[GLPFactor] {
     def withTopologyMetaParam(topo: TopologySpaceMetaParameter) = withMetaParam(topo)  
   }
   
-  override def getModelSpaceBuilder() : GenericModelSpaceBuilder = {
-    new GenericModelSpaceBuilder
+  override def getModelSpaceBuilder() : MandolinGenericModelSpaceBuilder = {
+    new MandolinGenericModelSpaceBuilder
   }
   
-  def getModelSpaceBuilder(ms: ModelSpace) : GenericModelSpaceBuilder = {
-    val mm = new GenericModelSpaceBuilder
+  def getModelSpaceBuilder(ms: ModelSpace) : MandolinGenericModelSpaceBuilder = {
+    val mm = new MandolinGenericModelSpaceBuilder
     mm.withCategoricalMetaParams(ms.catMPs)
     mm.withRealMetaParams(ms.realMPs)
     mm.withIntegerMetaParams(ms.intMPs)
@@ -113,76 +117,3 @@ extends LearnerInstance[GLPFactor] with Serializable {
     acc
   }
 }
-
-//trait MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor]
-/*
-object MandolinLogisticRegressionFactory extends LearnerFactory[GLPFactor] {
-  
-
-  class MandolinLogisticRegressionModelSpaceBuilder extends ModelSpaceBuilder {
-    def defineInitialLearningRates(start: Double, end: Double): ModelSpaceBuilder = {
-      withMetaParam(new RealMetaParameter("lr", new RealSet(start, end)))
-    }
-
-    def defineOptimizerMethods(methods: String*) = {
-      withMetaParam(new CategoricalMetaParameter("method", new CategoricalSet(methods.toVector)))
-    }
-
-    def defineTrainerThreads(numTrainerThreads : Int) = {
-      withMetaParam(new CategoricalMetaParameter("numTrainerThreads", new CategoricalSet(Vector(numTrainerThreads.toString))))
-    }
-    
-    def defineModelTopology(n: String, lowBound: Int, upBound: Int) = {
-      withMetaParam(new LayerMetaParameter(
-          n,
-          new TupleSet4(
-          new CategoricalMetaParameter("ltype", new CategoricalSet(Vector("TanHLType"))),
-          new IntegerMetaParameter("dim", new IntSet(lowBound, upBound)),
-          new RealMetaParameter("l1", new RealSet(0.0, 0.01)),
-          new RealMetaParameter("l2", new RealSet(0.0, 0.01)))))
-    }
-  }
-
-  override def getModelSpaceBuilder() : MandolinLogisticRegressionModelSpaceBuilder = {
-    new MandolinLogisticRegressionModelSpaceBuilder
-  }
-
-  def getLearnerInstance(config: ModelConfig): LearnerInstance[GLPFactor] = {
-
-    val cats: List[(String, Any)] = config.categoricalMetaParamSet.foldLeft(Nil:List[(String,Any)]) {case (ac,v) =>
-      v.getName match {
-        case "method" =>            ("mandolin.trainer.optimizer.method", v.getValue.s) :: ac
-        case "numTrainerThreads" => ("mandolin.trainer.threads", v.getValue.s) :: ac
-        case _ => ac
-      }
-    }
-
-    val reals: List[(String,Any)] = config.realMetaParamSet.foldLeft(Nil:List[(String,Any)]) { case (ac,v) => 
-      val paramValue: RealValue = v.getValue
-      v.getName match {
-        case "lr" => ("mandolin.trainer.optimizer.initial-learning-rate", paramValue.v) :: ac
-        case _ => ac
-      }    
-    }
-    
-    def getSpec(vs: ValuedMetaParameter[Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]]) : LType = {
-      val lsp = vs.getValue
-      val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
-      val dim = lsp.v2.v
-      val l1 = lsp.v3.v
-      val l2 = lsp.v4.v
-      LType(lt, dim, l1 = l1.toFloat, l2 = l2.toFloat)            
-      }
-
-    val mspecValued = config.ms map {m => m.drawRandomValue} map getSpec
-    // this currently hard-codes the input to SparseInputLType and output to SoftMaxLType
-    val fullSpec : Vector[LType] = Vector(LType(SparseInputLType)) ++  mspecValued ++ Vector(LType(SoftMaxLType))
-    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
-    val allParams : Seq[(String,Any)] = (cats ++ reals) toSeq 
-    val settings = new GLPModelSettings().withSets(allParams)
-    new MandolinModelInstance(settings, config, net)
-  }
-
-
-}
-*/

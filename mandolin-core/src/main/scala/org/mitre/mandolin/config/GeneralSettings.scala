@@ -148,11 +148,15 @@ abstract class AppSettings(args: Seq[String]) extends GeneralSettings(args) {
   val storage          = asStr("mandolin.spark.storage")
 }
 
+
+
 /**
  * Settings specific to all Mandolin learners
  * @param args - command-line args
  */ 
 abstract class LearnerSettings(args: Seq[String]) extends AppSettings(args) {   
+  
+  
   
   val numFeatures      = asInt("mandolin.trainer.num-hash-features")
   val trainFile        = asStrOpt("mandolin.trainer.train-file")
@@ -185,20 +189,6 @@ abstract class LearnerSettings(args: Seq[String]) extends AppSettings(args) {
   val composeStrategy  = asStr("mandolin.trainer.updater-compose-strategy")
   val maxNorm          = asBoolean("mandolin.trainer.max-norm")
   val denseOutputFile  = asStrOpt("mandolin.trainer.dense-output-file") // output vectors in dense format
-}
-
-/*
- * Trait holds options specific to batch learner
- */
-trait BatchLearnerSettings extends LearnerSettings {
-  val densityRatio = asDouble("mandolin.trainer.density-ratio")  
-}
-
-
-/**
- * Online learning-specific settings
- */ 
-trait OnlineLearnerSettings extends LearnerSettings {
   val numThreads       =     asInt("mandolin.trainer.threads")
   val skipProb : Double = asFloat("mandolin.trainer.skip-probability")
   val miniBatchSize    =     asInt("mandolin.trainer.mini-batch-size")
@@ -208,10 +198,23 @@ trait OnlineLearnerSettings extends LearnerSettings {
   val rho              =  asFloat("mandolin.trainer.optimizer.rho")
   val method           =     asStr("mandolin.trainer.optimizer.method")
   val initialLearnRate =  asFloat("mandolin.trainer.optimizer.initial-learning-rate")
-    
+  
 }
 
-trait DeepNetSettings extends LearnerSettings {
+abstract class GeneralLearnerSettings[S <: GeneralLearnerSettings[S]](args: Seq[String]) extends LearnerSettings(args) {
+  def withSets(avs: Seq[(String, Any)]) : S
+}
+
+/*
+ * Trait holds options specific to batch learner
+ */
+trait BatchLearnerSettings extends AppSettings {
+  val densityRatio = asDouble("mandolin.trainer.density-ratio")  
+}
+
+
+
+trait DeepNetSettings extends AppSettings {
   val netspec       = config.as[List[Map[String,String]]]("mandolin.trainer.specification") 
 }
 

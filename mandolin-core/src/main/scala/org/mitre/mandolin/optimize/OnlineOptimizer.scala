@@ -6,7 +6,7 @@ package org.mitre.mandolin.optimize
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import scala.reflect.ClassTag
 import org.mitre.mandolin.util.{ Tensor1, DenseTensor1 }
-import org.mitre.mandolin.config.{ LearnerSettings, OnlineLearnerSettings }
+import org.mitre.mandolin.config.{ LearnerSettings }
 
 
 

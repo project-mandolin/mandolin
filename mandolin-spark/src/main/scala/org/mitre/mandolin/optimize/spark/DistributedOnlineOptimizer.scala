@@ -5,7 +5,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkContext
 import org.mitre.mandolin.util.{ Tensor1, DenseTensor1 }
-import org.mitre.mandolin.config.{ LearnerSettings, OnlineLearnerSettings }
+import org.mitre.mandolin.config.{ LearnerSettings }
 import org.apache.spark.Partitioner
 import org.mitre.mandolin.optimize._
 
@@ -69,7 +69,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
   miniBatchSize: Int = 1,
   oversample: Double = 0.0) extends DistributedOptimizerEstimator[T, W] {
 
-  def this(_sc: SparkContext, _iw: W, _e: TrainingUnitEvaluator[T, W, LG, U], _u: U, _as: OnlineLearnerSettings) = {
+  def this(_sc: SparkContext, _iw: W, _e: TrainingUnitEvaluator[T, W, LG, U], _u: U, _as: LearnerSettings) = {
     this(_sc, _iw, _e, _u, _as.numEpochs, _as.numSubEpochs,
       _as.numThreads, _as.detailsFile,
       synchronous = _as.synchronous, skipProb = _as.skipProb, miniBatchSize = _as.miniBatchSize,

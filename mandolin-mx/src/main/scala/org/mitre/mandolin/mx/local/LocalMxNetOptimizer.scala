@@ -1,6 +1,6 @@
 package org.mitre.mandolin.mx.local
 
-import org.mitre.mandolin.config.{ LearnerSettings, OnlineLearnerSettings, BatchLearnerSettings, DecoderSettings, DeepNetSettings }
+import org.mitre.mandolin.config.{ LearnerSettings, BatchLearnerSettings, DecoderSettings, DeepNetSettings }
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 
 import org.mitre.mandolin.mx._
@@ -79,4 +79,4 @@ object LocalMxNetOptimizer {
 }
 
 class MxNetModelSettings(args: Array[String]) extends LearnerSettings(args) 
-  with OnlineLearnerSettings with BatchLearnerSettings with DecoderSettings with DeepNetSettings
+ with BatchLearnerSettings with DecoderSettings with DeepNetSettings

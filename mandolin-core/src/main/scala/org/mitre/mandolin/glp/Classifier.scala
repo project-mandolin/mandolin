@@ -4,14 +4,15 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.util.DenseTensor1
-import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, OnlineLearnerSettings, BatchLearnerSettings, DecoderSettings }
+import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, GeneralLearnerSettings, BatchLearnerSettings, DecoderSettings }
 import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.local.LocalProcessor
 import scala.reflect.ClassTag
 
-class GLPModelSettings(args: Array[String]) extends LearnerSettings(args) 
-  with OnlineLearnerSettings with BatchLearnerSettings with DecoderSettings with DeepNetSettings with Serializable {
+// abstract class 
+class GLPModelSettings(args: Array[String]) extends GeneralLearnerSettings[GLPModelSettings](args) 
+  with BatchLearnerSettings with DecoderSettings with DeepNetSettings with Serializable {
   
   def this() = this(Array())
 
@@ -31,7 +32,7 @@ class GLPModelSettings(args: Array[String]) extends LearnerSettings(args)
   /**
    * Returns a new settings object with the sequence of tuple arguments values set accordingly
    */
-  def withSets(avs: Seq[(String, Any)]) : GLPModelSettings = {
+  def withSets(avs: Seq[(String, Any)]) : GLPModelSettings  = {
     val nc = avs.foldLeft(this.config){case (ac, v) => ac.withValue(v._1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v._2))}
     new GLPModelSettings(Array()) {
       override lazy val config = nc

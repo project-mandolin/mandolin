@@ -199,6 +199,8 @@ class SymbolBuilder {
    * Simple 'interpreter' that maps configuration specification into MxNet symbol DAG
    */
   def symbolFromSpec(spec: Config, inName: String = "data", outName: String = "softmax") : Symbol = {
+    println("Spec: " + spec.toString())
+    System.out.flush()
     val data = Symbol.Variable("data")
     val specList = spec.as[List[Config]]("mandolin.mx.specification")
     var lastName = ""
