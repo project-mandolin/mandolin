@@ -11,15 +11,6 @@ import org.mitre.mandolin.gm.Feature
 import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1 => Vec}
 
 
-class GLPSettings(a: Seq[String]) extends GeneralLearnerSettings[GLPSettings](a) {
-  def withSets(avs: Seq[(String, Any)]) : GLPSettings  = {
-    val nc = avs.foldLeft(this.config){case (ac, v) => ac.withValue(v._1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v._2))}
-    new GLPSettings(Seq()) {
-      override lazy val config = nc
-    }
-  }
-}
-
 
 /**
  * Maps input lines in a sparse-vector format `<label> <f1>:<val> <f2>:<val> ... `

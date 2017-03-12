@@ -96,9 +96,9 @@ object MandolinModelFactory extends LearnerFactory[GLPFactor] {
     
     val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
     val net = ANNetwork(fullSpec, config.inDim, config.outDim)
-    val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
-    val completeParams = allParams ++ config.fixedSettingValues  // add in fixed settings
-    val settings = (new GLPModelSettings()).withSets(completeParams)
+    val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq   
+    val sets = config.serializedSettings match {case Some(s) => new GLPModelSettings(s) case None => new GLPModelSettings()}
+    val settings = sets.withSets(allParams)
     new MandolinModelInstance(settings, config, net)
   }
 }

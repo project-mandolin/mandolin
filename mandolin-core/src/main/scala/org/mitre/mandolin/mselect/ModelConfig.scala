@@ -9,8 +9,8 @@ abstract class AbstractModelConfig(
                    val intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],
                    val inDim: Int,
                    val outDim: Int,
-                   val fixedSettingValues : Seq[(String,Any)]
-    )
+                   val serializedSettings : Option[String]
+    ) extends Serializable
 /**
   * A configuration is a set of MetaParameters set to particular values.
   * A GLP model setting can be passed in so that all the static (unchanging) learning
@@ -25,14 +25,15 @@ class ModelConfig(
                    val outLType: LType,
                    _inDim: Int,
                    _outDim: Int,
-                   _fixedSettingValues : Seq[(String,Any)]) 
-                   extends AbstractModelConfig(_realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, _inDim, _outDim, _fixedSettingValues) with Serializable {
+                   _serializedSettings : Option[String]) 
+                   extends AbstractModelConfig(_realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, _inDim, _outDim, _serializedSettings) 
+with Serializable {
 
   override def toString(): String = {
       val reals = realMetaParamSet.map { mp =>
       mp.getName + ":" + mp.getValue.v
     }.mkString(" ")
-    val cats = categoricalMetaParamSet.map { mp => mp.getName + ":" + mp.getValue.s }.mkString(" ")
+    val cats = categoricalMetaParamSet.map { mp => mp.getName + "_" + mp.getValue.s }.mkString(" ")
     val ints = intMetaParamSet map { mp =>
       mp.getName + ":" + mp.getValue.v
       } mkString(" ")
@@ -48,7 +49,7 @@ class ModelConfig(
           totalWeights += ls(ls.length - 1).dim * outDim // add output weights
         case None => totalWeights = inDim * outDim
       }
-    reals + " " + ints + " " + cats + " numHiddenLayers:" + numHiddenLayers + " totalWeights:" + totalWeights
+    reals + " " + ints + " " + cats 
   }
 }
 
@@ -58,7 +59,7 @@ abstract class AbstractModelSpace(
     val intMPs: Vector[IntegerMetaParameter],
     val idim: Int,
     val odim: Int,
-    val settings: Option[Seq[(String,Any)]]) {
+    val settings: Option[String]) {
   def drawRandom : ModelConfig
 }
 
@@ -75,7 +76,7 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     val outLType: LType,
     _idim: Int,
     _odim: Int,
-    _settings: Option[Seq[(String,Any)]]) 
+    _settings: Option[String]) 
     extends AbstractModelSpace(_realMPs, _catMPs, _intMPs, _idim, _odim, _settings) with Serializable {
   
   def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
@@ -96,9 +97,9 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     if (topoMPs.isDefined) {
       val topology = topoMPs.get.drawRandomValue
       val mspecValued = topology.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}
-      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings.getOrElse(Seq()))
+      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings)
     } else {
-      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings.getOrElse(Seq()))
+      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings)
     }
   }
 }

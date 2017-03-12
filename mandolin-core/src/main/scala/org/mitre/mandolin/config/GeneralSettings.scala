@@ -14,13 +14,16 @@ import net.ceedubs.ficus.Ficus._
  * <a href="http://spark.apache.org/docs/latest/configuration.html">here</a>
  * @param args - command-line arguments as a Seq of String objects
  */ 
-abstract class GeneralSettings(args: Seq[String]) {
+abstract class GeneralSettings(val config: Config) {
   import scala.collection.JavaConverters._
   import org.apache.log4j.{ Level, Logger, LogManager }
   
-  protected val commandOptions = new ConfigGeneratedCommandOptions(args.toSeq)        
-  lazy val config = commandOptions.finalConfig
+  def this(args: Seq[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
   
+  //protected val commandOptions = new ConfigGeneratedCommandOptions(args.toSeq)        
+  //lazy val config = commandOptions.finalConfig
+
+  /*
   if (commandOptions.displayDefaults()) {
       val configRenderer = ConfigRenderOptions.defaults().setOriginComments(false)
       println("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -30,6 +33,7 @@ abstract class GeneralSettings(args: Seq[String]) {
       println("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
       System.exit(0)
   }
+  */
   
   def getConfigValue(path: String) = {
     asStr(path)
@@ -140,7 +144,7 @@ abstract class GeneralSettings(args: Seq[String]) {
  * Mandolin application settings
  * @param args - command-line args
  */ 
-abstract class AppSettings(args: Seq[String]) extends GeneralSettings(args) {
+abstract class AppSettings(conf: Config) extends GeneralSettings(conf) {
   /** Name for the app */
   val name             = asStr("mandolin.name")
   /** Mode for application (train|decode|train-test|train-decode) */
@@ -154,9 +158,8 @@ abstract class AppSettings(args: Seq[String]) extends GeneralSettings(args) {
  * Settings specific to all Mandolin learners
  * @param args - command-line args
  */ 
-abstract class LearnerSettings(args: Seq[String]) extends AppSettings(args) {   
-  
-  
+abstract class LearnerSettings(conf: Config) extends AppSettings(conf) {   
+    
   
   val numFeatures      = asInt("mandolin.trainer.num-hash-features")
   val trainFile        = asStrOpt("mandolin.trainer.train-file")
@@ -201,7 +204,7 @@ abstract class LearnerSettings(args: Seq[String]) extends AppSettings(args) {
   
 }
 
-abstract class GeneralLearnerSettings[S <: GeneralLearnerSettings[S]](args: Seq[String]) extends LearnerSettings(args) {
+abstract class GeneralLearnerSettings[S <: GeneralLearnerSettings[S]](conf: Config) extends LearnerSettings(conf) {
   def withSets(avs: Seq[(String, Any)]) : S
 }
 

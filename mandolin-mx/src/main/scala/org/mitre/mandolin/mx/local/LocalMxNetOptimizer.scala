@@ -74,9 +74,5 @@ object LocalMxNetOptimizer {
     new LocalOnlineOptimizer[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetOptimizer](params, 
         evaluator, updater, mxEpochs, numSubEpochs, workersPerPartition, optDetails)
   }
-  
-  
+    
 }
-
-class MxNetModelSettings(args: Array[String]) extends LearnerSettings(args) 
- with BatchLearnerSettings with DecoderSettings with DeepNetSettings

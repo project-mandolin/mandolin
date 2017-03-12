@@ -16,8 +16,6 @@ class LocalModelSelector(val msb: MandolinModelSpaceBuilder, trainFile: String, 
     appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
   
-  // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
-  // in various parameters
   def this(_msb: MandolinModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
     this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
         appSettings.workerBatchSize, 
@@ -49,7 +47,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
   }
 }
 
-object LocalModelSelector {
+object LocalModelSelector extends org.mitre.mandolin.config.LogInit {
   
   def main(args: Array[String]): Unit = {
     val appSettings = new GLPModelSettings(args) with ModelSelectionSettings   

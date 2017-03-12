@@ -1,14 +1,18 @@
 package org.mitre.mandolin.mx
 
-//import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
+import org.mitre.mandolin.config.{ConfigGeneratedCommandOptions}
 import org.mitre.mandolin.glp.{GLPModelSettings}
 import org.mitre.mandolin.config.GeneralLearnerSettings
 import com.typesafe.config.{Config}
 import org.slf4j.LoggerFactory
 import net.ceedubs.ficus.Ficus._
 
-class MxModelSettings(a: Seq[String]) extends GLPModelSettings(a.toArray) {
+class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettings(config) {
+  
+  def this(s: String) = this(com.typesafe.config.ConfigFactory.parseString(s))
+  def this(args: Seq[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
   def this() = this(Seq())
+  
   import scala.collection.JavaConversions._
   
   // input type: 1) glp, 2) ndarray, 3) recordio ... others?
@@ -41,15 +45,13 @@ class MxModelSettings(a: Seq[String]) extends GLPModelSettings(a.toArray) {
   val preProcThreads = asIntOpt("mandolin.mx.img.preprocess-threads").getOrElse(8)
   
   override def withSets(avs: Seq[(String, Any)]) : MxModelSettings  = {
-    val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) => 
+    val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) =>       
       v2 match {
         case v2: List[_] =>
           if (v2 != null) ac.withValue(v1,com.typesafe.config.ConfigValueFactory.fromIterable(v2)) else ac
-        case v2: Any => ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
+        case v2: Any =>
+          ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
       }
-      
-    new MxModelSettings() {
-      override lazy val config = nc
-    }
+    new MxModelSettings(nc) 
   }
 }

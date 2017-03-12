@@ -20,13 +20,6 @@ object MandolinBuild extends Build {
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
 
-  lazy val mandolinSpark = Project(id = "mandolin-spark", base = file("mandolin-spark")).
-                            settings(sparkSettings:_*).
-                            settings(sparkDependencySettings:_*).
-                            settings(assemblyProjSettings("spark"):_*).
-                            //settings(siteSettings:_*).
-                            settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
-
   // The MXNet library comes pre-built and resides in mandolin/mandolin-mx/lib
   // In addition, the native code is pre-built in mandolin/mandolin-mx/native  
   lazy val mandolinMx = Project(id = "mandolin-mx", base = file("mandolin-mx")).
@@ -37,6 +30,12 @@ object MandolinBuild extends Build {
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
 
+  lazy val mandolinSpark = Project(id = "mandolin-spark", base = file("mandolin-spark")).
+                            settings(sparkSettings:_*).
+                            settings(sparkDependencySettings:_*).
+                            settings(assemblyProjSettings("spark"):_*).
+                            //settings(siteSettings:_*).
+                            settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore, mandolinMx)
   
 
   def rootSettings = sharedSettings ++ Seq( name := "mandolin" )

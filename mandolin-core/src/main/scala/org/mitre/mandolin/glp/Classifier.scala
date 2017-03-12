@@ -4,17 +4,19 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.util.DenseTensor1
-import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, GeneralLearnerSettings, BatchLearnerSettings, DecoderSettings }
+import org.mitre.mandolin.config.{ ConfigGeneratedCommandOptions, LearnerSettings, DeepNetSettings, GeneralLearnerSettings, BatchLearnerSettings, DecoderSettings }
 import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.local.LocalProcessor
 import scala.reflect.ClassTag
 
 // abstract class 
-class GLPModelSettings(args: Array[String]) extends GeneralLearnerSettings[GLPModelSettings](args) 
+class GLPModelSettings(conf: com.typesafe.config.Config) extends GeneralLearnerSettings[GLPModelSettings](conf) 
   with BatchLearnerSettings with DecoderSettings with DeepNetSettings with Serializable {
-  
-  def this() = this(Array())
+     
+  def this(str: String) = this(com.typesafe.config.ConfigFactory.parseString(str))
+  def this(args: Array[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
+  def this() = this(Array(): Array[String])
 
   /**
    * Returns a new settings object with the config name `key` set to `v` 
@@ -22,8 +24,8 @@ class GLPModelSettings(args: Array[String]) extends GeneralLearnerSettings[GLPMo
   def set(key: String, v: Any) = {
     val curConfig = this.config
     val nConf = curConfig.withValue(key, com.typesafe.config.ConfigValueFactory.fromAnyRef(v))
-    new GLPModelSettings(Array()) {
-      override lazy val config = nConf 
+    new GLPModelSettings() {
+      override val config = nConf 
     }
   }
   
@@ -34,8 +36,8 @@ class GLPModelSettings(args: Array[String]) extends GeneralLearnerSettings[GLPMo
    */
   def withSets(avs: Seq[(String, Any)]) : GLPModelSettings  = {
     val nc = avs.foldLeft(this.config){case (ac, v) => ac.withValue(v._1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v._2))}
-    new GLPModelSettings(Array()) {
-      override lazy val config = nc
+    new GLPModelSettings() {
+      override val config = nc
     }
   } 
   

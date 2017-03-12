@@ -1,22 +1,21 @@
 package org.mitre.mandolin.mselect
 
 import org.mitre.mandolin.mx.MxModelSettings
+import org.apache.spark.SparkContext
+
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.glp.{ GLPModelSettings, GLPTrainerBuilder, GLPFactor }
+import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, CategoricalGLPPredictor, GLPFactor, GLPWeights, ANNetwork, SparseInputLType }
 
-
-class LocalMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+class SparkMxModelSelectionDriver(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, 
+    numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[MxModelSettings with ModelSelectionSettings] = None) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
   
-  // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
-  // in various parameters
-  def this(_msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
-    this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
-        appSettings.workerBatchSize, 
+  def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
+    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
-  }
+  }      
   
   val (fe: FeatureExtractor[String, GLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
@@ -35,16 +34,21 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
     val io = new LocalIOAssistant
     val trVecs = (io.readLines(trainFile) map { l => fe.extractFeatures(l) } toVector)
     val tstVecs = (io.readLines(testFile) map { l => fe.extractFeatures(l) } toVector)
-    new LocalMxModelEvaluator(trVecs, tstVecs)
+    new SparkMxModelEvaluator(sc, sc.broadcast(trVecs), sc.broadcast(tstVecs))
   }
 }
 
-object MxLocalModelSelector extends org.mitre.mandolin.config.LogInit {
-   def main(args: Array[String]): Unit = {
+object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
+
+  def main(args: Array[String]) : Unit = {
     val appSettings = new MxModelSettings(args) with ModelSelectionSettings
-    val builder1 = MxLearnerFactory.getModelSpaceBuilder(appSettings.modelSpace) // MxLearnerFactory
-    val selector = new LocalMxModelSelector(builder1, appSettings)
+    val sc = new SparkContext
+    val trainFile = appSettings.trainFile.get
+    val testFile = appSettings.testFile.getOrElse(trainFile)
+    val builder = MxLearnerFactory.getModelSpaceBuilder(appSettings.modelSpace)    
+    val selector = new SparkMxModelSelectionDriver(sc, builder, appSettings)
     selector.search()
   }
-}
+  
 
+}
