@@ -41,7 +41,9 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
 object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]) : Unit = {
-    val appSettings = new MxModelSettings(args) with ModelSelectionSettings
+    val a1 = new MxModelSettings(args) 
+    val a2 = a1.withSets(Seq(("mandolin.trainer.model-file","null"))) // clunky - but ensure this is null if we're running model selection distributed
+    val appSettings = new MxModelSettings(a2.config) with ModelSelectionSettings
     val sc = new SparkContext
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)

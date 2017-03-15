@@ -21,7 +21,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
   val (fe: FeatureExtractor[String, GLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
-      ("mandolin.trainer.test-file", testFile)
+      ("mandolin.trainer.test-file", testFile),
+      ("mandolin.trainer.specification", null) // force this to be null
     )))
     val io = new LocalIOAssistant
     val components = GLPTrainerBuilder.getComponentsViaSettings(settings, io)

@@ -7,7 +7,6 @@ import org.mitre.mandolin.glp.{GLPComponentSet, GLPFactor}
 import org.mitre.mandolin.glp.local.{LocalProcessor, LocalGLPOptimizer}
 import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
 import org.mitre.mandolin.util.LocalIOAssistant
-import org.mitre.mandolin.mselect.MxLearnerFactory
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
 

@@ -201,6 +201,10 @@ class SymbolBuilder {
   def symbolFromSpec(spec: Config, inName: String = "data", outName: String = "softmax") : Symbol = {    
     val data = Symbol.Variable("data")
     val specList = spec.as[List[Config]]("mandolin.mx.specification")
+    // create a specMap
+    // build list of all data symbols in one pass
+    // then assemble each layer with references to previous layers
+    // this will allow for DAG representation rather than simple linear sequence
     var lastName = ""
     val finalMapping = 
       specList.foldLeft(Map[String,Symbol]("input" -> data)){case (curMap, sp) =>
@@ -223,7 +227,7 @@ class SymbolBuilder {
         case "softmax" => softMaxFromSpec(sp, inSymbol)
         case "batch_norm" => batchNormFromSpec(sp, inSymbol)
         case "resnetV2core" => resNetV2CoreFromSpec(sp, inSymbol)
-        case a => throw new RuntimeException("Invalid neural network symbol type: " + a)
+        case a => throw new RuntimeException("Invalid network symbol type: " + a)
       }
       lastName = spName
       curMap + (spName -> newSymbol)

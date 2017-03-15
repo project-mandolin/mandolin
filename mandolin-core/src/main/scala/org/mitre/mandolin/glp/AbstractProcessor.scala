@@ -186,8 +186,7 @@ abstract class AbstractProcessor extends LineParser {
     (nn, predictor, oc)
   }
 
-  def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet, fa: Alphabet): GLPComponentSet = {
-    
+  def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet, fa: Alphabet): GLPComponentSet = {    
     val isSparse = confSpecs.head("ltype").equals("InputSparse")
     val regression = confSpecs.last("ltype").equals("Linear")
     val fe =
@@ -230,8 +229,7 @@ abstract class AbstractProcessor extends LineParser {
   }
   
   def getComponentsInducedAlphabet(mspec: IndexedSeq[LType], lines: Iterator[String],
-                                   la: Alphabet, scale: Boolean = false, selectedFeatures: Int = -1, io: IOAssistant, faO: Option[(Alphabet,Int)] = None): GLPComponentSet = {
-    
+                                   la: Alphabet, scale: Boolean = false, selectedFeatures: Int = -1, io: IOAssistant, faO: Option[(Alphabet,Int)] = None): GLPComponentSet = {    
     val (fa,npts) = faO match {
       case None => getAlphabet(lines, la, scale, selectedFeatures, None, io)
       case Some(x) => x // don't recompute alphabet if we've done so already
@@ -239,7 +237,7 @@ abstract class AbstractProcessor extends LineParser {
     fa.ensureFixed
     la.ensureFixed
     val (nn, predictor, outConstructor) = getSubComponents(mspec, fa.getSize, la.getSize)
-    val isSparse = mspec(0).designate match {case SparseInputLType => true case _ => false}
+    val isSparse = ((mspec.length > 1) && (mspec(0).designate match {case SparseInputLType => true case _ => false}))
     val fe = if (isSparse) new SparseVecFeatureExtractor(fa, la) else new VecFeatureExtractor(fa, la)
     GLPComponentSet(nn, predictor, outConstructor, fe, la, fa.getSize, npts)
   }
@@ -258,25 +256,9 @@ abstract class AbstractProcessor extends LineParser {
     getComponentsInducedAlphabet(appSettings.netspec, lines, la, appSettings.scaleInputs, appSettings.filterFeaturesMI, io)
   }
   
-  def getComponentsSeqOneHot(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {    
-    val la = appSettings.labelFile match {
-      case Some(lf) => getLabelAlphabet(Some(lf), io)
-      case None => 
-        val outputDim = appSettings.netspec.last("dim").toInt
-        new IdentityAlphabet(outputDim) 
-    }
-    val inDim = appSettings.netspec.head("dim").toInt
-    val (nn, predictor, outConstructor) = getSubComponents(appSettings.netspec, inDim, la.getSize)
-    val fe = new BagOneHotExtractor(la,inDim)
-    // XXX - remove 1000 here and replace with count of number of data points
-    GLPComponentSet(nn, predictor, outConstructor, fe, la, inDim, 1000)
-  }
-
   def getComponentsViaSettings(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     if (appSettings.denseVectorSize > 0) getComponentsDenseVecs(appSettings, io)
-    else if (appSettings.useRandom) getComponentsHashedFeatures(appSettings, io)
-    else if (appSettings.netspec.head("ltype").equals("SeqInputSparse")) // special-case of one-hot sequence inputs 
-      getComponentsSeqOneHot(appSettings, io)
+    else if (appSettings.useRandom) getComponentsHashedFeatures(appSettings, io)    
     else getComponentsInducedAlphabet(appSettings, io)
   }    
 
@@ -298,7 +280,5 @@ abstract class AbstractProcessor extends LineParser {
       outputs foreach { case (s, factor) => os.print(s); os.print(','); os.print(factor.getOneHot.toString); os.println }
       }
     }
-    
-    
   }
 }

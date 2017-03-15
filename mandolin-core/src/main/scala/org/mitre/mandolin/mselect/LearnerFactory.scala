@@ -52,14 +52,8 @@ trait MandolinModelSpaceBuilder extends ModelSpaceBuilder {
   
   def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[GLPModelSettings]) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
-    // XXX - eventually pull out important parameters to preserve here and pass into model space
-    /*
-    val opts : Option[Seq[(String,Any)]] = appSettings map { a =>
-      Seq(("mandolin.trainer.specification",a.netspec))
-    } 
-    * 
-    */
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, None)    
+    val appConfig = appSettings map {a => a.config.root.render()}
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig)    
   }
 }
 
@@ -103,8 +97,7 @@ object MandolinModelFactory extends LearnerFactory[GLPFactor] {
   }
 }
 
-class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, nn: ANNetwork) 
-extends LearnerInstance[GLPFactor] with Serializable {
+class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, nn: ANNetwork) extends LearnerInstance[GLPFactor] {
 
   def train(train: Vector[GLPFactor], test: Vector[GLPFactor]) : Double = {
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)

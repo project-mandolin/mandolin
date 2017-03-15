@@ -2,7 +2,7 @@ package org.mitre.mandolin.mselect
 
 import org.mitre.mandolin.glp.GLPFactor
 import org.mitre.mandolin.glp.{GLPModelSettings, LType, SparseInputLType, InputLType,SoftMaxLType}
-import org.mitre.mandolin.mx.MxModelSettings
+import org.mitre.mandolin.mx.{MxModelSettings, MxNetSetup}
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
 
@@ -56,32 +56,12 @@ object MxLearnerFactory extends LearnerFactory [GLPFactor]{
 }
 
 
-class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerInstance[GLPFactor] {
+class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerInstance[GLPFactor] with MxNetSetup {
   import ml.dmlc.mxnet.{Context, Shape}
   import ml.dmlc.mxnet.optimizer._
   import org.mitre.mandolin.mx.{ MxNetOptimizer, MxNetWeights, MxNetEvaluator, SymbolBuilder, GLPFactorIter}
   
   val log = LoggerFactory.getLogger(getClass)
-  
-  def getDeviceArray(appSettings: MxModelSettings) : Array[Context] = {
-    val gpuContexts = appSettings.getGpus map {i => Context.gpu(i)}
-    val cpuContexts = appSettings.getCpus map {i => Context.cpu(i)}
-    (gpuContexts ++ cpuContexts).toArray
-  }
-  
-  def getOptimizer(appSettings: MxModelSettings) = {
-    val lr = appSettings.mxInitialLearnRate
-    val rescale = appSettings.mxRescaleGrad
-    appSettings.mxOptimizer match {      
-      case "nag" => new NAG(learningRate = lr, momentum = appSettings.mxMomentum, wd = 0.0001f)
-      case "adadelta" => new AdaDelta(rho = appSettings.mxRho, rescaleGradient = rescale)
-      case "rmsprop" => new RMSProp(learningRate = lr, rescaleGradient = rescale)
-      case "adam" => new Adam(learningRate = lr, clipGradient = appSettings.mxGradClip)
-      case "adagrad" => new AdaGrad(learningRate = lr, rescaleGradient = rescale)
-      case "sgld" => new SGLD(learningRate = lr, rescaleGradient = rescale, clipGradient = appSettings.mxGradClip)
-      case _ => new SGD(learningRate = lr, momentum = appSettings.mxMomentum, wd = 0.0001f)
-    }
-  }
   
   def train(trVecs: Vector[GLPFactor], tstVecs: Vector[GLPFactor]) : Double = {
     log.info("Initiating training ...")

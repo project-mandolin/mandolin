@@ -82,6 +82,5 @@ trait ModelSelectionSettings extends GLPModelSettings {
   val workerBatchSize = asInt("mandolin.model-selection.worker-batch-size")
   val scoreSampleSize = asInt("mandolin.model-selection.score-sample-size")
   val updateFrequency = asInt("mandolin.model-selection.update-frequency")
-  val totalEvals      = asInt("mandolin.model-selection.total-evals")
-  
+  val totalEvals      = asInt("mandolin.model-selection.total-evals")  
 }
