@@ -10,14 +10,11 @@ import org.mitre.mandolin.util.LocalIOAssistant
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 
+
 trait LearnerInstance[T] extends LocalProcessor {
   def train(train: Vector[T], test: Vector[T]): Double
 }
 
-trait LearnerFactory[T] {
-  def getLearnerInstance(config: ModelConfig): LearnerInstance[T]
-  def getModelSpaceBuilder : ModelSpaceBuilder
-}
 
 trait ModelSpaceBuilder {
   val reals = new mutable.MutableList[RealMetaParameter]
@@ -47,53 +44,25 @@ trait ModelSpaceBuilder {
   
 }
 
-trait MandolinModelSpaceBuilder extends ModelSpaceBuilder {
+class MandolinModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilder {
+  
+  def this(m: ModelSpace) = this(Some(m))
+  def this() = this(None)
+  
+  // initialize with modelspace
+  ms foreach {ms => 
+    ms.catMPs foreach withMetaParam
+    ms.realMPs foreach withMetaParam
+    ms.intMPs foreach withMetaParam
+    ms.topoMPs foreach withMetaParam
+  }
+       
   def build() : ModelSpace = build(0,0,false, None)  
   
   def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[GLPModelSettings]) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
     val appConfig = appSettings map {a => a.config.root.render()}
     new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig)    
-  }
-}
-
-
-object MandolinModelFactory extends LearnerFactory[GLPFactor] {
-  class MandolinGenericModelSpaceBuilder extends MandolinModelSpaceBuilder {
-    
-    def withRealMetaParams(rs: Vector[RealMetaParameter]) = rs foreach withMetaParam 
-    def withCategoricalMetaParams(cats: Vector[CategoricalMetaParameter]) = cats foreach withMetaParam
-    def withIntegerMetaParams(ints: Vector[IntegerMetaParameter]) = ints foreach withMetaParam
-    def withTopologyMetaParam(topo: TopologySpaceMetaParameter) = withMetaParam(topo)  
-  }
-  
-  override def getModelSpaceBuilder() : MandolinGenericModelSpaceBuilder = {
-    new MandolinGenericModelSpaceBuilder
-  }
-  
-  def getModelSpaceBuilder(ms: ModelSpace) : MandolinGenericModelSpaceBuilder = {
-    val mm = new MandolinGenericModelSpaceBuilder
-    mm.withCategoricalMetaParams(ms.catMPs)
-    mm.withRealMetaParams(ms.realMPs)
-    mm.withIntegerMetaParams(ms.intMPs)
-    ms.topoMPs foreach {ms => mm.withTopologyMetaParam(ms) }
-    mm
-  }
-  
-  def getLearnerInstance(config: ModelConfig) : LearnerInstance[GLPFactor] = {
-    val cats: List[(String,Any)] = config.categoricalMetaParamSet.toList map {cm => (cm.getName,cm.getValue.s)}
-    val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
-    val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
-    
-    //val mspecValued = config.topoMPs map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
-    val hiddenLayers = config.topo.getOrElse(Vector())
-    
-    val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
-    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
-    val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq   
-    val sets = config.serializedSettings match {case Some(s) => new GLPModelSettings(s) case None => new GLPModelSettings()}
-    val settings = sets.withSets(allParams)
-    new MandolinModelInstance(settings, config, net)
   }
 }
 
@@ -108,5 +77,24 @@ class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, 
     val confusion = evPr.evalWithoutExtraction(test, weights)    
     val acc = confusion.getAccuracy
     acc
+  }
+}
+
+object MandolinModelInstance {
+  
+  def apply(config: ModelConfig) : MandolinModelInstance = {
+    val cats: List[(String,Any)] = config.categoricalMetaParamSet.toList map {cm => (cm.getName,cm.getValue.s)}
+    val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
+    val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
+    
+    //val mspecValued = config.topoMPs map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
+    val hiddenLayers = config.topo.getOrElse(Vector())
+    
+    val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
+    val net = ANNetwork(fullSpec, config.inDim, config.outDim)
+    val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq   
+    val sets = config.serializedSettings match {case Some(s) => new GLPModelSettings(s) case None => new GLPModelSettings()}
+    val settings = sets.withSets(allParams)
+    new MandolinModelInstance(settings, config, net)
   }
 }

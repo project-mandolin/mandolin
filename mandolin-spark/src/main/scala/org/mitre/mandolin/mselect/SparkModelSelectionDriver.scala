@@ -47,7 +47,7 @@ object SparkModelSelectionDriver {
     val sc = new SparkContext
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)
-    val builder = MandolinModelFactory.getModelSpaceBuilder(appSettings.modelSpace)    
+    val builder = new MandolinModelSpaceBuilder(appSettings.modelSpace)    
     val selector = new SparkModelSelectionDriver(sc, builder, appSettings)
     selector.search()
   }  

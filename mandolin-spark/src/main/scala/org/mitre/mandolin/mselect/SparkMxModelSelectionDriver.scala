@@ -47,10 +47,9 @@ object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
     val sc = new SparkContext
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)
-    val builder = MxLearnerFactory.getModelSpaceBuilder(appSettings.modelSpace)    
+    val builder = new MxModelSpaceBuilder(appSettings.modelSpace)    
     val selector = new SparkMxModelSelectionDriver(sc, builder, appSettings)
     selector.search()
-  }
-  
+  }  
 
 }

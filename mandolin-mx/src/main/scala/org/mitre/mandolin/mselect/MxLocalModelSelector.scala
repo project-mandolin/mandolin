@@ -40,12 +40,36 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
   }
 }
 
+class LocalFileSystemImgMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None) 
+extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+  
+  // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
+  // in various parameters
+  def this(_msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
+    this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
+        appSettings.workerBatchSize, 
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
+  }
+    
+  val ms: ModelSpace = msb.build(0, 0, false, appSettings)
+  override val ev = {
+    new FileSystemMxModelEvaluator(new java.io.File(trainFile), new java.io.File(testFile))
+  }
+}
+
 object MxLocalModelSelector extends org.mitre.mandolin.config.LogInit {
    def main(args: Array[String]): Unit = {
     val appSettings = new MxModelSettings(args) with ModelSelectionSettings
-    val builder1 = MxLearnerFactory.getModelSpaceBuilder(appSettings.modelSpace) // MxLearnerFactory
-    val selector = new LocalMxModelSelector(builder1, appSettings)
-    selector.search()
+    val builder1 = new MxModelSpaceBuilder(appSettings.modelSpace) // MxLearnerFactory
+    if (appSettings.inputType equals "recordio") { // XXX - not yet tested, but should let this work with recordio from file      
+      val selector = new LocalFileSystemImgMxModelSelector(builder1, appSettings)
+      selector.search()
+    } else {
+      val selector = new LocalMxModelSelector(builder1, appSettings)
+      selector.search()
+    }
+    
   }
 }
 

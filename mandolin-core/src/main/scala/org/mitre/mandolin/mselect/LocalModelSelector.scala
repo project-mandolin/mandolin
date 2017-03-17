@@ -51,7 +51,7 @@ object LocalModelSelector extends org.mitre.mandolin.config.LogInit {
   
   def main(args: Array[String]): Unit = {
     val appSettings = new GLPModelSettings(args) with ModelSelectionSettings   
-    val builder = MandolinModelFactory.getModelSpaceBuilder(appSettings.modelSpace)    
+    val builder = new MandolinModelSpaceBuilder(appSettings.modelSpace)    
     val selector = new LocalModelSelector(builder, appSettings)
     selector.search()
   }

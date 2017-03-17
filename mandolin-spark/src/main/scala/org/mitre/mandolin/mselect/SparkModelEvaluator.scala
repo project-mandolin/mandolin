@@ -24,7 +24,7 @@ extends ModelEvaluator with Serializable {
       val trData  = _trainBC.value
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
-        val learner = MandolinModelFactory.getLearnerInstance(config)
+        val learner = MandolinModelInstance(config)
         val acc = learner.train(trData, tstData)
         acc
       }
@@ -48,7 +48,7 @@ extends ModelEvaluator with Serializable {
       val trData  = _trainBC.value
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
-        val learner = MxLearnerFactory.getLearnerInstance(config)
+        val learner = MxModelInstance(config)
         val acc = learner.train(trData, tstData)
         acc
       }
