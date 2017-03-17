@@ -68,8 +68,7 @@ object MxLocalModelSelector extends org.mitre.mandolin.config.LogInit {
     } else {
       val selector = new LocalMxModelSelector(builder1, appSettings)
       selector.search()
-    }
-    
+    }    
   }
 }
 

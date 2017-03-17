@@ -76,10 +76,12 @@ object MxModelInstance extends MxLearnerBuilderHelper {
 }
 
 class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerInstance[java.io.File] with MxNetSetup {
+  val log = LoggerFactory.getLogger(getClass)
+  
   def train(trData: Vector[java.io.File], tstData: Vector[java.io.File]) : Double = {
     val devices = getDeviceArray(appSettings)
-    val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)    
-    val shape = Shape(nfs)
+    val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)
+    val shape   = Shape(appSettings.channels, appSettings.xdim, appSettings.ydim)
     val trIter = getTrainIO(appSettings, shape)
     val tstIter = getTestIO(appSettings, shape)
     val lr = appSettings.initialLearnRate
@@ -99,7 +101,10 @@ object FileSystemImgMxModelInstance extends MxLearnerBuilderHelper {
 }
 
 class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) extends ModelEvaluator with Serializable {
+  val log = LoggerFactory.getLogger(getClass)
+  
   def evaluate(c: Seq[ModelConfig]) : Seq[Double] = {
+    log.info("Initiating evaluation with FileSystemMxModelEvaluator ... ")
     val cvec = c.toList.par
     cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
     val accuracies = cvec map {config =>

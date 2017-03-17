@@ -60,7 +60,8 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
   def evaluateTrainingMiniBatch(tr: DataIter, tst: DataIter, weights: MxNetWeights, u: MxNetOptimizer, epochCnt: Int = 0) : MxNetLossGradient = {    
     var acc = 0.0
     val metric = new Accuracy()
-    val ff = new FeedForward(net, ctx, optimizer = u.optimizer, initializer = new Xavier(rndType = "gaussian", factorType = "in", magnitude = 2.0f), 
+    val ff = new FeedForward(net, ctx, optimizer = u.optimizer, 
+        initializer = new Xavier(rndType = "gaussian", factorType = "in", magnitude = 2.0f), 
             numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
     ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
           batchEndCallback = new Speedometer(batchSz, 50))
@@ -95,7 +96,6 @@ extends TrainingUnitEvaluator[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetO
     val metric = new Accuracy()
     ff.fit(trIter, tstIter, metric)
     trIter.dispose() // clean out the cache for this iterator
-    // ... SOOOO .. do the weights get updated as side-effect here?  Need to ensure this.
     new MxNetLossGradient(metric.get._2.toDouble)    
   }
   
