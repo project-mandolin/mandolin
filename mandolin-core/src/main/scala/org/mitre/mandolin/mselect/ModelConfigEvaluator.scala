@@ -138,6 +138,7 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
   def doWork(w: Seq[ModelConfig]): Future[ModelEvalResult] = {
     busy = true
     Future({
+      log.info("About to evaluate model ...")
       val score = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result
       // send to modelScorer

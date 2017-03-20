@@ -52,7 +52,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
     
   val ms: ModelSpace = msb.build(0, 0, false, appSettings)
   override val ev = {
-    new SparkMxFileSystemModelEvaluator(sc, new java.io.File(trainFile), new java.io.File(testFile))
+    new SparkMxFileSystemModelEvaluator(sc, trainFile, testFile)
   }
 }
 

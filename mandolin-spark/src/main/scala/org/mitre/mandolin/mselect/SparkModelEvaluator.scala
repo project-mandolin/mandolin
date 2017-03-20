@@ -3,6 +3,7 @@ package org.mitre.mandolin.mselect
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
+import org.slf4j.LoggerFactory
 import org.mitre.mandolin.glp.{GLPComponentSet, GLPFactor}
 import org.mitre.mandolin.glp.local.{LocalProcessor, LocalGLPOptimizer}
 import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
@@ -36,10 +37,11 @@ extends ModelEvaluator with Serializable {
 
 class SparkMxModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]) 
 extends ModelEvaluator with Serializable {
+
   override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
     val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
     val _trainBC = trainBC
-    val _testBC = testBC
+    val _testBC = testBC    
     val accuracy = configRDD.mapPartitions { configs =>
       val cv1 = configs.toList
       val cvec = cv1.par
@@ -58,19 +60,22 @@ extends ModelEvaluator with Serializable {
   }
 }
 
-class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: java.io.File, testData: java.io.File) 
+class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: String, testData: String) 
 extends ModelEvaluator with Serializable {
   def evaluate (c: Seq[ModelConfig]) : Seq[Double] = {
     val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
+    val _trainData = trainData
+    val _testData = testData
     val accuracy = configRDD.mapPartitions { configs =>
+      println("Creating file system mx training instance ...")
       val cv1 = configs.toList
-      val cvec = cv1.par
+      val cvec = cv1.par      
       // set tasksupport to allocate N threads so each item is processed concurrently
       cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-      val accuracies = cvec map {config => 
+      val accuracies = cvec map {config =>
         val learner = FileSystemImgMxModelInstance(config)
-        val acc = learner.train(Vector(trainData), Vector(testData))
-        acc
+        val acc = learner.train(Vector(new java.io.File(_trainData)), Vector(new java.io.File(_testData)))
+        acc        
       }
       accuracies.toIterator
     }.collect()
