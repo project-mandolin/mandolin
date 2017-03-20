@@ -38,6 +38,24 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
   }
 }
 
+class SparkLocalFileSystemImgMxModelSelector(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None) 
+extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+  
+  // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
+  // in various parameters
+  def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
+    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
+        appSettings.workerBatchSize, 
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
+  }
+    
+  val ms: ModelSpace = msb.build(0, 0, false, appSettings)
+  override val ev = {
+    new SparkMxFileSystemModelEvaluator(sc, new java.io.File(trainFile), new java.io.File(testFile))
+  }
+}
+
 object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]) : Unit = {
@@ -48,7 +66,9 @@ object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)
     val builder = new MxModelSpaceBuilder(appSettings.modelSpace)    
-    val selector = new SparkMxModelSelectionDriver(sc, builder, appSettings)
+    val selector = 
+      if (appSettings.inputType equals "recordio") new SparkLocalFileSystemImgMxModelSelector(sc, builder, appSettings)
+      else new SparkMxModelSelectionDriver(sc, builder, appSettings)
     selector.search()
   }  
 

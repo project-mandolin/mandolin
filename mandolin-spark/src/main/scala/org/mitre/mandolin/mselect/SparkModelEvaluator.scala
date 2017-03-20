@@ -58,3 +58,22 @@ extends ModelEvaluator with Serializable {
   }
 }
 
+class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: java.io.File, testData: java.io.File) 
+extends ModelEvaluator with Serializable {
+  def evaluate (c: Seq[ModelConfig]) : Seq[Double] = {
+    val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
+    val accuracy = configRDD.mapPartitions { configs =>
+      val cv1 = configs.toList
+      val cvec = cv1.par
+      // set tasksupport to allocate N threads so each item is processed concurrently
+      cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
+      val accuracies = cvec map {config => 
+        val learner = FileSystemImgMxModelInstance(config)
+        val acc = learner.train(Vector(trainData), Vector(testData))
+        acc
+      }
+      accuracies.toIterator
+    }.collect()
+    accuracy.toSeq
+  }
+}
