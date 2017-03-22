@@ -64,6 +64,7 @@ class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerIns
     val weights = new MxNetWeights(1.0f)    
     val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, appSettings.modelFile, appSettings.saveFreq)
     val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
+    sym.dispose()
     lg.loss
   }
 }
