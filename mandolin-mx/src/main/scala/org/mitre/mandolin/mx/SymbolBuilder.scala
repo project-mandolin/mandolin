@@ -1,7 +1,7 @@
 package org.mitre.mandolin.mx
 
 import ml.dmlc.mxnet._
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigValue}
 import net.ceedubs.ficus.Ficus._
 
 
@@ -195,24 +195,9 @@ class SymbolBuilder {
         "num_filter" -> numFilters, "workspace" -> workSpace.toString))
   }
   
-  /**
-   * Simple 'interpreter' that maps configuration specification into MxNet symbol DAG
-   */
-  def symbolFromSpec(spec: Config, inName: String = "data", outName: String = "softmax") : Symbol = {    
-    val data = Symbol.Variable("data")
-    val specList = spec.as[List[Config]]("mandolin.mx.specification")
-    // create a specMap
-    // build list of all data symbols in one pass
-    // then assemble each layer with references to previous layers
-    // this will allow for DAG representation rather than simple linear sequence
-    var lastName = ""
-    val finalMapping = 
-      specList.foldLeft(Map[String,Symbol]("input" -> data)){case (curMap, sp) =>
-      val spType = sp.as[String]("type")
-      val spName = sp.as[String]("name")
-      val inData = sp.as[String]("data") // input data
-      val inSymbol = curMap(inData)
-      val newSymbol = spType match {
+  
+  def getSymbol(sp: Config, inSymbol: Symbol, spType: String) : Symbol = {
+    spType match {
         case "mx_conv" => mxConvolutionFromSpec(sp, inSymbol)
         case "pooling" => Symbol.Pooling()()(mapFromPoolSpec(sp, inSymbol))
         case "conv"    => convSymbolFromSpec(sp,inSymbol)
@@ -229,10 +214,39 @@ class SymbolBuilder {
         case "resnetV2core" => resNetV2CoreFromSpec(sp, inSymbol)
         case a => throw new RuntimeException("Invalid network symbol type: " + a)
       }
+  }
+  /**
+   * Simple 'interpreter' that maps configuration specification into MxNet symbol DAG
+   */
+  def symbolFromSpec(spec: Config, inName: String = "data", outName: String = "softmax") : Symbol = {  
+    import scala.collection.JavaConversions._
+    val data = Symbol.Variable("data")
+
+    // create a specMap
+    // build list of all data symbols in one pass
+    // then assemble each layer with references to previous layers
+    // this will allow for DAG representation rather than simple linear sequence
+    var lastName = ""
+    try {
+      val specList = spec.as[List[Config]]("mandolin.mx.specification")
+    
+    val finalMapping = 
+      specList.foldLeft(Map[String,Symbol]("input" -> data)){case (curMap, sp) =>
+      val spType = sp.as[String]("type")
+      val spName = sp.as[String]("name")
+      val inData = sp.as[String]("data") // input data
+      val inSymbol = curMap(inData)
+      val newSymbol = getSymbol(sp, inSymbol, spType)
       lastName = spName
       curMap + (spName -> newSymbol)
       }
-    finalMapping(lastName)
+      finalMapping(lastName)
+    } catch {case e:Throwable =>
+      val specObj = spec.as[Config]("mandolin.mx.specification")
+      val predecessors = specObj.entrySet().toVector.foldLeft(Map():Map[String,ConfigValue]) {case (ac,v) => 
+        ac + (v.getKey -> v.getValue)
+      }
+      throw e
+    }
   }
-
 }

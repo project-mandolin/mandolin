@@ -65,9 +65,9 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
             numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
     ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
           batchEndCallback = new Speedometer(batchSz, 50))
-        weights.setArgParams(ff.getArgParams)
-        weights.setAuxParams(ff.getAuxParams)
-    acc = metric.get._2.toDouble                       
+    // weights.setArgParams(ff.getArgParams)
+    // weights.setAuxParams(ff.getAuxParams)
+    acc = metric.get._2.toDouble        
     new MxNetLossGradient(acc)
   }
 }
