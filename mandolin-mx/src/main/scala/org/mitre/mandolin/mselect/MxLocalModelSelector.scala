@@ -18,6 +18,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
   
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
+  
   val (fe: FeatureExtractor[String, GLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
@@ -51,7 +53,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
         appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
-    
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
+  
   val ms: ModelSpace = msb.build(0, 0, false, appSettings)
   override val ev = {
     new FileSystemMxModelEvaluator(new java.io.File(trainFile), new java.io.File(testFile))

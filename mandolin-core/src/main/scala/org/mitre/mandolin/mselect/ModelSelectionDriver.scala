@@ -20,13 +20,14 @@ abstract class ModelSelectionDriver(trainFile: String, testFile: String, numWork
   val ms: ModelSpace
   
   val ev: ModelEvaluator   
+  
+  val acqFun : AcquisitionFunction
 
   def search( ) : Unit = {
 
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers))
     val system = ActorSystem("ModelSelectionActorSystem")
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")
-    val acqFun = new BayesianNNAcquisitionFunction(ms)
     val scorerActor = system.actorOf(Props(new ModelScorer(ms, acqFun, master, scoreSampleSize, acqFunRelearnSize, totalEvals)), name = "scorer")
     val workers = 1 to numWorkers map (i => system.actorOf(Props(new ModelConfigEvalWorker(master, scorerActor, ev, workerBatchSize)), name = "worker" + i))
     Thread.sleep(2000)

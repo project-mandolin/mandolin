@@ -16,6 +16,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
     this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }      
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
   
   val (fe: FeatureExtractor[String, GLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
@@ -42,6 +43,7 @@ class SparkLocalFileSystemImgMxModelSelector(val sc: SparkContext, val msb: MxMo
     appSettings: Option[MxModelSettings with ModelSelectionSettings] = None) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
   
+  
   // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
   def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
@@ -49,7 +51,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
         appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
-    
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
+  
   val ms: ModelSpace = msb.build(0, 0, false, appSettings)
   override val ev = {
     new SparkMxFileSystemModelEvaluator(sc, trainFile, testFile)

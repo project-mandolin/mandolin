@@ -221,11 +221,6 @@ class SymbolBuilder {
   def symbolFromSpec(spec: Config, inName: String = "data", outName: String = "softmax") : Symbol = {  
     import scala.collection.JavaConversions._
     val data = Symbol.Variable("data")
-
-    // create a specMap
-    // build list of all data symbols in one pass
-    // then assemble each layer with references to previous layers
-    // this will allow for DAG representation rather than simple linear sequence
     var lastName = ""
     try {
       val specList = spec.as[List[Config]]("mandolin.mx.specification")
@@ -242,11 +237,31 @@ class SymbolBuilder {
       }
       finalMapping(lastName)
     } catch {case e:Throwable =>
+      // if the specification isn't a list, then assume it's in the "NEW" format
       val specObj = spec.as[Config]("mandolin.mx.specification")
-      val predecessors = specObj.entrySet().toVector.foldLeft(Map():Map[String,ConfigValue]) {case (ac,v) => 
-        ac + (v.getKey -> v.getValue)
+      val layerNames = specObj.entrySet().toVector.map{x => x.getKey.split('.')(0)} 
+      val nextMap = layerNames.toSet.foldLeft(Map():Map[String,String]){case (ac,v) =>        
+        val inLayer = specObj.getConfig(v).getString("data")
+        ac + (inLayer -> v)
+        }      
+      var building = true
+      var prevName = "input"
+      val buf = new collection.mutable.ArrayBuffer[(String,String)]
+      while (building) {
+        val current = nextMap.get(prevName)
+        current match {case Some(c) => buf append ((prevName, c)); prevName = c case None => building = false}
       }
-      throw e
+      val subSeqPairs = buf.toVector
+      val lastName = subSeqPairs.last._2
+      val finalMapping = subSeqPairs.foldLeft(Map[String,Symbol]("input" -> data)){case (curMap, sPair) =>
+        val (prev,cur) = sPair
+        val sp = specObj.getConfig(cur)
+        val spType = sp.getString("type")
+        val inSymbol = curMap(prev)
+        val newSymbol = getSymbol(sp, inSymbol, spType)
+        curMap + (cur -> newSymbol)
+        }
+      finalMapping(lastName)
     }
   }
 }

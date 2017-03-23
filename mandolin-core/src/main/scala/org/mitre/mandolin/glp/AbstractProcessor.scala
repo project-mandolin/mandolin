@@ -7,7 +7,9 @@ import org.mitre.mandolin.optimize.Updater
 import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
 import org.mitre.mandolin.util.LineParser
+import com.typesafe.config.Config
 import scala.reflect.ClassTag
+import net.ceedubs.ficus.Ficus._
 
 case class GLPComponentSet(
     ann: ANNetwork, 
@@ -37,7 +39,33 @@ abstract class AbstractProcessor extends LineParser {
       la
     } else new StdAlphabet
   }
+  
+  def mapSpecToList(conf: Map[String, Map[String, String]]) = {
+    val layerNames = conf.keySet
+    var prevName = ""
+    val nextMap = layerNames.toSet.foldLeft(Map():Map[String,String]){case (ac,v) =>
+      val cc = conf(v)
+        try {
+        val inLayer = cc("data")
+        ac + (inLayer -> v)
+        } catch {case _:Throwable =>
+          prevName = v  // this is the name for the input layer (as it has no "data" field")
+          ac}
+      }      
+    var building = true    
+    val buf = new collection.mutable.ArrayBuffer[String]    
+    buf append prevName // add input layer name first
+    while (building) {
+      val current = nextMap.get(prevName)
+      current match {case Some(c) => buf append c; prevName = c case None => building = false}
+      }
+    buf.toList map {n => conf(n)} // back out as an ordered list      
+  }
 
+  def getGLPSpec(cs: Map[String, Map[String,String]], idim: Int, odim: Int) : IndexedSeq[LType] = {
+    getGLPSpec(mapSpecToList(cs), idim, odim)  
+  }
+  
   def getGLPSpec(cs: List[Map[String, String]], idim: Int, odim: Int): IndexedSeq[LType] = {
     for (i <- 0 until cs.length) yield {
       val l = cs(i)
@@ -168,6 +196,11 @@ abstract class AbstractProcessor extends LineParser {
         appSettings.filterFeaturesMI, appSettings.printFeatureFile, io)
     }
   }
+  
+  def getSubComponents(appSettings: GLPModelSettings, idim: Int, odim: Int) : (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
+    val specs = appSettings.netspecConfig match {case Some(c) => getGLPSpec(c, idim, odim) case None => getGLPSpec(appSettings.netspec, idim, odim)}
+    getSubComponents(specs)
+  }
 
   def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int): (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
     val specs = getGLPSpec(confSpecs, idim, odim)
@@ -202,7 +235,8 @@ abstract class AbstractProcessor extends LineParser {
     val fa = 
       if (appSettings.scaleInputs) getScaledDenseVecAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.denseVectorSize) 
       else new IdentityAlphabet(appSettings.denseVectorSize, fix = true)
-    getComponentsDenseVecs(appSettings.netspec, appSettings.denseVectorSize, la, fa)
+    val cspec = appSettings.netspecConfig match {case Some(c) => mapSpecToList(c) case None => appSettings.netspec}  
+    getComponentsDenseVecs(cspec, appSettings.denseVectorSize, la, fa)
   }  
 
   def getComponentsDenseVecs(layerSpecs: IndexedSeq[LType]): GLPComponentSet = {
@@ -223,7 +257,8 @@ abstract class AbstractProcessor extends LineParser {
   def getComponentsHashedFeatures(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
     val fa = new RandomAlphabet(appSettings.numFeatures)
-    val (nn, predictor, outConstructor) = getSubComponents(appSettings.netspec, appSettings.numFeatures, la.getSize)
+    val cspec = appSettings.netspecConfig match {case Some(c) => mapSpecToList(c) case None => appSettings.netspec}
+    val (nn, predictor, outConstructor) = getSubComponents(cspec, appSettings.numFeatures, la.getSize)
     val fe = new SparseVecFeatureExtractor(fa, la)
     GLPComponentSet(nn, predictor, outConstructor, fe, la, appSettings.numFeatures,1000)
   }
@@ -242,18 +277,18 @@ abstract class AbstractProcessor extends LineParser {
     GLPComponentSet(nn, predictor, outConstructor, fe, la, fa.getSize, npts)
   }
 
-  def getComponentsInducedAlphabet(confSpecs: List[Map[String, String]], lines: Iterator[String],
+  def getComponentsInducedAlphabet(appSettings: GLPModelSettings, lines: Iterator[String],
                                    la: Alphabet, scale: Boolean, selectedFeatures: Int, io: IOAssistant): GLPComponentSet = {
     val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
     fa.ensureFixed
-    val mspec = getGLPSpec(confSpecs, fa.getSize, la.getSize)
+    val mspec = appSettings.netspecConfig match {case Some(c) => getGLPSpec(c, fa.getSize, la.getSize) case None => getGLPSpec(appSettings.netspec, fa.getSize, la.getSize)}
     getComponentsInducedAlphabet(mspec, lines, la, scale, selectedFeatures, io, Some((fa,npts)))
   }
 
   def getComponentsInducedAlphabet(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
     val lines = io.readLines(appSettings.trainFile.get)
-    getComponentsInducedAlphabet(appSettings.netspec, lines, la, appSettings.scaleInputs, appSettings.filterFeaturesMI, io)
+    getComponentsInducedAlphabet(appSettings, lines, la, appSettings.scaleInputs, appSettings.filterFeaturesMI, io)
   }
   
   def getComponentsViaSettings(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
