@@ -11,7 +11,11 @@ import scala.collection.JavaConversions._
 trait ModelSelectionSettings extends GLPModelSettings {
   
   private def getIntPair(li: List[Integer]) = li match {case a :: b :: Nil => (a.toInt, b.toInt) case _ => throw new RuntimeException("Invalid integer range")}
+  private def getIntTriple(li: List[Integer]) = 
+    li match {case a :: b :: c :: Nil => (a.toInt, b.toInt, c.toInt) case _ => throw new RuntimeException("Invalid integer range")}
   private def getDoublePair(li: List[java.lang.Double]) = li match {case a :: b :: Nil => (a.toDouble, b.toDouble) case _ => throw new RuntimeException("Invalid integer range")}
+  private def getDoubleTriple(li: List[java.lang.Double]) = 
+    li match {case a :: b :: c :: Nil => (a.toDouble, b.toDouble, c.toDouble) case _ => throw new RuntimeException("Invalid integer range_by")}
   
   def buildModelSpaceFromConfig() = {
     val cobj = config.getConfig("mandolin.model-selection")
@@ -43,18 +47,30 @@ trait ModelSelectionSettings extends GLPModelSettings {
       val key = c.getString("name")
       // these values should be strings
       val values = c.getStringList("values") 
-      CategoricalMetaParameter(key, CategoricalSet(values.toVector))
+      CategoricalMetaParameter(key, new CategoricalSet(values.toVector))
     }
     val reals = cobj.getConfigList("real") map {c =>
       val key = c.getString("name")
-      val (l,u) = getDoublePair(c.getDoubleList("range").toList)
-      RealMetaParameter(key, RealSet(l,u))
+      try {
+        val (l,u) = getDoublePair(c.getDoubleList("range").toList)      
+        RealMetaParameter(key, new RealSet(l,u))      
+      } catch {
+        case _: Throwable =>
+          val (l,u,s) = getDoubleTriple(c.getDoubleList("range_by").toList)      
+          RealMetaParameter(key, new StepRealSet(l,u,s))
       }
+    }
     val ints =  cobj.getConfigList("int") map {c =>
       val key = c.getString("name")
-      val (l,u) = getIntPair(c.getIntList("range").toList) 
-      IntegerMetaParameter(key, IntSet(l,u))
+      try {
+        val (l,u) = getIntPair(c.getIntList("range").toList) 
+        IntegerMetaParameter(key, new IntSet(l,u))
+      } catch {
+        case _: Throwable =>
+          val (l,u,s) = getIntTriple(c.getIntList("range_by").toList)      
+          IntegerMetaParameter(key, new StepIntSet(l,u,s))
       }
+    }
     // this defines a vector of "topology meta parameters"
     // each topologyMetaParameter defines a space of topologies for a fixed number of layers
     // a topologySpaceMetaParameter is then a set/vector of these
@@ -70,10 +86,10 @@ trait ModelSelectionSettings extends GLPModelSettings {
         val (ll2,ul2) = getDoublePair(t.getDoubleList("l2-pen").toList)
         new LayerMetaParameter("layer",
             TupleSet4 (
-              CategoricalMetaParameter("ltype", CategoricalSet(lt.toVector)),
-              IntegerMetaParameter("dim", IntSet(lDim, uDim)), 
-              RealMetaParameter("l1pen", RealSet(ll1, ul1)),
-              RealMetaParameter("l2pen", RealSet(ll2, ul2)) ))
+              CategoricalMetaParameter("ltype", new CategoricalSet(lt.toVector)),
+              IntegerMetaParameter("dim", new IntSet(lDim, uDim)), 
+              RealMetaParameter("l1pen", new RealSet(ll1, ul1)),
+              RealMetaParameter("l2pen", new RealSet(ll2, ul2)) ))
         } 
       new TopologyMetaParameter(key, topoLayers.toVector)
       }

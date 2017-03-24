@@ -119,8 +119,8 @@ class AlphabetBuilder extends MetaParameterHandler {
               for (i <- 0 until x.length) {                
                 val (l1min, l1max) = x(i).valueSet match {
                   case TupleSet4(a,b,c,d) => b.valueSet match {
-                    case IntSet(l,u) => (l,u)                      
-                  }
+                    case x: IntSet => (x.lower, x.upper)
+                  }                     
                 }
                 if (i == 0) {
                   localMinWeights += modelSpace.idim * l1min
@@ -128,7 +128,7 @@ class AlphabetBuilder extends MetaParameterHandler {
                 } else {
                   val (l0min, l0max) = x(i-1).valueSet match {
                     case TupleSet4(a,b,c,d) => b.valueSet match {
-                      case IntSet(l,u) => (l,u)                      
+                      case x: IntSet => (x.lower,x.upper)                      
                     }
                    }
                   localMinWeights += l1min * l0min

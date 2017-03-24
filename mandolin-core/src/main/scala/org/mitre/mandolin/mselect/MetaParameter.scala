@@ -2,20 +2,36 @@ package org.mitre.mandolin.mselect
 
 sealed abstract class ValueSet[T <: MPValue] extends Serializable 
 
-case class CategoricalSet(valueSet: Vector[String]) extends ValueSet[CategoricalValue] with Serializable {
+class CategoricalSet(valueSet: Vector[String]) extends ValueSet[CategoricalValue] with Serializable {
   def size = valueSet.size
   def apply(i: Int) = valueSet(i)
 }
 
-case class RealSet(val lower: Double, val upper: Double) extends ValueSet[RealValue] with Serializable {
-  def getDiff = upper - lower  
+abstract class NumericSet[T <: MPValue] extends ValueSet[T] {
+  def drawRandom() : T
 }
 
-case class IntSet(val lower: Int, val upper: Int) extends ValueSet[IntValue] with Serializable {
+class RealSet(val lower: Double, val upper: Double) extends NumericSet[RealValue] with Serializable {
   def getDiff = upper - lower
+  def drawRandom() = RealValue(util.Random.nextDouble() * (upper - lower) + lower)
 }
 
+class StepRealSet(_l: Double, _u: Double, val step: Double) extends RealSet(_l, _u) {
+  private val arrValues = for (i <- _l to  _u by step) yield i
+  private val size = arrValues.size 
+  override def drawRandom() = RealValue(arrValues(util.Random.nextInt(size)))
+}
 
+class IntSet(val lower: Int, val upper: Int) extends NumericSet[IntValue] with Serializable {
+  def getDiff = upper - lower
+  def drawRandom() = IntValue(util.Random.nextInt(upper - lower) + lower)
+}
+
+class StepIntSet(_l: Int, _u: Int, val step: Int) extends IntSet(_l, _u) {
+  private val arrValues = Seq.range(_l, _u, step).toIndexedSeq
+  private val size = arrValues.size 
+  override def drawRandom() = IntValue(arrValues(util.Random.nextInt(size)))
+}
 
 // these can represent complex tuple-valued meta-parameters
 case class TupleSet2[T1 <: MPValue, T2 <: MPValue](val e1: MetaParameter[T1], val e2: MetaParameter[T2]) extends ValueSet[Tuple2Value[T1,T2]] with Serializable
@@ -53,7 +69,7 @@ sealed abstract class MetaParameter[T <: MPValue](val name: String, val valueSet
 case class RealMetaParameter(n: String, val vs: RealSet) extends MetaParameter[RealValue](n, vs) with Serializable {
 
   def drawRandomValue : ValuedMetaParameter[RealValue] = {
-    new ValuedMetaParameter(RealValue(util.Random.nextDouble() * vs.getDiff + vs.lower), this)
+    new ValuedMetaParameter(vs.drawRandom(), this)
   }
 }
 
@@ -75,7 +91,7 @@ case class CategoricalMetaParameter(n: String, val valSet: CategoricalSet) exten
 
 case class IntegerMetaParameter(n: String, val vs: IntSet) extends MetaParameter[IntValue](n, vs) with Serializable {
   def drawRandomValue : ValuedMetaParameter[IntValue] = {
-    new ValuedMetaParameter(IntValue(util.Random.nextInt(vs.upper - vs.lower) + vs.lower), this)
+    new ValuedMetaParameter(vs.drawRandom(), this)
   }
 }
 
