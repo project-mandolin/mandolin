@@ -48,11 +48,8 @@ trait MxLearnerBuilderHelper {
 }
 
 class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerInstance[GLPFactor] with MxNetSetup {
-  
-  val log = LoggerFactory.getLogger(getClass)
-  
+    
   def train(trVecs: Vector[GLPFactor], tstVecs: Vector[GLPFactor]) : Double = {
-    log.info("Initiating training ...")
     val devices = getDeviceArray(appSettings)
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)    
     val shape = Shape(nfs)
@@ -64,6 +61,7 @@ class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerIns
     val weights = new MxNetWeights(1.0f)    
     val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, appSettings.modelFile, appSettings.saveFreq)
     val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
+    sym.dispose()
     lg.loss
   }
 }
@@ -90,6 +88,7 @@ class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int) exten
     val weights = new MxNetWeights(1.0f)    
     val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, appSettings.modelFile, appSettings.saveFreq)
     val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
+    sym.dispose()
     lg.loss
   }
 }

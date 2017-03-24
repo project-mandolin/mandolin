@@ -13,7 +13,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
   def this(sc: SparkContext, _msb: MandolinModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
     this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
-  }      
+  }     
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
   val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int, sparse: Boolean) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),

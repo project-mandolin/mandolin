@@ -69,10 +69,10 @@ extends ModelEvaluator with Serializable {
     val accuracy = configRDD.mapPartitions { configs =>
       println("Creating file system mx training instance ...")
       val cv1 = configs.toList
-      val cvec = cv1.par      
+      //val cvec = cv1.par      
       // set tasksupport to allocate N threads so each item is processed concurrently
-      cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-      val accuracies = cvec map {config =>
+      //cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
+      val accuracies = cv1 map {config =>
         val learner = FileSystemImgMxModelInstance(config)
         val acc = learner.train(Vector(new java.io.File(_trainData)), Vector(new java.io.File(_testData)))
         acc        

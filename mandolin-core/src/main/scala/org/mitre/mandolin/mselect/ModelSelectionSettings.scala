@@ -4,6 +4,7 @@ import org.mitre.mandolin.glp.{LType, InputLType, SoftMaxLType, SparseInputLType
 import com.typesafe.config.{ConfigList, ConfigValueType}
 import org.mitre.mandolin.config.GeneralLearnerSettings
 import org.mitre.mandolin.glp.GLPModelSettings
+import net.ceedubs.ficus.Ficus._
 
 import scala.collection.JavaConversions._
 
@@ -16,15 +17,21 @@ trait ModelSelectionSettings extends GLPModelSettings {
     val cobj = config.getConfig("mandolin.model-selection")
     
     val (inLType, outLType) = {
-      val (is, os) = config.getConfigList("mandolin.trainer.specification").toList match {
+      //val (is, os) = config.getConfigList("mandolin.trainer.specification").toList match {
+      val li = try {
+        config.as[List[Map[String,String]]]("mandolin.trainer.specification")
+      } catch {case _: Throwable => this.mapSpecToList(config.as[Map[String, Map[String, String]]]("mandolin.trainer.specification"))}
+      val (is, os) = 
+      li match {
         case a :: rest => (a, rest.reverse.head)
+        case _ => throw new RuntimeException("Invalid mandolin.trainer.specification")
         }
-      val inLType = is.getString("ltype") match {
+      val inLType = is("ltype") match {
         case "Input" => LType(InputLType)
         case "InputSparse" => LType(SparseInputLType)
         case a => throw new RuntimeException("Invalid LType " + a)
       }
-      val outLType = os.getString("ltype") match {
+      val outLType = os("ltype") match {
         case "SoftMax" => LType(SoftMaxLType)
         case "Linear" => LType(LinearLType)
         case a => throw new RuntimeException("Invalid LType " + a)
@@ -83,4 +90,8 @@ trait ModelSelectionSettings extends GLPModelSettings {
   val scoreSampleSize = asInt("mandolin.model-selection.score-sample-size")
   val updateFrequency = asInt("mandolin.model-selection.update-frequency")
   val totalEvals      = asInt("mandolin.model-selection.total-evals")  
+  val acquisitionFunction = asStrOpt("mandolin.model-selection.acquisition-function") match {
+    case Some("random") => new RandomAcquisitionFunction
+    case None => new BayesianNNAcquisitionFunction(modelSpace)
+  }
 }

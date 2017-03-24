@@ -218,7 +218,35 @@ trait BatchLearnerSettings extends AppSettings {
 
 
 trait DeepNetSettings extends AppSettings {
-  val netspec       = config.as[List[Map[String,String]]]("mandolin.trainer.specification") 
+  
+  def mapSpecToList(conf: Map[String, Map[String, String]]) = {
+    val layerNames = conf.keySet
+    var prevName = ""
+    val nextMap = layerNames.toSet.foldLeft(Map():Map[String,String]){case (ac,v) =>
+      val cc = conf(v)
+        try {
+        val inLayer = cc("data")
+        ac + (inLayer -> v)
+        } catch {case _:Throwable =>
+          prevName = v  // this is the name for the input layer (as it has no "data" field")
+          ac}
+      }      
+    var building = true    
+    val buf = new collection.mutable.ArrayBuffer[String]    
+    buf append prevName // add input layer name first
+    while (building) {
+      val current = nextMap.get(prevName)
+      current match {case Some(c) => buf append c; prevName = c case None => building = false}
+      }
+    buf.toList map {n => conf(n)} // back out as an ordered list      
+  }
+
+  val netspec       = try { config.as[List[Map[String,String]]]("mandolin.trainer.specification") } catch {case _: Throwable =>
+    Nil
+    } 
+  val netspecConfig : Option[Map[String, Map[String, String]]] =  
+    try { Some(config.as[Map[String, Map[String,String]]]("mandolin.trainer.specification")) } 
+    catch {case _: Throwable => None }
 }
 
 
