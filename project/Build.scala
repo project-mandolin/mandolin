@@ -24,7 +24,6 @@ object MandolinBuild extends Build {
   // In addition, the native code is pre-built in mandolin/mandolin-mx/native  
   lazy val mandolinMx = Project(id = "mandolin-mx", base = file("mandolin-mx")).
                             settings(mxNetSettings:_*).
-			    // uncomment the following if using dependency management 
                             // settings(mxNetDependencySettings:_*).
                             settings(assemblyProjSettings("mx"):_*).
                             //settings(siteSettings:_*).
@@ -124,7 +123,9 @@ object MandolinBuild extends Build {
   def mxNetDependencySettings : Seq[Setting[_]] = {
     Seq(
       libraryDependencies ++= Seq(
-        "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT")
+        // "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT")
+      )
+        
     )
   }
 

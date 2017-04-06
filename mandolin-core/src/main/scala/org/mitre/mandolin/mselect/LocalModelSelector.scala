@@ -22,7 +22,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
   
-  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction}
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new ExpectedImprovement}
+  //val scoringFun = new BayesianNNScoringFunction()
   
   val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int, sparse: Boolean) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(

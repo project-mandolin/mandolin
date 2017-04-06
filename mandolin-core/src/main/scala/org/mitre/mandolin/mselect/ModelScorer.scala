@@ -16,7 +16,7 @@ case class ScoredModelConfig(sc: Double, mc: ModelConfig)
   * model configurations - where a score is the estimated performance/accuracy/error
   * of the model on a given dataset.
   */
-class ModelScorer(modelConfigSpace: ModelSpace, acqFn: AcquisitionFunction, evalMaster: ActorRef,
+class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMaster: ActorRef,
                   sampleSize: Int, acqFnThreshold: Int, totalEvals: Int) extends Actor {
 
   import WorkPullingPattern._

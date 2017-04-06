@@ -33,7 +33,13 @@ class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettin
   val mxRescaleGrad       = asFloatOpt("mandolin.mx.train.rescale-gradient").getOrElse(0f)
   val mxMomentum         = asFloatOpt("mandolin.mx.train.momentum").getOrElse(0f)
   val mxGradClip         = asFloatOpt("mandolin.mx.train.gradient-clip").getOrElse(0f)
-  val mxRho              = asFloatOpt("mandoiin.mx.train.rho").getOrElse(0.01f)
+  val mxRho              = asFloatOpt("mandolin.mx.train.rho").getOrElse(0.01f)
+  val mxWd               = asFloatOpt("mandolin.mx.train.wd").getOrElse(0.00001f) // L2 weight decay
+  val mxInitializer      = asStrOpt("mandolin.mx.train.initializer").getOrElse("uniform")
+  
+  val mxTrainLabels      = asStrOpt("mandolin.mx.train-labels")
+  val mxTestLabels      = asStrOpt("mandolin.mx.test-labels")
+  
   
   // values are: sgd, adam, rmsprop, adadelta, nag, adagrad, sgld
   val mxOptimizer        = asStrOpt("mandolin.mx.train.optimizer").getOrElse("sgd")
@@ -43,6 +49,9 @@ class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettin
   val ydim     = asIntOpt("mandolin.mx.img.ydim").getOrElse(0)
   val meanImgFile = asStrOpt("mandolin.mx.img.mean-image").getOrElse("mean-img")
   val preProcThreads = asIntOpt("mandolin.mx.img.preprocess-threads").getOrElse(8)
+  
+  // this allows GPU hosts to be specified in the configuration
+  val gpuHosts = try config.as[List[String]]("mandolin.mx.gpu-hosts") catch {case _:Throwable => Nil}
   
   override def withSets(avs: Seq[(String, Any)]) : MxModelSettings  = {
     val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) =>       

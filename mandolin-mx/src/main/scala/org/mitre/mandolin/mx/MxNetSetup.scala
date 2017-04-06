@@ -5,9 +5,16 @@ import ml.dmlc.mxnet.optimizer._
 
 trait MxNetSetup {
   def getDeviceArray(appSettings: MxModelSettings) : Array[Context] = {
-    val gpuContexts = appSettings.getGpus map {i => Context.gpu(i)}
+    val gpuContexts = appSettings.getGpus map {i => Context.gpu(i)}    
     val cpuContexts = appSettings.getCpus map {i => Context.cpu(i)}
-    (gpuContexts ++ cpuContexts).toArray
+    if (gpuContexts.length < 1) { // this checks if the current host is a "gpu" host and assigns to processor "0"
+      val ghosts = appSettings.gpuHosts.toSet
+      if (ghosts.size > 0) {
+        val curMachineName = java.net.InetAddress.getLocalHost().getHostName
+        if (ghosts.contains(curMachineName)) ((Context.gpu(0)) :: cpuContexts).toArray
+        else cpuContexts.toArray
+      } else cpuContexts.toArray
+    } else (gpuContexts ++ cpuContexts).toArray         
   }
   
   def getOptimizer(appSettings: MxModelSettings) = {
@@ -54,6 +61,32 @@ trait MxNetSetup {
       "preprocess_threads" -> preProcessThreads.toString
       )
     )
+  }
+  
+  def getMNISTTrainIO(appSettings: MxModelSettings, dataShape: Shape) = {
+    val flat = if (dataShape.size == 3) "False" else "True"
+    IO.MNISTIter(Map(
+      "image" -> (appSettings.trainFile.get),
+      "label" -> (appSettings.mxTrainLabels.get),
+      "label_name" -> "softmax_label",
+      "input_shape" -> dataShape.toString,
+      "batch_size" -> appSettings.miniBatchSize.toString,
+      "shuffle" -> "True",
+      "flat" -> flat))
+  }
+  
+  def getMNISTTestIO(appSettings: MxModelSettings, dataShape: Shape) = {
+    val flat = if (dataShape.size == 3) "False" else "True"
+    IO.MNISTIter(Map(
+      "image" -> (appSettings.testFile.get),
+      "label" -> (appSettings.mxTestLabels.get),
+      "label_name" -> "softmax_label",
+      "input_shape" -> dataShape.toString,
+      "batch_size" -> appSettings.miniBatchSize.toString,
+      "shuffle" -> "False",
+      "flat" -> flat))
+      // "num_parts" -> kv.numWorkers.toString,
+      // "part_index" -> kv.`rank`.toString))
   }
    
   

@@ -2,7 +2,8 @@ package org.mitre.mandolin.mx
 
 import org.mitre.mandolin.optimize.{ Updater, LossGradient, TrainingUnitEvaluator }
 import org.mitre.mandolin.glp.GLPFactor
-import ml.dmlc.mxnet.{ EpochEndCallback, Xavier, Model, Shape, FeedForward, Symbol, Context, Optimizer, NDArray, DataIter, DataBatch, Accuracy }
+import ml.dmlc.mxnet.{ EpochEndCallback, Uniform, Initializer, Xavier, Model, Shape, FeedForward, 
+  Symbol, Context, Optimizer, NDArray, DataIter, DataBatch, Accuracy }
 import ml.dmlc.mxnet.io.{ NDArrayIter }
 import ml.dmlc.mxnet.optimizer.SGD
 import ml.dmlc.mxnet.Callback.Speedometer
@@ -47,7 +48,7 @@ class MxModelCheckPoint(prefix: String, freq: Int = 1) extends EpochEndCallback 
   }
 }
 
-class MxNetEvaluator(val net: Symbol, val ctx: Array[Context], shape: Shape, batchSz: Int, 
+class MxNetEvaluator(val net: Symbol, val ctx: Array[Context], shape: Shape, batchSz: Int, init: Initializer,
     checkPointPrefix: Option[String] = None, checkPointFreq: Int = 1)
 extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetOptimizer] {
   
@@ -58,17 +59,14 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
   def copy() = throw new RuntimeException("MxNetEvaluator should/can not be copied")
   
   def evaluateTrainingMiniBatch(tr: DataIter, tst: DataIter, weights: MxNetWeights, u: MxNetOptimizer, epochCnt: Int = 0) : MxNetLossGradient = {    
-    var acc = 0.0
     val metric = new Accuracy()
     val ff = new FeedForward(net, ctx, optimizer = u.optimizer, 
-        initializer = new Xavier(rndType = "gaussian", factorType = "in", magnitude = 2.0f), 
-            numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
+        initializer = init, numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
     ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
           batchEndCallback = new Speedometer(batchSz, 50))
     weights.setArgParams(ff.getArgParams)
-    weights.setAuxParams(ff.getAuxParams)
-    acc = metric.get._2.toDouble        
-    new MxNetLossGradient(acc)
+    weights.setAuxParams(ff.getAuxParams)           
+    new MxNetLossGradient(metric.get._2.toDouble)
   }
 }
 

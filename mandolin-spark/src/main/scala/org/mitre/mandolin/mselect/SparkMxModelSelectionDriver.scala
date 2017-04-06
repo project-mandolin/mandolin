@@ -16,7 +16,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
     this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }      
-  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
   val (fe: FeatureExtractor[String, GLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
@@ -51,7 +51,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
         appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
-  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
   val ms: ModelSpace = msb.build(0, 0, false, appSettings)
   override val ev = {
@@ -70,7 +70,8 @@ object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
     val testFile = appSettings.testFile.getOrElse(trainFile)
     val builder = new MxModelSpaceBuilder(appSettings.modelSpace)    
     val selector = 
-      if (appSettings.inputType equals "recordio") new SparkLocalFileSystemImgMxModelSelector(sc, builder, appSettings)
+      if ((appSettings.inputType equals "recordio") || (appSettings.inputType equals "mnist")) 
+        new SparkLocalFileSystemImgMxModelSelector(sc, builder, appSettings)
       else new SparkMxModelSelectionDriver(sc, builder, appSettings)
     selector.search()
   }  

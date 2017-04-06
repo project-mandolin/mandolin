@@ -18,7 +18,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
   
-  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
   val (fe: FeatureExtractor[String, GLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
@@ -53,7 +53,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
         appSettings.workerBatchSize, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
   }
-  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisitionFunction }
+  val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
   val ms: ModelSpace = msb.build(0, 0, false, appSettings)
   override val ev = {
@@ -65,7 +65,7 @@ object MxLocalModelSelector extends org.mitre.mandolin.config.LogInit {
    def main(args: Array[String]): Unit = {
     val appSettings = new MxModelSettings(args) with ModelSelectionSettings
     val builder1 = new MxModelSpaceBuilder(appSettings.modelSpace) // MxLearnerFactory
-    if (appSettings.inputType equals "recordio") { // XXX - not yet tested, but should let this work with recordio from file      
+    if ((appSettings.inputType equals "recordio") || (appSettings.inputType equals "mnist")) {       
       val selector = new LocalFileSystemImgMxModelSelector(builder1, appSettings)
       selector.search()
     } else {

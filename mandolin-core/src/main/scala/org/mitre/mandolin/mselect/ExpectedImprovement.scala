@@ -14,24 +14,87 @@ import org.slf4j.LoggerFactory
 import breeze.linalg.{ DenseVector => BreezeVec, DenseMatrix => BreezeMat }
 
 
-abstract class AcquisitionFunction {
+
+abstract class ScoringFunction {
   def score(configs: Vector[ModelConfig]) : Vector[Double]
   def score(config: ModelConfig) : Double
-  def train(evalResults: Seq[ScoredModelConfig]) : Unit
-  
+  def train(evalResults: Seq[ScoredModelConfig]) : Unit  
 }
 
-abstract class ExpectedImprovement extends AcquisitionFunction {
 
+abstract class AcquisitionFunction {
+  def score(optimum: Double, mu: Double, variance: Double) : Double
 }
 
-class RandomAcquisitionFunction extends AcquisitionFunction {
+
+class ExpectedImprovement extends AcquisitionFunction {
+  val gaussian = breeze.stats.distributions.Gaussian(0.0,1.0)
+
+  def score(optimum: Double, mu: Double, variance: Double) : Double = {
+
+     if(variance > 0.0) {
+      val standardDeviation = math.sqrt(variance)
+      val z = ((mu - optimum) / standardDeviation)
+      val probablilityOfImprovement = gaussian.cdf(z)
+
+      (standardDeviation * z * probablilityOfImprovement) + gaussian.pdf(z)
+    } else {
+      val z = mu - optimum
+      val probablilityOfImprovement = gaussian.cdf(z)
+      (z * probablilityOfImprovement) + gaussian.pdf(z)
+    }
+  }
+}
+
+class RandomAcquisition extends AcquisitionFunction {
+  def score(optimum: Double, mu: Double, variance: Double) : Double = {
+    util.Random.nextDouble()
+  }
+}
+
+class ExpectedImprovementVer2 extends AcquisitionFunction {
+
+  val gaussian = breeze.stats.distributions.Gaussian(0.0,1.0)
+
+  def score(optimum: Double, mu: Double, variance: Double) : Double = {
+    if (variance > 0.0) {
+      val zfactor = (mu - optimum) / variance
+      (mu - optimum) * gaussian.cdf(zfactor) + variance * gaussian.pdf(zfactor)
+    }
+    else 0.0
+  }
+}
+
+class ProbabilityOfImprovement extends AcquisitionFunction {
+
+  val gaussian = breeze.stats.distributions.Gaussian(0.0,1.0)
+
+  def score(optimum: Double, mu: Double, variance: Double) : Double = {
+    if(variance > 0.0) {
+      val z = ((mu - optimum) / math.sqrt(variance))
+      gaussian.cdf(z)
+    } else {
+      val z = mu - optimum
+      gaussian.cdf(z)
+    }
+  }
+}
+
+class UpperConfidenceBound(k: Double) extends AcquisitionFunction {
+
+  def score(optimum: Double, mu: Double, variance: Double) : Double = {
+    val standardDeviation = math.sqrt(variance)
+    mu + k * standardDeviation
+  }
+}
+
+class RandomScoringFunction extends ScoringFunction {
   def score(config: ModelConfig) : Double = util.Random.nextDouble()
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {}
   def score(configs: Vector[ModelConfig]) : Vector[Double] = configs map {_ => util.Random.nextDouble()}
 }
 
-class MockAcquisitionFunction extends AcquisitionFunction {
+class MockScoringFunction extends ScoringFunction {
   def score(configs: Vector[ModelConfig]) : Vector[Double] = configs map {_ => util.Random.nextDouble()}
   def score(config: ModelConfig) : Double = util.Random.nextDouble()
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {
@@ -214,7 +277,7 @@ class MetaParamDecoder(
  * 
  * @author wellner@mitre.org
  */
-class BayesianNNAcquisitionFunction(ms: ModelSpace) extends AcquisitionFunction {
+class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = new ExpectedImprovement) extends ScoringFunction {
   
   
   private val linear = false
@@ -245,6 +308,19 @@ class BayesianNNAcquisitionFunction(ms: ModelSpace) extends AcquisitionFunction 
     }
   }
   
+  private def calculateScore(config: ModelConfig) : Double = {
+    val (mu, variance) = getPredictiveMeanVariance(config)
+    acqFunc.score(bestScore, mu, variance)
+  }
+
+  def score(config: ModelConfig) : Double = {
+    calculateScore(config)
+  }
+
+  def score(configs: Vector[ModelConfig]) : Vector[Double] = {
+    configs map calculateScore
+  }
+  
   private def getExpectedImprovement(config: ModelConfig) : Double = {
     val (mu, sigma) = getPredictiveMeanVariance(config)
 
@@ -256,14 +332,7 @@ class BayesianNNAcquisitionFunction(ms: ModelSpace) extends AcquisitionFunction 
     else 0.0
   }
   
-  def score(config: ModelConfig) : Double = {
-    getExpectedImprovement(config)    
-  }
   
-  def score(configs: Vector[ModelConfig]) : Vector[Double] = {
-    configs map getExpectedImprovement
-  }
-
   // XXX - can probably just make this static, built up front since features won't change
   def getMetaTrainer = GLPTrainerBuilder(mspec, fe, fa.getSize, 1)    
   

@@ -224,7 +224,7 @@ abstract class AbstractProcessor extends LineParser {
     val regression = confSpecs.last("ltype").equals("Linear")
     val fe =
       if (regression) new StdVectorExtractorRegression(fa, dim)
-    else if (isSparse) new SparseVecFeatureExtractor(fa, labelAlphabet) else new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
+      else if (isSparse) new SparseVecFeatureExtractor(fa, labelAlphabet) else new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
     val laSize = if (regression) 1 else labelAlphabet.getSize
     val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, laSize)
     GLPComponentSet(nn, predictor, outConstructor, fe, new IdentityAlphabet(1), dim, 1000)

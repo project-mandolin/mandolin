@@ -100,14 +100,19 @@ trait ModelSelectionSettings extends GLPModelSettings {
   }
   
   val modelSpace = buildModelSpaceFromConfig()
-  val numWorkers = asInt("mandolin.model-selection.num-workers")
+  val numWorkers = asInt("mandolin.model-selection.concurrent-evaluations")
   val threadsPerWorker = asInt("mandolin.model-selection.threads-per-worker")
   val workerBatchSize = asInt("mandolin.model-selection.worker-batch-size")
   val scoreSampleSize = asInt("mandolin.model-selection.score-sample-size")
   val updateFrequency = asInt("mandolin.model-selection.update-frequency")
   val totalEvals      = asInt("mandolin.model-selection.total-evals")  
   val acquisitionFunction = asStrOpt("mandolin.model-selection.acquisition-function") match {
-    case Some("random") => new RandomAcquisitionFunction
-    case None => new BayesianNNAcquisitionFunction(modelSpace)
+    case Some("random") => new RandomAcquisition
+    case Some("ucb-3") => new UpperConfidenceBound(0.3)
+    case Some("ucb-7") => new UpperConfidenceBound(0.7)
+    case Some("ucb") => new UpperConfidenceBound(0.3)
+    case Some("pi") => new ProbabilityOfImprovement
+    case Some("ei2") => new ExpectedImprovementVer2
+    case _ => new ExpectedImprovement
   }
 }

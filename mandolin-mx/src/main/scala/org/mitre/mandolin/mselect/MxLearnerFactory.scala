@@ -4,7 +4,7 @@ import org.mitre.mandolin.glp.GLPFactor
 import org.mitre.mandolin.glp.{GLPModelSettings, LType, SparseInputLType, InputLType,SoftMaxLType}
 import org.mitre.mandolin.mx.{MxModelSettings, MxNetSetup}
 
-import ml.dmlc.mxnet.{Context, Shape}
+import ml.dmlc.mxnet.{Uniform, Xavier, Context, Shape}
 import ml.dmlc.mxnet.optimizer._
 import org.mitre.mandolin.mx.{ MxNetOptimizer, MxNetWeights, MxNetEvaluator, SymbolBuilder, GLPFactorIter}
   
@@ -59,7 +59,11 @@ class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerIns
     val opt = getOptimizer(appSettings)
     val updater = new MxNetOptimizer(opt)
     val weights = new MxNetWeights(1.0f)    
-    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, appSettings.modelFile, appSettings.saveFreq)
+    val initializer = appSettings.mxInitializer match {
+      case "xavier" => new Xavier(rndType = "gaussian", factorType = "in", magnitude = 1.8f)
+      case _ => new Uniform(0.01f)
+    }
+    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, initializer, appSettings.modelFile, appSettings.saveFreq)
     val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
     sym.dispose()
     lg.loss
@@ -79,14 +83,23 @@ class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int) exten
   def train(trData: Vector[java.io.File], tstData: Vector[java.io.File]) : Double = {
     val devices = getDeviceArray(appSettings)
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)
-    val shape   = Shape(appSettings.channels, appSettings.xdim, appSettings.ydim)
-    val trIter = getTrainIO(appSettings, shape)
-    val tstIter = getTestIO(appSettings, shape)
+    val (shape, trIter, tstIter) = if (appSettings.inputType equals "mnist") {
+      val yd = appSettings.ydim // if this is greater than 0 assume data is shaped, otherwise flat with xdim providing dimensions
+      val s = if (yd > 0) Shape(appSettings.channels, appSettings.xdim, yd) else Shape(appSettings.xdim) 
+      (s, getMNISTTrainIO(appSettings, s), getMNISTTestIO(appSettings, s))
+    } else {
+      val shape = Shape(appSettings.channels, appSettings.xdim, appSettings.ydim)
+      (shape, getTrainIO(appSettings, shape), getTestIO(appSettings, shape))
+    }    
     val lr = appSettings.initialLearnRate
     val opt = getOptimizer(appSettings)
     val updater = new MxNetOptimizer(opt)
     val weights = new MxNetWeights(1.0f)    
-    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, appSettings.modelFile, appSettings.saveFreq)
+    val init = appSettings.mxInitializer match {
+      case "xavier" => new Xavier(rndType = "gaussian", factorType = "in", magnitude = 1.8f)
+      case _ => new Uniform(0.01f)
+    }
+    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, init, appSettings.modelFile, appSettings.saveFreq)
     val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
     sym.dispose()
     lg.loss
