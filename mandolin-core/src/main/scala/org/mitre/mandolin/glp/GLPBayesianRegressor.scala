@@ -24,15 +24,15 @@ class GLPBayesianRegressor(network: ANNetwork,
       
   val designTrans = designMatrix.t
   
-  println("DesignMatrix dims = " + designMatrix)
+  // println("DesignMatrix dims = " + designMatrix)
 
   val freqW = 
     if (true) {
       pinv(designMatrix) * designTargets
     } else {
       val rr = designTrans * designMatrix
-      println("Inverting rr = ")
-      println(rr.toString)
+      // println("Inverting rr = ")
+      // println(rr.toString)
       inv(rr) * designMatrix.t * designTargets // least squares estimate of weights
     }  
   
@@ -43,25 +43,48 @@ class GLPBayesianRegressor(network: ANNetwork,
   val diffs = (designMatrix * freqW) - designTargets
   val variance = if (varX > 0.0) varX else sum(diffs :* diffs) / size // this is inverse variance
   val varInv = 1.0 / variance
-    
-  val inDim = designMatrix.cols
-  val K = varInv * (designTrans * designMatrix) + diag(BreezeVec.fill(inDim){alpha})
-  val kInv = inv(K)  
+
+  // make this a public method as this part may be re-used by techniques that look at updated variance..
+  def getKInv(designMat: BreezeMat[Double]) = {
+    val inDim = designMat.cols
+    val designMatTrans = designMat.t
+    val K = varInv * (designMatTrans * designMat) + diag(BreezeVec.fill(inDim){alpha})
+    inv(K)      
+  }
+  
+  val kInv = getKInv(designMatrix)
+  
   val m =  (kInv * designMatrix.t * meanSubtractedTargets) * varInv
   
-  // println("FreqW => " + freqW.toString)
-
-
-  def getPrediction(u: GLPFactor, wts: GLPWeights): (Double, Double) = {
+  def getUpdatedVariance(basis: BreezeVec[Double], designMat: BreezeMat[Double]) : Double = {
+    val kinv = getKInv(designMat)
+    basis.t * kinv * basis + variance
+  }
+  
+  def getBasisVector(u: GLPFactor, wts: GLPWeights) : BreezeVec[Double] = {
     val numLayers = network.layers.size
     if (numLayers > 1) network.forwardPass(u.getInput, u.getOutput, wts, false)      
     val penultimateOutput = if (numLayers > 1) network.layers(numLayers - 2).getOutput(false).asArray else u.getInput.asArray
     // add the bias input as first element of basis vector
-    val basis = BreezeVec.tabulate[Double](penultimateOutput.length + 1){(i: Int) => if (i > 0) penultimateOutput(i-1).toDouble else 1.0}
-    // println("Basis = " + basis)
+    // add a bit of noise to avoid singular matrices
+    val basis = BreezeVec.tabulate[Double](penultimateOutput.length + 1){(i: Int) => 
+      if (i > 0) {
+        val v = penultimateOutput(i-1).toDouble
+        if (v > 0.0) v - (math.random * .04) else v + (math.random * 0.04) 
+      } else 1.0
+    }
+    basis
+  }
+  
+  def getPrediction(basis: BreezeVec[Double], wts: GLPWeights) : (Double, Double) = {
     val predMean = (m.t * basis) + meanFn
     val predVar  = basis.t * kInv * basis + variance
     (predMean, predVar)
+  }
+  
+  def getPrediction(u: GLPFactor, wts: GLPWeights): (Double, Double) = {
+    val basis = getBasisVector(u, wts)
+    getPrediction(basis, wts)
   }
 
   def getScoredPredictions(u: GLPFactor, w: GLPWeights): Seq[(Float, (Double, Double))] = {

@@ -2,7 +2,7 @@ package org.mitre.mandolin.mselect
 
 import scala.collection.mutable.ArrayBuffer
 import WorkPullingPattern._
-import org.mitre.mandolin.glp.{ GLPBayesianRegressor, GLPWeights, GLPFactor, GLPTrainerBuilder, LinearLType, 
+import org.mitre.mandolin.glp.{ ANNetwork, GLPBayesianRegressor, GLPWeights, GLPFactor, GLPTrainerBuilder, LinearLType, 
   LType, InputLType, SparseInputLType, TanHLType }
 import org.mitre.mandolin.util.{ AlphabetWithUnitScaling, StdAlphabet, Alphabet, IdentityAlphabet, DenseTensor1 => DenseVec }
 import org.mitre.mandolin.transform.{ FeatureExtractor }
@@ -16,7 +16,7 @@ import breeze.linalg.{ DenseVector => BreezeVec, DenseMatrix => BreezeMat }
 
 
 abstract class ScoringFunction {
-  def score(configs: Vector[ModelConfig]) : Vector[Double]
+  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double,ModelConfig)]
   def score(config: ModelConfig) : Double
   def train(evalResults: Seq[ScoredModelConfig]) : Unit  
 }
@@ -24,6 +24,7 @@ abstract class ScoringFunction {
 
 abstract class AcquisitionFunction {
   def score(optimum: Double, mu: Double, variance: Double) : Double
+  val mixParam : Double = 0.0
 }
 
 
@@ -58,8 +59,9 @@ class ExpectedImprovementVer2 extends AcquisitionFunction {
 
   def score(optimum: Double, mu: Double, variance: Double) : Double = {
     if (variance > 0.0) {
-      val zfactor = (mu - optimum) / variance
-      (mu - optimum) * gaussian.cdf(zfactor) + variance * gaussian.pdf(zfactor)
+      val stdDev = math.sqrt(variance)
+      val zfactor = (mu - optimum) / stdDev
+      (mu - optimum) * gaussian.cdf(zfactor) + stdDev * gaussian.pdf(zfactor)
     }
     else 0.0
   }
@@ -82,6 +84,9 @@ class ProbabilityOfImprovement extends AcquisitionFunction {
 
 class UpperConfidenceBound(k: Double) extends AcquisitionFunction {
 
+  // make this accessible 
+  override val mixParam = k
+  
   def score(optimum: Double, mu: Double, variance: Double) : Double = {
     val standardDeviation = math.sqrt(variance)
     mu + k * standardDeviation
@@ -91,11 +96,12 @@ class UpperConfidenceBound(k: Double) extends AcquisitionFunction {
 class RandomScoringFunction extends ScoringFunction {
   def score(config: ModelConfig) : Double = util.Random.nextDouble()
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {}
-  def score(configs: Vector[ModelConfig]) : Vector[Double] = configs map {_ => util.Random.nextDouble()}
+  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double, ModelConfig)] = Vector()
 }
 
 class MockScoringFunction extends ScoringFunction {
-  def score(configs: Vector[ModelConfig]) : Vector[Double] = configs map {_ => util.Random.nextDouble()}
+  
+  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double, ModelConfig)] = Vector()
   def score(config: ModelConfig) : Double = util.Random.nextDouble()
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {
     val ms = (util.Random.nextDouble() * 1 * 1000).toLong
@@ -277,18 +283,24 @@ class MetaParamDecoder(
  * 
  * @author wellner@mitre.org
  */
-class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = new ExpectedImprovement) extends ScoringFunction {
-  
+class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = new ExpectedImprovement, numConcurrent: Int = 1) 
+extends ScoringFunction {
   
   private val linear = false
+  private val useCache = numConcurrent > 1
 
-  val mspec : IndexedSeq[LType] = 
+  def getMspec(n: Int) : IndexedSeq[LType] = {
+    val dim = math.min(50,math.max(n-1, n / 10))
     if (linear) IndexedSeq(LType(InputLType), LType(LinearLType))
-    else IndexedSeq(LType(InputLType), LType(TanHLType, dim=3, l2 = 0.01f), LType(LinearLType))
+    else IndexedSeq(LType(InputLType), LType(TanHLType, dim=dim, l2 = 0.01f), LType(LinearLType))
+  }
     
-  val numIterations = 100
+  val maxIterations = 100
   
-  var curData : Vector[ScoredModelConfig] = Vector()
+  /**
+   * Hold a cache of the input data for use with concurrent acquisition functions
+   */
+  var dataCache : BreezeMat[Double] = BreezeMat(0.0)  
   var bestScore : Double = 0.0
   
   val gaussian = breeze.stats.distributions.Gaussian(0.0,1.0) // normal distribution, variance 1.0
@@ -298,6 +310,8 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
   val fe = new MetaParameterExtractor(fa, fa.getSize)    
     
   var curDecoder : Option[MetaParamDecoder] = None
+  var curBayesRegressor : Option[GLPBayesianRegressor] = None
+  var curWeights : Option[GLPWeights] = None
   
   val log = LoggerFactory.getLogger(getClass)     
   
@@ -313,34 +327,82 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
     acqFunc.score(bestScore, mu, variance)
   }
 
-  def score(config: ModelConfig) : Double = {
-    calculateScore(config)
-  }
+  def score(config: ModelConfig) : Double = calculateScore(config)
 
-  def score(configs: Vector[ModelConfig]) : Vector[Double] = {
-    configs map calculateScore
-  }
-  
-  private def getExpectedImprovement(config: ModelConfig) : Double = {
-    val (mu, sigma) = getPredictiveMeanVariance(config)
+  /**
+   * This will return the top N configs to use next assumign they will be evaluated concurrently
+   */
+  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double,ModelConfig)] = {
+    log.info("*** Concurrent Scoring **** n = " + n)
+    val totalSize = configs.size
+    if (curBayesRegressor.isDefined && curWeights.isDefined) {
+      log.info("*** Concurrent Scoring actually happening **** ")
+    val buf = new ArrayBuffer[(Double,ModelConfig)]
+    val regressor = curBayesRegressor.get
+    val wts = curWeights.get
+    var yT = 0.0
+    val initialScoredBasisVecs = configs map {c =>
+      val fv = fe.extractFeatures(ScoredModelConfig(0.0,c))
+      val bv = regressor.getBasisVector(fv, wts)
+      val (mu, v) = regressor.getPrediction(bv, wts)
+      val sd = math.sqrt(v)
+      val sc = mu + sd //   acqFunc.score(bestScore, mu, v)
+      (sc, bv, c)
+      }
+    val sortedBasisVecs = initialScoredBasisVecs.sortBy{_._1}.reverse.take(totalSize / 4)  // just take top quarter
+    val best = sortedBasisVecs(0)
+    var pointsInRegion = sortedBasisVecs.toList
+    val initialMatVec = BreezeMat(best._2)
+    log.info("initialMatVec dims = " + initialMatVec.rows + ", " + initialMatVec.cols)
+    log.info("dataCache dims = " + dataCache.rows + ", " + dataCache.cols)
 
-    if (sigma > 0.0 && (curData.length > 0)) {
-      val optimum = bestScore
-      val zfactor = (mu - optimum) / sigma
-      (mu - optimum) *  gaussian.cdf(zfactor) + sigma * gaussian.pdf(zfactor)
+    // buf append ((best._1, best._3))
+    // XXX - this is asking for optimizations ..
+    //   + keep a priority queue
+    //   + since variances are monotonically decreasing, if we find a score (in descending order) less than the current best
+    //     --> we are done
+    for (i <- 1 until n) { // number of concurrent evaluations
+      val newKInv = regressor.getKInv(dataCache)
+      val scored = pointsInRegion map {case (_,bv,c) =>
+        val nvar = bv.t * newKInv * bv + regressor.variance
+        (math.sqrt(nvar), bv, c)}
+      //val inbest = scored.maxBy{_._1}
+      val (inbest, sorted) = scored.sortBy{_._1}.reverse match {case h :: t => (h,t)}
+      // add inbest to set to evaluate
+      buf append ((inbest._1, inbest._3))
+      dataCache = BreezeMat.vertcat(dataCache, BreezeMat(inbest._2)) // update cache
+      pointsInRegion = sorted
     }
-    else 0.0
+    buf.toVector
+    } else {
+      val rnd = new util.Random
+      configs map {c => (rnd.nextDouble(), c)}
+    }
   }
   
-  
-  // XXX - can probably just make this static, built up front since features won't change
-  def getMetaTrainer = GLPTrainerBuilder(mspec, fe, fa.getSize, 1)    
-  
+  private def mapInputToBasisVec(x: GLPFactor, glp: ANNetwork, weights: GLPWeights) : BreezeMat[Double] = {
+    val inV = 
+        if (linear) x.getInput 
+        else {
+          // run the MLP and get penultimate layer
+          glp.forwardPass(x.getInput, x.getOutput, weights, false)          
+          glp.layers(glp.numLayers - 2).getOutput(false)          
+        }
+    val v = BreezeVec.tabulate(inV.getDim + 1){i => 
+      if (i > 0) { val v = inV(i-1).toDouble; if (v > 0.0) v - math.random * 0.04 else v + math.random * 0.04 } 
+      else 1.0} // add in bias to designmatrix
+    BreezeMat(v)
+  }
+
+  /**
+   * This method expects ALL evaluationResults thus far to be passed in; it does not maintain a cache of evaluations.
+   */
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {
-    // update the data
-    curData = evalResults.toVector
+
+    val curData = evalResults.toVector
     bestScore = curData.maxBy{_.sc}.sc // current best score - LARGER! scores always better here
-    val (trainer, glp) = getMetaTrainer
+    val mspec = getMspec(curData.length)
+    val (trainer, glp) = GLPTrainerBuilder(mspec, fe, fa.getSize, 1)
     log.info("Number of layers = " + glp.numLayers)
     for (i <- 0 until glp.numLayers) {
       log.info("Dimension layer " + i + " is = " + glp.layers(i).getNumberOfOutputs)
@@ -349,28 +411,24 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
     // XXX - should eventually optimize this to avoid recomputing features over entire set of instances each time
     val glpFactors = curData map { trainer.getFe.extractFeatures }
 
-    // numIterations should probably be dynamic based on MLP and/or number of data points
+    val numIterations = math.min(maxIterations, curData.length * 2)
     val (weights,_) = trainer.retrainWeights(glpFactors, numIterations)
     
-    val dfInVecs = glpFactors map {x =>
-      val inV = 
-        if (linear) x.getInput 
-        else {
-          // run the MLP and get penultimate layer
-          glp.forwardPass(x.getInput, x.getOutput, weights, false)          
-          glp.layers(glp.numLayers - 2).getOutput(false)          
-        }
-      val v = BreezeVec.tabulate(inV.getDim + 1){i => if (i > 0) inV(i-1).toDouble else 1.0} // add in bias to designmatrix
-      BreezeMat(v)
-    }
-    
+    val dfInVecs = glpFactors map {x => mapInputToBasisVec(x, glp, weights) }
+        
     val bMat = dfInVecs.reduce{(a,b) => BreezeMat.vertcat(a,b)}  // the design matrix
-    //log.info("Design matrix dims = " + bMat.rows + ", " + bMat.cols)
+    
+    log.info("Design matrix dims = " + bMat.rows + ", " + bMat.cols)
     val dfArray = glpFactors.toArray
     val targetsVec = BreezeVec.tabulate(glpFactors.length){i => dfArray(i).getOutput(0).toDouble} // the target vector
     val predictor = new GLPBayesianRegressor(glp, bMat, targetsVec, 0.0, 0.0, false)
     val oc = new MetaParamModelOutputConstructor()
     val decoder = new LocalDecoder(trainer.getFe, predictor, oc)
+    if (useCache) {
+      dataCache = bMat
+      curWeights = Some(weights)
+      curBayesRegressor = Some(predictor)
+    }
     curDecoder = Some(new MetaParamDecoder(decoder, weights))
   }
 }

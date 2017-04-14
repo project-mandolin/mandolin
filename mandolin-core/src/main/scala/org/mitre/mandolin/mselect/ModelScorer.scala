@@ -17,7 +17,7 @@ case class ScoredModelConfig(sc: Double, mc: ModelConfig)
   * of the model on a given dataset.
   */
 class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMaster: ActorRef,
-                  sampleSize: Int, acqFnThreshold: Int, totalEvals: Int) extends Actor {
+                  sampleSize: Int, acqFnThreshold: Int, totalEvals: Int, concurrentEvals: Int) extends Actor {
 
   import WorkPullingPattern._
 
@@ -59,7 +59,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
       if (receivedSinceLastScore >= acqFnThreshold) {
         log.info("Training acquisition function")
         receivedSinceLastScore = 0
-        acqFn.train(evalResults)
+        acqFn.train(evalResults)  
         log.info("Finished training acquisition function")
         val scored = getScoredConfigs(sampleSize)
         log.info("Building new batch to evaluate based on scores [top 10]: ")
@@ -78,6 +78,13 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
 
   def getScoredConfigs(size: Int) = {
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom
-    (unscoredConfigs map { s => (acqFn.score(s), s) }).toVector.sortWith((a, b) => a._1 > b._1)
+    if (concurrentEvals > 1) {
+      // actually do a full concurrent scoring of the number of concurrent evaluations + number of evals needed to rebuild the acquisition
+      // function
+      val numToScoreConcurrent = concurrentEvals + acqFnThreshold * 2
+      acqFn.scoreConcurrent(unscoredConfigs.toVector, numToScoreConcurrent)
+    } else {      
+      (unscoredConfigs map { s => (acqFn.score(s), s) }).toVector.sortWith((a, b) => a._1 > b._1)
+    }
   }
 }
