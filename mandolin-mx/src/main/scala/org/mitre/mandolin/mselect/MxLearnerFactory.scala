@@ -115,14 +115,16 @@ object FileSystemImgMxModelInstance extends MxLearnerBuilderHelper {
 class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) extends ModelEvaluator with Serializable {
   val log = LoggerFactory.getLogger(getClass)
   
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double] = {
+  def evaluate(c: Seq[ModelConfig]) : Seq[(Double, Long)] = {
     log.info("Initiating evaluation with FileSystemMxModelEvaluator ... ")
     val cvec = c.toList.par
     cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
     val accuracies = cvec map {config =>
       val learner = FileSystemImgMxModelInstance(config)
+      val startTime = System.currentTimeMillis()
       val acc = learner.train(Vector(trData), Vector(tstData))
-      acc
+      val endTime = System.currentTimeMillis()
+      (acc, endTime - startTime)
     }
     accuracies.seq  
   }
@@ -131,13 +133,15 @@ class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) ex
 
 class LocalMxModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
 
-  def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
+  def evaluate(c: Seq[ModelConfig]): Seq[(Double, Long)] = {
     val cvec = c.toList.par
     cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
     val accuracies = cvec map {config =>
       val learner = MxModelInstance(config)
+      val startTime = System.currentTimeMillis()
       val acc = learner.train(trData, tstData)
-      acc
+      val endTime = System.currentTimeMillis()
+      (acc, endTime - startTime)
     }
     accuracies.seq
   }

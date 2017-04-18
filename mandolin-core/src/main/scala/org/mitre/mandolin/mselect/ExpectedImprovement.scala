@@ -269,14 +269,14 @@ class MetaParamDecoder(
     val decoder: LocalDecoder[ScoredModelConfig, GLPFactor, GLPWeights, (Double, Double), (Double, Double)],
     val weights : GLPWeights
     ) {
-  def decode(c: ModelConfig) = decoder.run(Vector(ScoredModelConfig(0.0,c)), weights)  
-  def decode(c: Vector[ModelConfig]) = decoder.run(c map {cc => ScoredModelConfig(0.0,cc)}, weights)
+  def decode(c: ModelConfig) = decoder.run(Vector(ScoredModelConfig(0.0,0,c)), weights)
+  def decode(c: Vector[ModelConfig]) = decoder.run(c map {cc => ScoredModelConfig(0.0,0,cc)}, weights)
     
 }
 
 /**
  * This implements a simple acquisition function using a MLP (or linear model) with a
- * Bayesian output layer to approxiamte a Gaussian Process
+ * Bayesian output layer to approximate a Gaussian Process
  * Expected Improvement is used as the acquisition function
  * It is currently hard-coded to assume that GREATER is BETTER in terms of evaluations,
  * so use accuracy or area under ROC (not error rate) in evaluators.
@@ -330,7 +330,7 @@ extends ScoringFunction {
   def score(config: ModelConfig) : Double = calculateScore(config)
 
   /**
-   * This will return the top N configs to use next assumign they will be evaluated concurrently
+   * This will return the top N configs to use next assuming they will be evaluated concurrently
    */
   def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double,ModelConfig)] = {
     log.info("*** Concurrent Scoring **** n = " + n)
@@ -342,7 +342,7 @@ extends ScoringFunction {
     val wts = curWeights.get
     var yT = 0.0
     val initialScoredBasisVecs = configs map {c =>
-      val fv = fe.extractFeatures(ScoredModelConfig(0.0,c))
+      val fv = fe.extractFeatures(ScoredModelConfig(0.0,0,c))
       val bv = regressor.getBasisVector(fv, wts)
       val (mu, v) = regressor.getPrediction(bv, wts)
       val sd = math.sqrt(v)

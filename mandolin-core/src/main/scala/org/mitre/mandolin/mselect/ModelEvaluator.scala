@@ -12,7 +12,7 @@ import scala.concurrent.forkjoin.ForkJoinPool
  * model configuration against a provided dataset, using x-validation, etc.
  */
 abstract class ModelEvaluator {
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double]
+  def evaluate(c: Seq[ModelConfig]) : Seq[(Double, Long)]
 }
 
 // XXX - this is for testing purposes only
@@ -23,14 +23,14 @@ class MockRandomModelEvaluator extends ModelEvaluator {
     Thread.sleep(nsecs)
   }
   
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double] = {
+  def evaluate(c: Seq[ModelConfig]) : Seq[(Double, Long)] = {
     pauseTime() // simulate this taking a while
-    c.map(_=>util.Random.nextDouble())
+    c.map(_=>(util.Random.nextDouble(), util.Random.nextLong()))
   }
 }
 
 class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
-  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
+  override def evaluate(c: Seq[ModelConfig]): Seq[(Double, Long)] = {
 
     val configs = c.toList
     val cvec = configs.par
@@ -38,8 +38,10 @@ class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor])
     cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
     val accuracies = cvec map {config =>
       val learner = MandolinModelInstance(config)
+      val startTime = System.currentTimeMillis()
       val acc = learner.train(trData, tstData)
-      acc
+      val endTime = System.currentTimeMillis()
+      (acc, endTime - startTime)
     }
     accuracies.seq
   }

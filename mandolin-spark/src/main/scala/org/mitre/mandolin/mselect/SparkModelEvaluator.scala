@@ -13,7 +13,7 @@ import scala.concurrent.forkjoin.ForkJoinPool
 
 class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]) 
 extends ModelEvaluator with Serializable {
-  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
+  override def evaluate(c: Seq[ModelConfig]): Seq[(Double, Long)] = {
     val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
     val _trainBC = trainBC
     val _testBC = testBC
@@ -26,8 +26,10 @@ extends ModelEvaluator with Serializable {
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
         val learner = MandolinModelInstance(config)
+        val startTime = System.currentTimeMillis()
         val acc = learner.train(trData, tstData)
-        acc
+        val endTime = System.currentTimeMillis()
+        (acc, endTime - startTime)
       }
       accuracies.toIterator
     }.collect()
@@ -38,7 +40,7 @@ extends ModelEvaluator with Serializable {
 class SparkMxModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]) 
 extends ModelEvaluator with Serializable {
 
-  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
+  override def evaluate(c: Seq[ModelConfig]): Seq[(Double, Long)] = {
     val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
     val _trainBC = trainBC
     val _testBC = testBC    
@@ -51,8 +53,10 @@ extends ModelEvaluator with Serializable {
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
         val learner = MxModelInstance(config)
+        val startTime = System.currentTimeMillis()
         val acc = learner.train(trData, tstData)
-        acc
+        val endTime = System.currentTimeMillis()
+        (acc, endTime - startTime)
       }
       accuracies.toIterator
     }.collect()
@@ -62,7 +66,7 @@ extends ModelEvaluator with Serializable {
 
 class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: String, testData: String) 
 extends ModelEvaluator with Serializable {
-  def evaluate (c: Seq[ModelConfig]) : Seq[Double] = {
+  def evaluate (c: Seq[ModelConfig]) : Seq[(Double, Long)] = {
     val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
     val _trainData = trainData
     val _testData = testData
@@ -74,8 +78,10 @@ extends ModelEvaluator with Serializable {
       //cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
       val accuracies = cv1 map {config =>
         val learner = FileSystemImgMxModelInstance(config)
+        val startTime = System.currentTimeMillis()
         val acc = learner.train(Vector(new java.io.File(_trainData)), Vector(new java.io.File(_testData)))
-        acc        
+        val endTime = System.currentTimeMillis()
+        (acc, endTime - startTime)
       }
       accuracies.toIterator
     }.collect()

@@ -6,9 +6,8 @@ import java.util.Calendar
 
 import akka.actor.{ActorRef, Actor}
 import org.slf4j.LoggerFactory
-import org.mitre.mandolin.util.Alphabet
 
-case class ScoredModelConfig(sc: Double, mc: ModelConfig)
+case class ScoredModelConfig(sc: Double, t: Long, mc: ModelConfig)
 
 
 /**
@@ -23,6 +22,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
 
   val log = LoggerFactory.getLogger(getClass)
   val now = Calendar.getInstance.getTime
+  // TODO outfile should be config parameter
   val outWriter = new PrintWriter(new File("mselect-" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(now) + ".csv"))
   var evalResults = new collection.mutable.ArrayBuffer[ScoredModelConfig]
   var receivedSinceLastScore = 0
@@ -47,8 +47,8 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
       receivedSinceLastScore += r.length
       log.info("Received model eval result of length " + r.length)
       r.foreach{c =>
-        log.info("accuracy:" + c.sc + " " + c.mc + "\n")
-        outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n")}
+        log.info("accuracy:" + c.sc + " time:" + c.t + " " + c.mc)
+        outWriter.print("accuracy:" + c.sc + " time:" + c.t + " " + c.mc + "\n")}
       outWriter.flush()
       if (totalReceived >= totalEvals) {
         outWriter.close()
