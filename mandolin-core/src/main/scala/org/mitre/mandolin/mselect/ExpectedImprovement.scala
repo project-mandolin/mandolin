@@ -290,7 +290,7 @@ extends ScoringFunction {
   private val useCache = numConcurrent > 1
 
   def getMspec(n: Int) : IndexedSeq[LType] = {
-    val dim = math.min(50,math.max(n-1, n / 10))
+    val dim = math.min(50,math.max(5, n / 10))
     if (linear) IndexedSeq(LType(InputLType), LType(LinearLType))
     else IndexedSeq(LType(InputLType), LType(TanHLType, dim=dim, l2 = 0.01f), LType(LinearLType))
   }
@@ -402,7 +402,7 @@ extends ScoringFunction {
     val curData = evalResults.toVector
     bestScore = curData.maxBy{_.sc}.sc // current best score - LARGER! scores always better here
     val mspec = getMspec(curData.length)
-    val (trainer, glp) = GLPTrainerBuilder(mspec, fe, fa.getSize, 1)
+    val (trainer, glp) = GLPTrainerBuilder(mspec, fe, fa.getSize, 1, Seq(("mandolin.trainer.optimizer.initial-learning-rate",0.05)))
     log.info("Number of layers = " + glp.numLayers)
     for (i <- 0 until glp.numLayers) {
       log.info("Dimension layer " + i + " is = " + glp.layers(i).getNumberOfOutputs)
@@ -411,24 +411,28 @@ extends ScoringFunction {
     // XXX - should eventually optimize this to avoid recomputing features over entire set of instances each time
     val glpFactors = curData map { trainer.getFe.extractFeatures }
 
-    val numIterations = math.min(maxIterations, curData.length * 2)
+    val numIterations = maxIterations // math.min(maxIterations, curData.length * 2)
     val (weights,_) = trainer.retrainWeights(glpFactors, numIterations)
     
     val dfInVecs = glpFactors map {x => mapInputToBasisVec(x, glp, weights) }
+    
+    
         
     val bMat = dfInVecs.reduce{(a,b) => BreezeMat.vertcat(a,b)}  // the design matrix
     
     log.info("Design matrix dims = " + bMat.rows + ", " + bMat.cols)
     val dfArray = glpFactors.toArray
     val targetsVec = BreezeVec.tabulate(glpFactors.length){i => dfArray(i).getOutput(0).toDouble} // the target vector
-    val predictor = new GLPBayesianRegressor(glp, bMat, targetsVec, 0.0, 0.0, false)
-    val oc = new MetaParamModelOutputConstructor()
-    val decoder = new LocalDecoder(trainer.getFe, predictor, oc)
+      val predictor = new GLPBayesianRegressor(glp, bMat, targetsVec, 0.0, 0.0, false)
+      val oc = new MetaParamModelOutputConstructor()
+      val decoder = new LocalDecoder(trainer.getFe, predictor, oc)
     if (useCache) {
+      log.info(" ++++ Setting data cache, weights and regressor for prediction")
       dataCache = bMat
       curWeights = Some(weights)
       curBayesRegressor = Some(predictor)
     }
     curDecoder = Some(new MetaParamDecoder(decoder, weights))
+    
   }
 }

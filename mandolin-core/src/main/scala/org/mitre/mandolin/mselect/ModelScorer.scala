@@ -8,7 +8,7 @@ import akka.actor.{ActorRef, Actor}
 import org.slf4j.LoggerFactory
 import org.mitre.mandolin.util.Alphabet
 
-case class ScoredModelConfig(sc: Double, mc: ModelConfig)
+case class ScoredModelConfig(sc: Double, mc: ModelConfig, src: Int = 0)
 
 
 /**

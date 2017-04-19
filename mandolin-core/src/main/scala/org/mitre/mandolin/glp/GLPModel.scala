@@ -61,6 +61,13 @@ object GLPTrainerBuilder extends AbstractProcessor {
     (new LocalTrainer(fe, optimizer), nn)
   }
   
+  def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T,GLPFactor], idim: Int, odim: Int, sets: Seq[(String, Any)]) : (LocalTrainer[T, GLPFactor, GLPWeights], ANNetwork) = {
+    val (nn, predictor, oc) = getSubComponents(modelSpec, idim, odim)
+    val settings = (new GLPModelSettings).withSets(sets)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
+    (new LocalTrainer(fe, optimizer), nn)
+  }
+  
   /**
    * This method allows for an arbitrary feature extractor to be used with an arbitrary model spec
    */

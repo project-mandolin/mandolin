@@ -25,9 +25,17 @@ class ModelConfig(
                    val outLType: LType,
                    _inDim: Int,
                    _outDim: Int,
-                   _serializedSettings : Option[String]) 
+                   _serializedSettings : Option[String],
+                   val budget: Int = -1,
+                   val src: Int = 0
+                   )
                    extends AbstractModelConfig(_realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, _inDim, _outDim, _serializedSettings) 
 with Serializable {
+  
+
+  def withBudgetAndSource(b: Int, s: Int) = {
+    new ModelConfig(_realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, topo, inLType, outLType, _inDim, _outDim, _serializedSettings, b, s)
+  }
 
   override def toString(): String = {
       val reals = realMetaParamSet.map { mp =>
@@ -61,6 +69,7 @@ abstract class AbstractModelSpace(
     val odim: Int,
     val settings: Option[String]) {
   def drawRandom : ModelConfig
+  def drawRandom(budget: Int) : ModelConfig
 }
 
 /**
@@ -91,15 +100,19 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0, None)
 
   def drawRandom: ModelConfig = {
+    drawRandom(-1)
+  }
+  
+  def drawRandom(budget: Int) : ModelConfig = {
     val realValued = realMPs map { mp => mp.drawRandomValue }
     val catValued = catMPs map { mp => mp.drawRandomValue }
     val intValued = intMPs map {mp => mp.drawRandomValue }
     if (topoMPs.isDefined) {
       val topology = topoMPs.get.drawRandomValue
       val mspecValued = topology.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}
-      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings)
+      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings, budget)
     } else {
-      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings)
+      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings, budget)
     }
   }
 }

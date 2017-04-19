@@ -12,6 +12,9 @@ import scala.concurrent.forkjoin.ForkJoinPool
  * model configuration against a provided dataset, using x-validation, etc.
  */
 abstract class ModelEvaluator {
+  /**
+   * Evaluate a sequence of configs, using a budget (usually number of iterations)
+   */
   def evaluate(c: Seq[ModelConfig]) : Seq[Double]
 }
 
