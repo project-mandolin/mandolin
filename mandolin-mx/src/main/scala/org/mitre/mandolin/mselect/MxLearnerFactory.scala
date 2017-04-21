@@ -29,18 +29,21 @@ class MxModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilder {
        
   def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[MxModelSettings]) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
+    val budget = appSettings match {case Some(m) => m.numEpochs case None => -1}
     // Pull out important parameters to preserve here and pass into model space
     val appConfig = appSettings map {a => a.config.root.render()}
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig)    
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig, budget)    
   }  
 }
 
 trait MxLearnerBuilderHelper {
   def setupSettings(config: ModelConfig) : MxModelSettings = {
+    val budget = config.budget  // number of iterations, typically
     val cats: List[(String,Any)] = config.categoricalMetaParamSet.toList map {cm => (cm.getName,cm.getValue.s)}
     val reals : List[(String,Any)] = config.realMetaParamSet.toList map {cm => (cm.getName,cm.getValue.v)}
-    val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}    
-    val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq 
+    val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
+    val setBudget : List[(String,Any)] = if (budget > 0) List(("mandolin.trainer.num-epochs", budget)) else Nil 
+    val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints ++ setBudget) toSeq    
     val completeParams = allParams     
     val mxsets = config.serializedSettings match {case Some(s) => new MxModelSettings(s) case None => new MxModelSettings() }
     mxsets.withSets(completeParams)  
@@ -115,30 +118,20 @@ object FileSystemImgMxModelInstance extends MxLearnerBuilderHelper {
 class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) extends ModelEvaluator with Serializable {
   val log = LoggerFactory.getLogger(getClass)
   
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double] = {
+  def evaluate(c: ModelConfig) : Double = {
     log.info("Initiating evaluation with FileSystemMxModelEvaluator ... ")
-    val cvec = c.toList.par
-    cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-    val accuracies = cvec map {config =>
-      val learner = FileSystemImgMxModelInstance(config)
+      val learner = FileSystemImgMxModelInstance(c)
       val acc = learner.train(Vector(trData), Vector(tstData))
       acc
-    }
-    accuracies.seq  
   }
 }
 
 
 class LocalMxModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
 
-  def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
-    val cvec = c.toList.par
-    cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-    val accuracies = cvec map {config =>
-      val learner = MxModelInstance(config)
+  def evaluate(c: ModelConfig): Double = {
+      val learner = MxModelInstance(c)
       val acc = learner.train(trData, tstData)
       acc
-    }
-    accuracies.seq
   }
 }

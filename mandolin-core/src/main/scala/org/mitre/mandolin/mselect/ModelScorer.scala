@@ -25,6 +25,8 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
   val now = Calendar.getInstance.getTime
   val outWriter = new PrintWriter(new File("mselect-" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(now) + ".csv"))
   var evalResults = new collection.mutable.ArrayBuffer[ScoredModelConfig]
+  // keep track of models currently being evaluated
+  var currentlyEvaluating : Set[ModelConfig] = Set()
   var receivedSinceLastScore = 0
   val startTime = System.currentTimeMillis()
 
@@ -43,12 +45,11 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
   // should receive messages sent from ModelConfigEvaluator
   def receive = {
     case ModelEvalResult(r) =>
-      evalResults ++= r
-      receivedSinceLastScore += r.length
-      log.info("Received model eval result of length " + r.length)
-      r.foreach{c =>
-        log.info("accuracy:" + c.sc + " " + c.mc + "\n")
-        outWriter.print("accuracy:" + c.sc + " " + c.mc + "\n")}
+      currentlyEvaluating -= r.mc   // remove this from set of currently evaluating model configs
+      evalResults += r
+      receivedSinceLastScore += 1
+      log.info("accuracy:" + r.sc + " " + r.mc + "\n")
+      outWriter.print("accuracy:" + r.sc + " " + r.mc + "\n")
       outWriter.flush()
       if (totalReceived >= totalEvals) {
         outWriter.close()
@@ -72,6 +73,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
         }
         evalMaster ! epic
       }
+    case CurrentlyEvaluating(c) => currentlyEvaluating += c
     case Hello => log.info("SCORER: Received Hello from " + sender.toString())
   }
 

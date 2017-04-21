@@ -38,26 +38,17 @@ with Serializable {
   }
 
   override def toString(): String = {
-      val reals = realMetaParamSet.map { mp =>
+    val reals = realMetaParamSet.map { mp =>
       mp.getName + ":" + mp.getValue.v
     }.mkString(" ")
     val cats = categoricalMetaParamSet.map { mp => mp.getName + "_" + mp.getValue.s }.mkString(" ")
     val ints = intMetaParamSet map { mp =>
       mp.getName + ":" + mp.getValue.v
       } mkString(" ")
-    val layerInfo = topo 
-    val numHiddenLayers = layerInfo.getOrElse(Vector()).size
-    var totalWeights = 0
-    layerInfo match {
-        case Some(ls) =>
-          for (i <- 0 until ls.length) {
-            val n = if (i == 0) inDim * ls(i).dim else ls(i).dim * ls(i-1).dim 
-            totalWeights += n
-          }
-          totalWeights += ls(ls.length - 1).dim * outDim // add output weights
-        case None => totalWeights = inDim * outDim
-      }
-    reals + " " + ints + " " + cats 
+    
+    if (budget > 0) {
+      (reals + " " + ints + " " + cats + " budget:"+budget)
+    } else (reals + " " + ints + " " + cats)
   }
 }
 
@@ -85,9 +76,13 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     val outLType: LType,
     _idim: Int,
     _odim: Int,
-    _settings: Option[String]) 
+    _settings: Option[String],
+    val maxBudget: Int) 
     extends AbstractModelSpace(_realMPs, _catMPs, _intMPs, _idim, _odim, _settings) with Serializable {
-  
+
+  def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
+    this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0, None, -1)
+
   def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
       val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
       val dim = lsp.v2.v
@@ -96,9 +91,6 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
       LType(lt, dim, l1 = l1.toFloat, l2 = l2.toFloat)            
    }    
     
-  def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
-    this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0, None)
-
   def drawRandom: ModelConfig = {
     drawRandom(-1)
   }

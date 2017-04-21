@@ -6,16 +6,15 @@ import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.glp.{ GLPModelSettings, GLPTrainerBuilder, GLPFactor }
 
 
-class LocalMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
-    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None) 
-extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+class LocalMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false) 
+extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
   
   // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
   def this(_msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
     this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
-        appSettings.workerBatchSize, 
-    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
   }
   
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
@@ -42,16 +41,15 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, s
   }
 }
 
-class LocalFileSystemImgMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, workerBatchSize: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
-    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None) 
-extends ModelSelectionDriver(trainFile, testFile, numWorkers, workerBatchSize, scoreSampleSize, acqFunRelearnSize, totalEvals) {
+class LocalFileSystemImgMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband : Boolean = false) 
+extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
   
   // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
   def this(_msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
     this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
-        appSettings.workerBatchSize, 
-    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings))
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
   }
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   

@@ -15,7 +15,7 @@ abstract class ModelEvaluator {
   /**
    * Evaluate a sequence of configs, using a budget (usually number of iterations)
    */
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double]
+  def evaluate(c: ModelConfig) : Double
 }
 
 // XXX - this is for testing purposes only
@@ -26,24 +26,17 @@ class MockRandomModelEvaluator extends ModelEvaluator {
     Thread.sleep(nsecs)
   }
   
-  def evaluate(c: Seq[ModelConfig]) : Seq[Double] = {
+  def evaluate(c: ModelConfig) : Double = {
     pauseTime() // simulate this taking a while
-    c.map(_=>util.Random.nextDouble())
+    util.Random.nextDouble()
   }
 }
 
 class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
-  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
-
-    val configs = c.toList
-    val cvec = configs.par
-
-    cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-    val accuracies = cvec map {config =>
-      val learner = MandolinModelInstance(config)
-      val acc = learner.train(trData, tstData)
-      acc
-    }
-    accuracies.seq
+  override def evaluate(c: ModelConfig): Double = {
+    val config = c
+    val learner = MandolinModelInstance(config)
+    val acc = learner.train(trData, tstData)
+    acc
   }
 }

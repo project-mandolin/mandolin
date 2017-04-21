@@ -96,10 +96,12 @@ trait ModelSelectionSettings extends GLPModelSettings {
       vec.toVector} catch {case _: Throwable => Vector()}
     val ll = ListSet(layers.toVector)
     val sp = if (ll.size > 0) Some(new TopologySpaceMetaParameter("topoSpace", ll)) else None
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0, None)
+    val budget = if (this.useHyperband) this.numEpochs else -1
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0, None, budget)
   }
   
   val modelSpace = buildModelSpaceFromConfig()
+  val useHyperband = asBoolean("mandolin.model-selection.use-hyperband")
   val numWorkers = asInt("mandolin.model-selection.concurrent-evaluations")
   val threadsPerWorker = asInt("mandolin.model-selection.threads-per-worker")
   val workerBatchSize = asInt("mandolin.model-selection.worker-batch-size")

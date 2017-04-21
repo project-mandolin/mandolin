@@ -62,7 +62,8 @@ class MandolinModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilde
   def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[GLPModelSettings]) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
     val appConfig = appSettings map {a => a.config.root.render()}
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig)    
+    val budget = appSettings match {case Some(m) => m.numEpochs case None => -1}
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig, budget)    
   }
 }
 

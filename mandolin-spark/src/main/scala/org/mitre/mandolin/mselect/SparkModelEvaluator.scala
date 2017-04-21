@@ -13,8 +13,8 @@ import scala.concurrent.forkjoin.ForkJoinPool
 
 class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]) 
 extends ModelEvaluator with Serializable {
-  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
-    val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
+  override def evaluate(c: ModelConfig): Double = {
+    val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainBC = trainBC
     val _testBC = testBC
     val accuracy = configRDD.mapPartitions { configs =>
@@ -31,15 +31,15 @@ extends ModelEvaluator with Serializable {
       }
       accuracies.toIterator
     }.collect()
-    accuracy.toSeq
+    accuracy.toSeq(0)
   }
 }
 
 class SparkMxModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]) 
 extends ModelEvaluator with Serializable {
 
-  override def evaluate(c: Seq[ModelConfig]): Seq[Double] = {
-    val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
+  override def evaluate(c: ModelConfig): Double = {
+    val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainBC = trainBC
     val _testBC = testBC    
     val accuracy = configRDD.mapPartitions { configs =>
@@ -56,14 +56,14 @@ extends ModelEvaluator with Serializable {
       }
       accuracies.toIterator
     }.collect()
-    accuracy.toSeq
+    accuracy.toSeq(0)
   }
 }
 
 class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: String, testData: String) 
 extends ModelEvaluator with Serializable {
-  def evaluate (c: Seq[ModelConfig]) : Seq[Double] = {
-    val configRDD: RDD[ModelConfig] = sc.parallelize(c, 1)
+  def evaluate (c: ModelConfig) : Double = {
+    val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainData = trainData
     val _testData = testData
     val accuracy = configRDD.mapPartitions { configs =>
@@ -79,6 +79,6 @@ extends ModelEvaluator with Serializable {
       }
       accuracies.toIterator
     }.collect()
-    accuracy.toSeq
+    accuracy.toSeq(0)
   }
 }

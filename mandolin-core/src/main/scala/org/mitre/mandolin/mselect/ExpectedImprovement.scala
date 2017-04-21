@@ -18,7 +18,9 @@ import breeze.linalg.{ DenseVector => BreezeVec, DenseMatrix => BreezeMat }
 abstract class ScoringFunction {
   def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double,ModelConfig)]
   def score(config: ModelConfig) : Double
-  def train(evalResults: Seq[ScoredModelConfig]) : Unit  
+  def train(evalResults: Seq[ScoredModelConfig]) : Unit
+  def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]) : Double
+  def getUpdatedK(bm: Vector[ModelConfig]) : Option[BreezeMat[Double]]
 }
 
 
@@ -93,12 +95,6 @@ class UpperConfidenceBound(k: Double) extends AcquisitionFunction {
   }
 }
 
-class RandomScoringFunction extends ScoringFunction {
-  def score(config: ModelConfig) : Double = util.Random.nextDouble()
-  def train(evalResults: Seq[ScoredModelConfig]) : Unit = {}
-  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double, ModelConfig)] = Vector()
-}
-
 class MockScoringFunction extends ScoringFunction {
   
   def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double, ModelConfig)] = Vector()
@@ -107,6 +103,8 @@ class MockScoringFunction extends ScoringFunction {
     val ms = (util.Random.nextDouble() * 1 * 1000).toLong
     Thread.sleep(ms)
   }
+  def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]) : Double = throw new RuntimeException("Unimplemented")
+  def getUpdatedK(bm: Vector[ModelConfig]) : Option[BreezeMat[Double]] = throw new RuntimeException("Unimplemented")
 }
 
 trait MetaParameterHandler {
@@ -128,8 +126,7 @@ trait MetaParameterHandler {
     c.intMetaParamSet foreach { imp => 
       val fid = fa.ofString(imp.getName)
       dv foreach { case dv => dv(fid) = fa.getValue(fid,imp.getValue.v).toFloat }
-      }
-    
+      }    
     c.topo foreach { topo =>
       val numLayers = topo.length
       val fidLayers = fa.ofString("num_layers")
@@ -144,7 +141,11 @@ trait MetaParameterHandler {
       val fidTotalWeight = fa.ofString("total_weights")
       dv foreach {dv => dv(fidTotalWeight) = fa.getValue(fidTotalWeight, totalWeights).toFloat }
     }
-
+    // now add in budget/number of iterations
+    if (c.budget > 0) {
+      val budgetFid = fa.ofString("budget")
+      dv foreach {dv => dv(budgetFid) = fa.getValue(budgetFid, c.budget).toFloat}
+    }
     dv
   }   
 }
@@ -171,6 +172,10 @@ class AlphabetBuilder extends MetaParameterHandler {
         fa.ofString(ss)  
       }      
     }
+    // budget feature - i.e. number of iterations
+    fa.ofString("budget", modelSpace.maxBudget.toDouble)
+    fa.ofString("budget", 0.0)
+
     modelSpace.topoMPs foreach { topoSpace =>
       val items = topoSpace.liSet.li
       var minLayers = 100
@@ -326,25 +331,65 @@ extends ScoringFunction {
     val (mu, variance) = getPredictiveMeanVariance(config)
     acqFunc.score(bestScore, mu, variance)
   }
+  
+  def getUpdatedK(bm: Vector[ModelConfig]) : Option[BreezeMat[Double]] = {
+    if (curBayesRegressor.isDefined && curWeights.isDefined) {
+    val orig = dataCache
+    val regressor = curBayesRegressor.get
+    val vecs = bm map {c =>
+      val fv = fe.extractFeatures(ScoredModelConfig(0.0,c))
+      val bv = regressor.getBasisVector(fv, curWeights.get)
+      bv
+      } 
+    vecs foreach {bv => BreezeMat.vertcat(dataCache, BreezeMat(bv))}
+    val kInv1 = regressor.getKInv(dataCache)
+    dataCache = orig
+    Some(kInv1)
+    } else None
+  }
+  
+  def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]) : Double = {
+    // calculateScore(config)
+    val regressor = curBayesRegressor.get
+    val wts = curWeights.get
+    val fv = fe.extractFeatures(ScoredModelConfig(0.0,config))
+    val bv = regressor.getBasisVector(fv, wts)      
+    val (mu, _) = regressor.getPrediction(bv, wts)
+    val nvar = bv.t * K * bv + regressor.variance
+    acqFunc.score(bestScore, mu, nvar)
+  }
 
   def score(config: ModelConfig) : Double = calculateScore(config)
 
   /**
-   * This will return the top N configs to use next assumign they will be evaluated concurrently
+   * This will return the top N configs to use next assumign they will be evaluated concurrently.
+   * XXX - Generalize this to take in a separate vector of configurations already being evaluated to pin down variance 
    */
-  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double,ModelConfig)] = {
-    log.info("*** Concurrent Scoring **** n = " + n)
+  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double,ModelConfig)] = {    
     val totalSize = configs.size
+    val origData = dataCache
     if (curBayesRegressor.isDefined && curWeights.isDefined) {
-      log.info("*** Concurrent Scoring actually happening **** ")
+      log.info("*** Concurrent Scoring **** n = " + n)
+
     val buf = new ArrayBuffer[(Double,ModelConfig)]
     val regressor = curBayesRegressor.get
     val wts = curWeights.get
-    var yT = 0.0
-    val initialScoredBasisVecs = configs map {c =>
+    /*
+    log.info("Number of pending configurations = " + pendingConfigs.length)
+    pendingConfigs foreach { c =>
       val fv = fe.extractFeatures(ScoredModelConfig(0.0,c))
       val bv = regressor.getBasisVector(fv, wts)
+      dataCache = BreezeMat.vertcat(dataCache, BreezeMat(bv))
+      }
+    val kInv1 = regressor.getKInv(dataCache)
+    * 
+    */
+    val initialScoredBasisVecs = configs map {c =>
+      val fv = fe.extractFeatures(ScoredModelConfig(0.0,c))
+      val bv = regressor.getBasisVector(fv, wts)      
       val (mu, v) = regressor.getPrediction(bv, wts)
+      // don't use predictor variance - instead use updated variance based on pending evaluations
+      // val nvar = bv.t * kInv1 * bv + regressor.variance
       val sd = math.sqrt(v)
       val sc = mu + sd //   acqFunc.score(bestScore, mu, v)
       (sc, bv, c)
@@ -373,6 +418,7 @@ extends ScoringFunction {
       dataCache = BreezeMat.vertcat(dataCache, BreezeMat(inbest._2)) // update cache
       pointsInRegion = sorted
     }
+    dataCache = origData // set the cache back to 
     buf.toVector
     } else {
       val rnd = new util.Random
@@ -415,8 +461,6 @@ extends ScoringFunction {
     val (weights,_) = trainer.retrainWeights(glpFactors, numIterations)
     
     val dfInVecs = glpFactors map {x => mapInputToBasisVec(x, glp, weights) }
-    
-    
         
     val bMat = dfInVecs.reduce{(a,b) => BreezeMat.vertcat(a,b)}  // the design matrix
     
