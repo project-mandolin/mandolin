@@ -17,10 +17,10 @@ abstract class AbstractModelConfig(
   * settings are provided as part of the model config.
   */
 class ModelConfig(
+    val id: Int,
                    _realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
                    _categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
                    _intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],                   
-                   val topo : Option[Vector[LType]],
                    val inLType : LType,
                    val outLType: LType,
                    _inDim: Int,
@@ -34,7 +34,7 @@ with Serializable {
   
 
   def withBudgetAndSource(b: Int, s: Int) = {
-    new ModelConfig(_realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, topo, inLType, outLType, _inDim, _outDim, _serializedSettings, b, s)
+    new ModelConfig(id, _realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, inLType, outLType, _inDim, _outDim, _serializedSettings, b, s)
   }
 
   override def toString(): String = {
@@ -47,7 +47,7 @@ with Serializable {
       } mkString(" ")
     
     if (budget > 0) {
-      (reals + " " + ints + " " + cats + " budget:"+budget)
+      (reals + " " + ints + " " + cats + " budget:"+budget + " src:"+src)
     } else (reals + " " + ints + " " + cats)
   }
 }
@@ -71,7 +71,6 @@ abstract class AbstractModelSpace(
  */
 class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[CategoricalMetaParameter],
     _intMPs: Vector[IntegerMetaParameter],
-    val topoMPs: Option[TopologySpaceMetaParameter],
     val inLType: LType,
     val outLType: LType,
     _idim: Int,
@@ -81,7 +80,9 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     extends AbstractModelSpace(_realMPs, _catMPs, _intMPs, _idim, _odim, _settings) with Serializable {
 
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
-    this(rmps, cmps, ints, None, LType(InputLType), LType(SoftMaxLType), 0,0, None, -1)
+    this(rmps, cmps, ints, LType(InputLType), LType(SoftMaxLType), 0,0, None, -1)
+    
+  var curUid = 0
 
   def getSpec(lsp: Tuple4Value[CategoricalValue, IntValue, RealValue, RealValue]) : LType = {
       val lt = lsp.v1.s match {case "TanHLType" => TanHLType case _ => ReluLType}
@@ -99,13 +100,9 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     val realValued = realMPs map { mp => mp.drawRandomValue }
     val catValued = catMPs map { mp => mp.drawRandomValue }
     val intValued = intMPs map {mp => mp.drawRandomValue }
-    if (topoMPs.isDefined) {
-      val topology = topoMPs.get.drawRandomValue
-      val mspecValued = topology.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}
-      new ModelConfig(realValued, catValued, intValued, Some(mspecValued), inLType, outLType, idim, odim, settings, budget)
-    } else {
-      new ModelConfig(realValued, catValued, intValued, None, inLType, outLType, idim, odim, settings, budget)
-    }
+    val id = curUid
+    curUid += 1
+    new ModelConfig(id, realValued, catValued, intValued, inLType, outLType, idim, odim, settings, budget)    
   }
 }
 

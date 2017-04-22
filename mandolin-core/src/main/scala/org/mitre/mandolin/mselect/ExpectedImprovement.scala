@@ -127,20 +127,6 @@ trait MetaParameterHandler {
       val fid = fa.ofString(imp.getName)
       dv foreach { case dv => dv(fid) = fa.getValue(fid,imp.getValue.v).toFloat }
       }    
-    c.topo foreach { topo =>
-      val numLayers = topo.length
-      val fidLayers = fa.ofString("num_layers")
-      dv foreach {dv => dv(fidLayers) = fa.getValue(fidLayers,numLayers).toFloat }
-      // now number of total weights
-      var totalWeights = 0
-      for (i <- 0 until topo.length) {
-        val n = if (i == 0) topo(i).dim * c.inDim else topo(i).dim * topo(i-1).dim
-        totalWeights += n        
-      }
-      totalWeights += (topo(topo.length - 1).dim * c.outDim)
-      val fidTotalWeight = fa.ofString("total_weights")
-      dv foreach {dv => dv(fidTotalWeight) = fa.getValue(fidTotalWeight, totalWeights).toFloat }
-    }
     // now add in budget/number of iterations
     if (c.budget > 0) {
       val budgetFid = fa.ofString("budget")
@@ -175,57 +161,6 @@ class AlphabetBuilder extends MetaParameterHandler {
     // budget feature - i.e. number of iterations
     fa.ofString("budget", modelSpace.maxBudget.toDouble)
     fa.ofString("budget", 0.0)
-
-    modelSpace.topoMPs foreach { topoSpace =>
-      val items = topoSpace.liSet.li
-      var minLayers = 100
-      var maxLayers = 0
-      var minWeights = Integer.MAX_VALUE
-      var maxWeights = 0
-      items foreach {it =>
-        it.valueSet match {
-          case SetValue(x) => 
-            if (x.size < minLayers) minLayers = x.size
-            if (x.size > maxLayers) maxLayers = x.size
-            var localMinWeights = 0
-            var localMaxWeights = 0
-            if (x.length > 0) {
-              for (i <- 0 until x.length) {                
-                val (l1min, l1max) = x(i).valueSet match {
-                  case TupleSet4(a,b,c,d) => b.valueSet match {
-                    case x: IntSet => (x.lower, x.upper)
-                  }                     
-                }
-                if (i == 0) {
-                  localMinWeights += modelSpace.idim * l1min
-                  localMaxWeights += modelSpace.idim * l1max
-                } else {
-                  val (l0min, l0max) = x(i-1).valueSet match {
-                    case TupleSet4(a,b,c,d) => b.valueSet match {
-                      case x: IntSet => (x.lower,x.upper)                      
-                    }
-                   }
-                  localMinWeights += l1min * l0min
-                  localMaxWeights += l1max * l0max
-                }          
-                if (i == x.length - 1) { // weights for last hidden to output layer connection
-                  localMinWeights += l1min * modelSpace.odim
-                  localMaxWeights += l1max * modelSpace.odim
-                }
-              }
-            } else { // just for a linear model
-              localMinWeights = modelSpace.idim * modelSpace.odim
-            }
-            if (localMinWeights < minWeights) minWeights = localMinWeights
-            if (localMaxWeights > maxWeights) maxWeights = localMaxWeights
-        }
-        }
-      // set minimum and maximum values of these features (for scaling)
-      fa.ofString("num_layers", minLayers)
-      fa.ofString("num_layers", maxLayers)
-      fa.ofString("total_weights", minWeights)
-      fa.ofString("total_weights", maxWeights)
-    }
     
     fa.ensureFixed
     fa
@@ -294,12 +229,6 @@ extends ScoringFunction {
   private val linear = false
   private val useCache = numConcurrent > 1
 
-  def getMspec(n: Int) : IndexedSeq[LType] = {
-    val dim = math.min(50,math.max(5, n / 10))
-    if (linear) IndexedSeq(LType(InputLType), LType(LinearLType))
-    else IndexedSeq(LType(InputLType), LType(TanHLType, dim=dim, l2 = 0.01f), LType(LinearLType))
-  }
-    
   val maxIterations = 100
   
   /**
@@ -312,7 +241,13 @@ extends ScoringFunction {
 
   // build the feature alphabet once, up-front
   val fa = (new AlphabetBuilder).build(ms)  
-  val fe = new MetaParameterExtractor(fa, fa.getSize)    
+  val fe = new MetaParameterExtractor(fa, fa.getSize)
+  
+  def getMspec(n: Int) : IndexedSeq[LType] = {
+    val dim = math.min(fa.getSize * 2, math.max(3, n / 10))
+    if (linear) IndexedSeq(LType(InputLType), LType(LinearLType))
+    else IndexedSeq(LType(InputLType), LType(TanHLType, dim=dim, l2 = 0.001f, maxNorm = 10.0f), LType(TanHLType, dim=dim, l2 = 0.001f, maxNorm = 10.0f), LType(LinearLType))
+  }
     
   var curDecoder : Option[MetaParamDecoder] = None
   var curBayesRegressor : Option[GLPBayesianRegressor] = None
@@ -434,6 +369,24 @@ extends ScoringFunction {
           glp.forwardPass(x.getInput, x.getOutput, weights, false)          
           glp.layers(glp.numLayers - 2).getOutput(false)          
         }
+    // check for malformed input
+    val vv = inV.asArray
+    var malformed = false
+    var i = 0; while (i < vv.length) {
+      val a = vv(i)
+      if (a.isNaN()) malformed = true        
+      i += 1
+    }
+    if (malformed) {
+      val buf = new StringBuilder
+      val ss = x.getInput.asArray
+      var i = 0; while (i < ss.length) {
+        buf append " "
+        buf append (ss(i).toString)
+        i += 1
+      }
+      throw new RuntimeException("NaN in neural net output with input: " + buf.toString())
+    }
     val v = BreezeVec.tabulate(inV.getDim + 1){i => 
       if (i > 0) { val v = inV(i-1).toDouble; if (v > 0.0) v - math.random * 0.04 else v + math.random * 0.04 } 
       else 1.0} // add in bias to designmatrix
@@ -444,11 +397,13 @@ extends ScoringFunction {
    * This method expects ALL evaluationResults thus far to be passed in; it does not maintain a cache of evaluations.
    */
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {
-
+    if (evalResults.length > 6) {
     val curData = evalResults.toVector
     bestScore = curData.maxBy{_.sc}.sc // current best score - LARGER! scores always better here
     val mspec = getMspec(curData.length)
-    val (trainer, glp) = GLPTrainerBuilder(mspec, fe, fa.getSize, 1, Seq(("mandolin.trainer.optimizer.initial-learning-rate",0.05)))
+    val (trainer, glp) = GLPTrainerBuilder(mspec, fe, fa.getSize, 1, 
+        Seq(("mandolin.trainer.optimizer.initial-learning-rate",0.1),
+            ("mandolin.trainer.optimizer.method","adagrad")))
     log.info("Number of layers = " + glp.numLayers)
     for (i <- 0 until glp.numLayers) {
       log.info("Dimension layer " + i + " is = " + glp.layers(i).getNumberOfOutputs)
@@ -466,10 +421,10 @@ extends ScoringFunction {
     
     log.info("Design matrix dims = " + bMat.rows + ", " + bMat.cols)
     val dfArray = glpFactors.toArray
-    val targetsVec = BreezeVec.tabulate(glpFactors.length){i => dfArray(i).getOutput(0).toDouble} // the target vector
-      val predictor = new GLPBayesianRegressor(glp, bMat, targetsVec, 0.0, 0.0, false)
-      val oc = new MetaParamModelOutputConstructor()
-      val decoder = new LocalDecoder(trainer.getFe, predictor, oc)
+    val targetsVec = BreezeVec.tabulate(glpFactors.length){i => dfArray(i).getOutput(0).toDouble} // the target vecto
+    val predictor = new GLPBayesianRegressor(glp, bMat, targetsVec, 0.0, 0.0, false)
+    val oc = new MetaParamModelOutputConstructor()
+    val decoder = new LocalDecoder(trainer.getFe, predictor, oc)
     if (useCache) {
       log.info(" ++++ Setting data cache, weights and regressor for prediction")
       dataCache = bMat
@@ -477,6 +432,6 @@ extends ScoringFunction {
       curBayesRegressor = Some(predictor)
     }
     curDecoder = Some(new MetaParamDecoder(decoder, weights))
-    
+    }
   }
 }

@@ -8,6 +8,7 @@ import ml.dmlc.mxnet.io.{ NDArrayIter }
 import ml.dmlc.mxnet.optimizer.SGD
 import ml.dmlc.mxnet.Callback.Speedometer
 import collection.mutable.ArrayBuffer
+import org.slf4j.LoggerFactory
 
 class MxNetLossGradient(loss: Double) extends LossGradient[MxNetLossGradient](loss) {
   def add(other: MxNetLossGradient) = new MxNetLossGradient(this.loss + other.loss)
@@ -52,20 +53,41 @@ class MxNetEvaluator(val net: Symbol, val ctx: Array[Context], shape: Shape, bat
     checkPointPrefix: Option[String] = None, checkPointFreq: Int = 1)
 extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetOptimizer] {
   
-  val checkPointer = checkPointPrefix match {case Some(p) => new MxModelCheckPoint(p, checkPointFreq) case None => null}
+  val logger = LoggerFactory.getLogger(getClass)
+  val checkPointer = 
+    if (checkPointFreq > 0) checkPointPrefix match {case Some(p) => new MxModelCheckPoint(p, checkPointFreq) case None => null}
+    else null
+    
   def evaluateTrainingUnit(unit: DataBatch, weights: MxNetWeights, u: MxNetOptimizer) : MxNetLossGradient = 
     throw new RuntimeException("Closed evaluator MxNetEvaluator does not implement singleton point evaluations")   
   
   def copy() = throw new RuntimeException("MxNetEvaluator should/can not be copied")
   
-  def evaluateTrainingMiniBatch(tr: DataIter, tst: DataIter, weights: MxNetWeights, u: MxNetOptimizer, epochCnt: Int = 0) : MxNetLossGradient = {    
+  def evaluateTrainingMiniBatch(tr: DataIter, tst: DataIter, weights: MxNetWeights, 
+      u: MxNetOptimizer, epochCnt: Int = 0, startFrom: Int = -1) : MxNetLossGradient = {    
     val metric = new Accuracy()
-    val ff = new FeedForward(net, ctx, optimizer = u.optimizer, 
-        initializer = init, numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
-    ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
+    if ((checkPointPrefix.isDefined) && (startFrom > 0)) { // in this case we're resuming training from a saved checkpoint
+      val epochSize = math.ceil(tr.size.toDouble / batchSz)
+      val (sym, args, auxs) = Model.loadCheckpoint(checkPointPrefix.get, startFrom)
+      logger.info("Loading model " + checkPointPrefix.get)
+      val ff = new FeedForward(net, ctx, optimizer = u.optimizer, 
+          initializer = init, numEpoch = epochCnt, batchSize = batchSz, argParams = args, auxParams = auxs,
+          beginEpoch = startFrom, allowExtraParams = true)
+      ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
           batchEndCallback = new Speedometer(batchSz, 50))
-    weights.setArgParams(ff.getArgParams)
-    weights.setAuxParams(ff.getAuxParams)           
+      checkPointPrefix foreach {p => Model.saveCheckpoint(p, epochCnt, sym, ff.getArgParams, ff.getAuxParams)}
+      sym.dispose()
+    } else {
+      val ff = new FeedForward(net, ctx, optimizer = u.optimizer, 
+        initializer = init, numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
+      ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
+          batchEndCallback = new Speedometer(batchSz, 50))
+      weights.setArgParams(ff.getArgParams)
+      weights.setAuxParams(ff.getAuxParams)
+      checkPointPrefix foreach {p => Model.saveCheckpoint(p, epochCnt, net, ff.getArgParams, ff.getAuxParams)}
+      net.dispose()
+    }        
+               
     new MxNetLossGradient(metric.get._2.toDouble)
   }
 }

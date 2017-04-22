@@ -24,7 +24,7 @@ class MxModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilder {
     ms.catMPs foreach withMetaParam
     ms.realMPs foreach withMetaParam
     ms.intMPs foreach withMetaParam
-    ms.topoMPs foreach withMetaParam
+
   }
        
   def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[MxModelSettings]) : ModelSpace = {    
@@ -32,7 +32,7 @@ class MxModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilder {
     val budget = appSettings match {case Some(m) => m.numEpochs case None => -1}
     // Pull out important parameters to preserve here and pass into model space
     val appConfig = appSettings map {a => a.config.root.render()}
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig, budget)    
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, it, LType(SoftMaxLType, odim), idim, odim, appConfig, budget)    
   }  
 }
 
@@ -50,7 +50,8 @@ trait MxLearnerBuilderHelper {
   }  
 }
 
-class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerInstance[GLPFactor] with MxNetSetup {
+class MxModelInstance(appSettings: MxModelSettings, nfs: Int, modelId: Int, startFrom: Int) 
+extends LearnerInstance[GLPFactor] with MxNetSetup {
     
   def train(trVecs: Vector[GLPFactor], tstVecs: Vector[GLPFactor]) : Double = {
     val devices = getDeviceArray(appSettings)
@@ -66,8 +67,9 @@ class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerIns
       case "xavier" => new Xavier(rndType = "gaussian", factorType = "in", magnitude = 1.8f)
       case _ => new Uniform(0.01f)
     }
-    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, initializer, appSettings.modelFile, appSettings.saveFreq)
-    val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
+    val modelPrefix = appSettings.modelFile match {case Some(s) => Some(s + "-id-" + modelId) case None => None}
+    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, initializer, modelPrefix, -1)
+    val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs, startFrom)
     sym.dispose()
     lg.loss
   }
@@ -76,11 +78,12 @@ class MxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerIns
 object MxModelInstance extends MxLearnerBuilderHelper {
   def apply(config: ModelConfig) : MxModelInstance = {
     val settings = setupSettings(config)
-    new MxModelInstance(settings, config.inDim)
+    new MxModelInstance(settings, config.inDim, config.id, config.src)
   }
 }
 
-class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int) extends LearnerInstance[java.io.File] with MxNetSetup {
+class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int, modelId: Int, startFrom: Int) 
+extends LearnerInstance[java.io.File] with MxNetSetup {
   val log = LoggerFactory.getLogger(getClass)
   
   def train(trData: Vector[java.io.File], tstData: Vector[java.io.File]) : Double = {
@@ -102,8 +105,11 @@ class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int) exten
       case "xavier" => new Xavier(rndType = "gaussian", factorType = "in", magnitude = 1.8f)
       case _ => new Uniform(0.01f)
     }
-    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, init, appSettings.modelFile, appSettings.saveFreq)
-    val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs)
+    
+    val modelPrefix = appSettings.modelFile match {case Some(s) => Some(s + "-id-" + modelId) case None => None}
+    log.info("^^^^^^ => Evaluating model via mxnet with prefix = " + modelPrefix)
+    val evaluator = new MxNetEvaluator(sym, devices, shape, appSettings.miniBatchSize, init, modelPrefix, -1)
+    val lg = evaluator.evaluateTrainingMiniBatch(trIter, tstIter, weights, updater, appSettings.numEpochs, startFrom)
     sym.dispose()
     lg.loss
   }
@@ -111,7 +117,8 @@ class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int) exten
 object FileSystemImgMxModelInstance extends MxLearnerBuilderHelper {
   def apply(config: ModelConfig) : FileSystemImgMxModelInstance = {
     val settings = setupSettings(config)
-    new FileSystemImgMxModelInstance(settings, config.inDim)
+    val startFrom = config.src
+    new FileSystemImgMxModelInstance(settings, config.inDim, config.id, startFrom)
   }
 }
 
@@ -119,7 +126,6 @@ class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) ex
   val log = LoggerFactory.getLogger(getClass)
   
   def evaluate(c: ModelConfig) : Double = {
-    log.info("Initiating evaluation with FileSystemMxModelEvaluator ... ")
       val learner = FileSystemImgMxModelInstance(c)
       val acc = learner.train(Vector(trData), Vector(tstData))
       acc

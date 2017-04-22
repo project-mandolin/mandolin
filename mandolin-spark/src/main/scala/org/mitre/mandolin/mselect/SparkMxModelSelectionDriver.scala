@@ -61,9 +61,12 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
 object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]) : Unit = {
-    val a1 = new MxModelSettings(args) 
-    val a2 = a1.withSets(Seq(("mandolin.trainer.model-file","null"))) // clunky - but ensure this is null if we're running model selection distributed
-    val appSettings = new MxModelSettings(a2.config) with ModelSelectionSettings
+    val a1 = new MxModelSettings(args)
+    val appSettings1 = new MxModelSettings(a1.config) with ModelSelectionSettings
+    val appSettings2 = if (appSettings1.useHyperband && appSettings1.useCheckpointing) appSettings1 else {
+      appSettings1.withSets(Seq(("mandolin.trainer.model-file","null"))) // clunky - but ensure this is null if we're running model selection distributed
+    }
+    val appSettings = new MxModelSettings(appSettings2.config) with ModelSelectionSettings
     val sc = new SparkContext
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)

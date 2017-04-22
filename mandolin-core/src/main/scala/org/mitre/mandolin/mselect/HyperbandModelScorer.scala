@@ -16,6 +16,7 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
   
   private var targetRatiosTable : Map[(Int,Int),Double] = Map()  // map n_i,r_i => ratio
   private var currentCounts : Map[(Int,Int), Int] = Map()
+  private var currentTotal = 0
   val targetRatioVec = setUpRatioTable()
   
   lazy val sMax = logEta(maxIters.toDouble).toInt
@@ -31,8 +32,8 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
   
   def setUpRatioTable() = {
     val power = 1.1
-    var ratioCnt : Map[(Int,Int), Double] = Map()
-    var total = 0.0
+    var ratioCnt : Map[(Int,Int), Int] = Map()
+    var total = 0
     for (s <- sMax to 0 by -1) {
       val n = math.ceil(B / maxIters * (math.pow(eta, s) / (s+1)))
       val r = maxIters * math.pow(eta, -s)
@@ -40,38 +41,31 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
         val ni = (math.floor(n * math.pow(eta, -i))).toInt
         val ri = (r * math.pow(eta, i)).toInt
         val ri1 = if (i > 0) (r * math.pow(eta, i-1)).toInt else 0
-        val curCnt = ratioCnt.get((ri,ri1)).getOrElse(0.0)
+        val curCnt = ratioCnt.get((ri,ri1)).getOrElse(0)
+        total += ni
         ratioCnt += ((ri,ri1) -> (curCnt + ni)) // this updates        
       }
     }
-    ratioCnt foreach {case (k,v) =>
-      total += math.pow(v.toDouble, power)
-    }
     ratioCnt foreach {case (k,v) =>       
       currentCounts += (k -> 0); 
-      val r = math.pow(v.toDouble, power) / total
-      log.info("Weighted Probability: ("+k+") => " + r)
-      targetRatiosTable += (k -> r)
+      targetRatiosTable += (k -> (v.toDouble / total.toDouble))
     }
     targetRatiosTable.toVector
   }
   
   def drawNextConfig(kMat: Option[DenseMatrix[Double]]) = {
     var config : Option[(Int,Int)] = None
-    val rnd = util.Random.nextDouble()
-    var running = 0.0
-    var done = false
-    var i = 0; while (!done && (i < targetRatioVec.length)) {        
-        val ((ri,ri1),r) = targetRatioVec(i)
-        log.info("ri="+ri+" ri1=" +ri1+ " => " + r + " against rand value = " + rnd + " running = " + running)
-        if ((r+running) > rnd) {
-          done = true
-          config = Some((ri,ri1))
-        } else {
-          running += r
-        }
-        i += 1
+    var maxDiff = -Double.MaxValue
+    currentCounts foreach {case (k,v) =>
+      val target = targetRatiosTable(k)
+      val curRatio = v.toDouble / (currentTotal.toDouble + 1.0)
+      val diff = target - curRatio
+      if (diff > maxDiff) {
+        config = Some(k)
+        maxDiff = diff
       }
+    }
+    
     log.info(">>>> Drawing new config <<<<<  ==> " + config.get)
     val prevEvalLevel = config.get._2
     val curEvalLevel  = config.get._1
@@ -91,23 +85,44 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
         val toEval = band2.head._2
         band2.tail foreach {case (_,c) => band += c}
         val toEvalMc = toEval.mc
-        val acqScore = acqFn.score(toEvalMc)
-        log.info("Evaluating config with curEvalLevel = " + curEvalLevel + " from previous level " + prevEvalLevel + " that had score = " + toEval.sc + " with AcqFun score = " + acqScore)        
+        val acqScore1 = acqFn.score(toEvalMc)
+        val acqScore = kMat match {case Some(k) => acqFn.scoreWithNewK(toEvalMc, k) case None => acqScore1}
+        log.info("Evaluating config with curEvalLevel = " + curEvalLevel + " from previous level " + prevEvalLevel + " that had score = " + toEval.sc + " with AcqFun score = " + acqScore + " without K = " + acqScore1)
+        val cc = currentCounts(config.get)
+        currentCounts += (config.get -> (cc + 1))        
         toEvalMc.withBudgetAndSource(curEvalLevel,prevEvalLevel)
       } else { // fall back to drawing uniformly if we don't have enough
-        val configs = getScoredConfigs(sampleSize, curEvalLevel)
+        val (k,k1) = config.get
+        val cc = currentCounts((k,0))
+        currentCounts += (config.get -> (cc + 1))
+        val configs = getScoredConfigs(sampleSize, curEvalLevel, kMat)
         configs(0)._2.withBudgetAndSource(curEvalLevel, 0)
       }
-    } else {
+    } else {      
+      val cc = currentCounts((curEvalLevel,0))
+      currentCounts += ((curEvalLevel,0) -> (cc + 1))
       // in this case, draw using acquisition function (or randomly)
-      val configs = getScoredConfigs(sampleSize, curEvalLevel)
+      val configs = getScoredConfigs(sampleSize, curEvalLevel, kMat)
+      val config = configs(0)._2
       configs(0)._2.withBudgetAndSource(curEvalLevel, prevEvalLevel)
     }
   }
   
+  def drawNConfigs(n: Int) = {
+    var candSet = currentlyEvaluating
+    var toEval : List[ModelConfig] = Nil
+    for (i <- 1 to n) {
+      val updatedK = acqFn.getUpdatedK(candSet.toVector)
+      val c = drawNextConfig(updatedK)
+      toEval = c :: toEval
+      candSet += c
+    }
+    toEval.toVector
+  }
+  
   override def preStart() = {
     // send initial random batch of configs to evaluate
-    val scored = getScoredConfigs(sampleSize,1) map {_._2}
+    val scored = getScoredConfigs(sampleSize,1, None) map {_._2}
     val epic = new Epic[ModelConfig] {
       override val iterator = scored.toIterator
     }
@@ -136,7 +151,7 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
       val ind = logEta(budgetUsed).toInt  // get the 'index' by taking the log here (e.g. budget = 81, eta=3 => index = 4)
       val curCnt = currentCounts((budgetUsed,prevBudget)) // count of # of evaluations with (budget, sourceBudget) 
       currentCounts += ((budgetUsed, prevBudget) -> (curCnt + 1))   // update count 
-      // currentTotal += 1
+      currentTotal += 1
       bandedResults(ind) += scConf // add to priority queue
       // now need to select next to score and send for evaluation
       // keep an index to know which to select next...
@@ -148,19 +163,23 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
         val t = System.nanoTime()
         acqFn.train(evalResults)
         log.info("Acquisition training completed in " + ((System.nanoTime() - t) / 1E9) + " seconds")
-      }
-      val updatedK = acqFn.getUpdatedK(currentlyEvaluating.toVector)      
-      val configs = Vector(drawNextConfig(updatedK))
-      val epic = new Epic[ModelConfig] {
+        log.info("Using updated K based on " + currentlyEvaluating.size + " currently evaluating models")
+        val batchSize = math.max((concurrentEvals / 3), acqFnThreshold)
+        val configs = drawNConfigs(batchSize)
+        val epic = new Epic[ModelConfig] {
           override val iterator = configs.toIterator
         }
-      evalMaster ! epic
+        evalMaster ! epic
+      }      
   }
   
   // just draw according to acquisition function
-  def getScoredConfigs(size: Int, budget: Int) = {
+  def getScoredConfigs(size: Int, budget: Int, kMat: Option[DenseMatrix[Double]]) = {
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom(budget)
-    (unscoredConfigs map { s => (acqFn.score(s), s) }).toVector.sortWith((a, b) => a._1 > b._1)
+    (unscoredConfigs map { s =>
+      val sc1 = kMat match {case Some(k) => acqFn.scoreWithNewK(s, k) case None => acqFn.score(s)}
+      val sc = if (sc1.isNaN() || (sc1 > 10.0) || (sc1 < -10.0)) acqFn.score(s) else sc1
+      (sc, s) }).toVector.sortWith((a, b) => a._1 > b._1)
   }
   
 }

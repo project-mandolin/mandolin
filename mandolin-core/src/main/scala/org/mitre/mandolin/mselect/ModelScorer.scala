@@ -77,7 +77,6 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
     case Hello => log.info("SCORER: Received Hello from " + sender.toString())
   }
 
-
   def getScoredConfigs(size: Int) = {
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom
     if (concurrentEvals > 1) {

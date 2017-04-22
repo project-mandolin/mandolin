@@ -71,37 +71,13 @@ trait ModelSelectionSettings extends GLPModelSettings {
           IntegerMetaParameter(key, new StepIntSet(l,u,s))
       }
     }
-    // this defines a vector of "topology meta parameters"
-    // each topologyMetaParameter defines a space of topologies for a fixed number of layers
-    // a topologySpaceMetaParameter is then a set/vector of these
-    // this allows for the space to be tailored/bounded in a reasonable way for different
-    val layers = try {
-      val vec = cobj.getConfigList("layers") map {l =>    
-      val key = l.getString("name") // just the layer name
-      val topo = l.getConfigList("topology")
-      val topoLayers = topo map { t =>
-        val lt = t.getStringList("ltype")
-        val (lDim,uDim) = getIntPair(t.getIntList("dim").toList)
-        val (ll1,ul1) = getDoublePair(t.getDoubleList("l1-pen").toList) 
-        val (ll2,ul2) = getDoublePair(t.getDoubleList("l2-pen").toList)
-        new LayerMetaParameter("layer",
-            TupleSet4 (
-              CategoricalMetaParameter("ltype", new CategoricalSet(lt.toVector)),
-              IntegerMetaParameter("dim", new IntSet(lDim, uDim)), 
-              RealMetaParameter("l1pen", new RealSet(ll1, ul1)),
-              RealMetaParameter("l2pen", new RealSet(ll2, ul2)) ))
-        } 
-      new TopologyMetaParameter(key, topoLayers.toVector)
-      }
-      vec.toVector} catch {case _: Throwable => Vector()}
-    val ll = ListSet(layers.toVector)
-    val sp = if (ll.size > 0) Some(new TopologySpaceMetaParameter("topoSpace", ll)) else None
     val budget = if (this.useHyperband) this.numEpochs else -1
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, sp, inLType, outLType, 0, 0, None, budget)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, inLType, outLType, 0, 0, None, budget)
   }
   
   val modelSpace = buildModelSpaceFromConfig()
   val useHyperband = asBoolean("mandolin.model-selection.use-hyperband")
+  val useCheckpointing = asBoolean("mandolin.model-selection.use-checkpoints")
   val numWorkers = asInt("mandolin.model-selection.concurrent-evaluations")
   val threadsPerWorker = asInt("mandolin.model-selection.threads-per-worker")
   val workerBatchSize = asInt("mandolin.model-selection.worker-batch-size")

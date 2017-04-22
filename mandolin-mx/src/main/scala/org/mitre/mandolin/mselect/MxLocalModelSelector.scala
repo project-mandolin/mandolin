@@ -61,7 +61,11 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
 
 object MxLocalModelSelector extends org.mitre.mandolin.config.LogInit {
    def main(args: Array[String]): Unit = {
-    val appSettings = new MxModelSettings(args) with ModelSelectionSettings
+    val appSettings1 = new MxModelSettings(args) with ModelSelectionSettings
+    val appSettings2 = if (appSettings1.useHyperband && appSettings1.useCheckpointing) appSettings1 else {
+      appSettings1.withSets(Seq(("mandolin.trainer.model-file","null"))) // clunky - but ensure this is null if we're running model selection distributed
+    }
+    val appSettings = new MxModelSettings(appSettings2.config) with ModelSelectionSettings
     val builder1 = new MxModelSpaceBuilder(appSettings.modelSpace) // MxLearnerFactory
     if ((appSettings.inputType equals "recordio") || (appSettings.inputType equals "mnist")) {       
       val selector = new LocalFileSystemImgMxModelSelector(builder1, appSettings)
