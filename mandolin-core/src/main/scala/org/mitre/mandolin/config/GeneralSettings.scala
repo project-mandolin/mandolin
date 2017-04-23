@@ -73,7 +73,7 @@ abstract class GeneralSettings(val config: Config) {
   }
   
   protected def asBoolean(key: String) = {
-    config.getBoolean(key)        
+    try config.getBoolean(key) catch {case _: Throwable => false}        
   }
 
   /*  

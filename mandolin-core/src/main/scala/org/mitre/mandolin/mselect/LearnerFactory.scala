@@ -20,7 +20,6 @@ trait ModelSpaceBuilder {
   val reals = new mutable.MutableList[RealMetaParameter]
   val cats = new mutable.MutableList[CategoricalMetaParameter]
   val ints = new mutable.MutableList[IntegerMetaParameter]
-  var topo : Option[TopologySpaceMetaParameter] = None
 
   def withMetaParam(realMP: RealMetaParameter) = {
     reals += realMP
@@ -36,11 +35,6 @@ trait ModelSpaceBuilder {
     this
   }
   
-  def withMetaParam(t: TopologySpaceMetaParameter) = {
-    topo = Some(t)
-    this
-  }
-
   
 }
 
@@ -54,7 +48,6 @@ class MandolinModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilde
     ms.catMPs foreach withMetaParam
     ms.realMPs foreach withMetaParam
     ms.intMPs foreach withMetaParam
-    ms.topoMPs foreach withMetaParam
   }
        
   def build() : ModelSpace = build(0,0,false, None)  
@@ -62,7 +55,8 @@ class MandolinModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilde
   def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[GLPModelSettings]) : ModelSpace = {    
     val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
     val appConfig = appSettings map {a => a.config.root.render()}
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, topo, it, LType(SoftMaxLType, odim), idim, odim, appConfig)    
+    val budget = appSettings match {case Some(m) => m.numEpochs case None => -1}
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, it, LType(SoftMaxLType, odim), idim, odim, appConfig, budget)    
   }
 }
 
@@ -88,9 +82,8 @@ object MandolinModelInstance {
     val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
     
     //val mspecValued = config.topoMPs map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
-    val hiddenLayers = config.topo.getOrElse(Vector())
     
-    val fullSpec : Vector[LType] = Vector(config.inLType) ++  hiddenLayers ++ Vector(config.outLType)
+    val fullSpec : Vector[LType] = Vector(config.inLType) ++  Vector(config.outLType)
     val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq   
     val sets = config.serializedSettings match {case Some(s) => new GLPModelSettings(s) case None => new GLPModelSettings()}

@@ -233,6 +233,8 @@ class NullGLPUpdater() extends Updater[GLPWeights, GLPLossGradient, NullGLPUpdat
 class BasicGLPSgdUpdater(val initialLearningRate: Double = 0.2, lambda: Double = 0.1) extends Updater[GLPWeights, GLPLossGradient, BasicGLPSgdUpdater] {
   var numIterations = 0
   
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+  
   def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
   def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")
   def compress() = this
