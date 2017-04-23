@@ -7,8 +7,7 @@ import java.util.Calendar
 import akka.actor.{ActorRef, Actor}
 import org.slf4j.LoggerFactory
 
-case class ScoredModelConfig(sc: Double, t: Long, mc: ModelConfig)
-
+case class ScoredModelConfig(sc: Double, t: Long, mc: ModelConfig, src: Int = 0)
 
 /**
   * Encapsulates functionality to apply Bayesian regression model to "score"
