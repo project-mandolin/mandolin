@@ -29,6 +29,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
   var currentlyEvaluating : Set[ModelConfig] = Set()
   var receivedSinceLastScore = 0
   val startTime = System.currentTimeMillis()
+  protected val startWallTime = System.nanoTime
 
   def totalReceived = evalResults.length
 
@@ -49,7 +50,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
       evalResults += r
       receivedSinceLastScore += 1
       log.info("accuracy:" + r.sc + " " + r.mc + "\n")
-      outWriter.print("accuracy:" + r.sc + " " + r.mc + "\n")
+      outWriter.print("accuracy:" + r.sc + " cumulativeTime:" + ((System.nanoTime() - startWallTime) / 1E9) + " " + r.mc + "\n")
       outWriter.flush()
       if (totalReceived >= totalEvals) {
         outWriter.close()

@@ -4,6 +4,7 @@ import org.mitre.mandolin.optimize.{ Updater, LossGradient, TrainingUnitEvaluato
 import org.mitre.mandolin.glp.GLPFactor
 import ml.dmlc.mxnet.{ EpochEndCallback, Uniform, Initializer, Xavier, Model, Shape, FeedForward, 
   Symbol, Context, Optimizer, NDArray, DataIter, DataBatch, Accuracy }
+
 import ml.dmlc.mxnet.io.{ NDArrayIter }
 import ml.dmlc.mxnet.optimizer.SGD
 import ml.dmlc.mxnet.Callback.Speedometer
@@ -78,6 +79,7 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
       checkPointPrefix foreach {p => Model.saveCheckpoint(p, epochCnt, sym, ff.getArgParams, ff.getAuxParams)}
       sym.dispose()
     } else {
+
       val ff = new FeedForward(net, ctx, optimizer = u.optimizer, 
         initializer = init, numEpoch = epochCnt, batchSize = batchSz, argParams = null, auxParams = null)
       ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 

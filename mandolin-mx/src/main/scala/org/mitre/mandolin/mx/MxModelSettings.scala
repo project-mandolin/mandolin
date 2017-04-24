@@ -53,6 +53,10 @@ class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettin
   // this allows GPU hosts to be specified in the configuration
   val gpuHosts = try config.as[List[String]]("mandolin.mx.gpu-hosts") catch {case _:Throwable => Nil}
   
+  // set this up to have a device mapping
+  // gpu-host1 => 0,1,2,3, gpu-host2 => 0,1, etc.
+  val gpuHostMapping = try config.getAnyRefList("mandolin.mx.gpu-host-map") catch {case _:Throwable => null}
+  
   override def withSets(avs: Seq[(String, Any)]) : MxModelSettings  = {
     val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) =>       
       v2 match {

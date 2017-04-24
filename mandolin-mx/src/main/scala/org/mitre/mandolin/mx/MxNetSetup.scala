@@ -2,18 +2,45 @@ package org.mitre.mandolin.mx
 
 import ml.dmlc.mxnet.{ DataIter, Context, Shape, IO, FactorScheduler, Model }
 import ml.dmlc.mxnet.optimizer._
+import com.typesafe.config.Config
+import scala.collection.JavaConversions._
+import net.ceedubs.ficus.Ficus._
 
 trait MxNetSetup {
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+  
   def getDeviceArray(appSettings: MxModelSettings) : Array[Context] = {
     val gpuContexts = appSettings.getGpus map {i => Context.gpu(i)}    
     val cpuContexts = appSettings.getCpus map {i => Context.cpu(i)}
     if (gpuContexts.length < 1) { // this checks if the current host is a "gpu" host and assigns to processor "0"
+      if (appSettings.gpuHostMapping != null) {
+        val curMachineName = java.net.InetAddress.getLocalHost().getHostName
+        val config = appSettings.config.as[List[Config]]("mandolin.mx.gpu-host-map")
+        var gpuList : List[Int] = Nil
+        try {
+        config.foreach {c => 
+          val g1 = c.getString("gpu")
+          if (curMachineName equals g1) {
+            val deviceList = c.getIntList("devices")
+            gpuList = deviceList.toList map {_.toInt}
+          }
+        }} catch {case _: Throwable => }
+        if (gpuList.length > 0) {
+          (gpuList map {e => Context.gpu(e)}).toArray
+        } else Context.cpu(0)
+        //val specList = config.as[Config]
+        //val specList = appSettings.config.as[Config]
+        // val gpuHostMaps : List[Config] = appSettings.gpuHostMapping.toList
+      } else {
       val ghosts = appSettings.gpuHosts.toSet
+      logger.info("GPU hosts: " + ghosts)
       if (ghosts.size > 0) {
         val curMachineName = java.net.InetAddress.getLocalHost().getHostName
-        if (ghosts.contains(curMachineName)) ((Context.gpu(0)) :: cpuContexts).toArray
+        logger.info("Current machine name = " + curMachineName)
+        if (ghosts.contains(curMachineName)) Context.gpu(0)
         else cpuContexts.toArray
       } else cpuContexts.toArray
+      }
     } else (gpuContexts ++ cpuContexts).toArray         
   }
   

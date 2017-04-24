@@ -78,6 +78,7 @@ trait ModelSelectionSettings extends GLPModelSettings {
   val modelSpace = buildModelSpaceFromConfig()
   val useHyperband = asBoolean("mandolin.model-selection.use-hyperband")
   val useCheckpointing = asBoolean("mandolin.model-selection.use-checkpoints")
+  val hyperbandMixParam = asFloatOpt("mandolin.model-selection.hyper-acq-mix").getOrElse(1.0f) // coefficient to mix in Bayesian optimization
   val numWorkers = asInt("mandolin.model-selection.concurrent-evaluations")
   val threadsPerWorker = asInt("mandolin.model-selection.threads-per-worker")
   val workerBatchSize = asInt("mandolin.model-selection.worker-batch-size")

@@ -14,7 +14,8 @@ import scala.concurrent.ExecutionContext
   */
 abstract class ModelSelectionDriver(trainFile: String, testFile: String, numWorkers: Int,
                                     scoreSampleSize: Int, acqFunRelearnSize: Int, 
-                                    totalEvals: Int, hyperBand: Boolean = false) {
+                                    totalEvals: Int, hyperBand: Boolean = false, hyperMix: Float = 1.0f,
+                                    hyperMax: Int = 81) {
 
   val ms: ModelSpace
   val acqFun : AcquisitionFunction
@@ -23,10 +24,12 @@ abstract class ModelSelectionDriver(trainFile: String, testFile: String, numWork
   def search(): Unit = {
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers))
     val system = ActorSystem("ModelSelectionActorSystem")
-    val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")
-    val scoringFun = new BayesianNNScoringFunction(ms, acqFun, numWorkers)
+    val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")    
+    val scoringFun = 
+      if (acqFun.isInstanceOf[RandomAcquisition]) new RandomScoringFunction else 
+      new BayesianNNScoringFunction(ms, acqFun, numWorkers)
     val scorer = 
-      if (hyperBand) Props(new HyperbandModelScorer(ms, scoringFun, master, scoreSampleSize, acqFunRelearnSize, totalEvals, numWorkers, 81))
+      if (hyperBand) Props(new HyperbandModelScorer(ms, scoringFun, master, scoreSampleSize, acqFunRelearnSize, totalEvals, numWorkers, hyperMax, hyperMix))
       else Props(new ModelScorer(ms, scoringFun, master, scoreSampleSize, acqFunRelearnSize, totalEvals, numWorkers))
     val scorerActor = system.actorOf(scorer, name = "scorer")
     val workers = 1 to numWorkers map (i => 
