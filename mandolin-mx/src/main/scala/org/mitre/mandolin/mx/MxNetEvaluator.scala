@@ -90,7 +90,7 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
       net.dispose()
     }        
                
-    new MxNetLossGradient(metric.get._2.toDouble)
+    new MxNetLossGradient(metric.get._2(0).toDouble)
   }
 }
 
@@ -119,7 +119,7 @@ extends TrainingUnitEvaluator[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetO
     ff.fit(trIter, tstIter, metric)
     trIter.dispose() // clean out the cache for this iterator
     tstIter.dispose()
-    new MxNetLossGradient(metric.get._2.toDouble)    
+    new MxNetLossGradient(metric.get._2(0).toDouble)    
   }
   
   def evaluateTrainingUnit(unit: GLPFactor, weights: MxNetWeights, u: MxNetOptimizer) : MxNetLossGradient = 
