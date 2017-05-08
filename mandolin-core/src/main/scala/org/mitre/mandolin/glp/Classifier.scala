@@ -8,14 +8,16 @@ import org.mitre.mandolin.config.{ ConfigGeneratedCommandOptions, LearnerSetting
 import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.local.LocalProcessor
+import com.typesafe.config.Config
 import scala.reflect.ClassTag
 
 // abstract class 
-class GLPModelSettings(conf: com.typesafe.config.Config) extends GeneralLearnerSettings[GLPModelSettings](conf) 
+class GLPModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
+extends GeneralLearnerSettings[GLPModelSettings](_confOptions, _conf) 
   with BatchLearnerSettings with DecoderSettings with DeepNetSettings with Serializable {
      
-  def this(str: String) = this(com.typesafe.config.ConfigFactory.parseString(str))
-  def this(args: Array[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
+  def this(str: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(str)))
+  def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)),None)
   def this() = this(Array(): Array[String])
 
   import scala.collection.JavaConversions._
@@ -26,7 +28,7 @@ class GLPModelSettings(conf: com.typesafe.config.Config) extends GeneralLearnerS
   def set(key: String, v: Any) = {
     val curConfig = this.config
     val nConf = curConfig.withValue(key, com.typesafe.config.ConfigValueFactory.fromAnyRef(v))
-    new GLPModelSettings(nConf) 
+    new GLPModelSettings(None,Some(nConf)) 
   }
   
   //def withComplexSets(avs: )
@@ -42,7 +44,7 @@ class GLPModelSettings(conf: com.typesafe.config.Config) extends GeneralLearnerS
         case v2: Any =>
           ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
       }    
-    new GLPModelSettings(nc)     
+    new GLPModelSettings(None,Some(nc))     
   }   
 }
 

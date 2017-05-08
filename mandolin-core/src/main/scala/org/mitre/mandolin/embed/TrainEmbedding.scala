@@ -5,10 +5,12 @@ import org.mitre.mandolin.optimize.{TrainingUnitEvaluator, Updater}
 import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
 import org.mitre.mandolin.config.{ConfigGeneratedCommandOptions, LearnerSettings, DecoderSettings}
+import com.typesafe.config.Config
 
-class EmbeddingModelSettings(config: com.typesafe.config.Config) extends LearnerSettings(config) with DecoderSettings {
+class EmbeddingModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
+extends LearnerSettings(None,_conf) with DecoderSettings {
  
-  def this(args: Array[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
+  def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)), None)
   
   val embedMethod = asStr("mandolin.embed.method")
   val eDim        = asInt("mandolin.embed.dim")

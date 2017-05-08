@@ -10,7 +10,6 @@ abstract class FactorGraphModelWriter {
 
   def writeModel(io: IOAssistant, filePath: String, 
       sw: GLPWeights, sa: Alphabet, sla: Alphabet, sann: ANNetwork,
-      fw: GLPWeights, fa: Alphabet, fla: Alphabet, fann: ANNetwork) : Unit
-      
+      fw: GLPWeights, fa: Alphabet, fla: Alphabet, fann: ANNetwork) : Unit      
   
 }

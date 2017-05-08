@@ -2,7 +2,7 @@ package org.mitre.mandolin.gm.local
 
 import org.mitre.mandolin.gm._
 import org.mitre.mandolin.util.{ IOAssistant, Alphabet, LocalIOAssistant }
-import org.mitre.mandolin.glp.{GLPWeights, ANNetwork}
+import org.mitre.mandolin.glp.{GLPWeights, ANNetwork, CategoricalGLPPredictor}
 import com.twitter.chill.EmptyScalaKryoInstantiator
 import org.mitre.mandolin.config.MandolinRegistrator
 import com.esotericsoftware.kryo.Kryo
@@ -12,18 +12,25 @@ class LocalRegistrator extends MandolinRegistrator {
   def registerClasses(kryo: Kryo) = register(kryo)
 }
 
-class LocalFactorGraphModelWriter extends FactorGraphModelWriter {
+trait KryoSetup {
   
-  val instantiator = new EmptyScalaKryoInstantiator
-
-  val kryo = {
+  def setupKryo() = {
+    val instantiator = new EmptyScalaKryoInstantiator
+    val kryo = {
     val k = instantiator.newKryo()
       k.setClassLoader(Thread.currentThread.getContextClassLoader)
       k
-  }
+    }
   
-  val registrator = new LocalRegistrator
-  registrator.registerClasses(kryo)
+    val registrator = new LocalRegistrator
+    registrator.registerClasses(kryo)
+    kryo
+  }
+} 
+
+class LocalFactorGraphModelWriter extends FactorGraphModelWriter with KryoSetup {
+  
+  val kryo = setupKryo()
   
   def writeModel(io: IOAssistant, filePath: String, 
       sw: GLPWeights, sa: Alphabet, sla: Alphabet, sann: ANNetwork,
@@ -32,7 +39,18 @@ class LocalFactorGraphModelWriter extends FactorGraphModelWriter {
   }
 }
 
+class LocalFactorGraphModelReader extends FactorGraphModelReader with KryoSetup {
+
+  val kryo = setupKryo()
+  def readModel(io: IOAssistant, filePath: String) : FactorGraphModelSpec = {
+    io.readSerializedObject(kryo, filePath, classOf[FactorGraphModelSpec]).asInstanceOf[FactorGraphModelSpec]
+  }
+}
+
+
 class FGProcessor {
+  
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   
   def processTrain(fgSettings: FactorGraphSettings) = {
     val io = new LocalIOAssistant
@@ -53,11 +71,26 @@ class FGProcessor {
     val testFg = FactorGraph.gatherFactorGraph(fgSettings, fg.alphabets)
     val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, testFg, fgSettings.sgAlpha)
     runtimeFg.mapInfer(fgSettings.subGradEpochs)
-    println("Test Accuracy: " + runtimeFg.getAccuracy)    
+    logger.info("Test Accuracy: " + runtimeFg.getAccuracy)    
   }  
+  
+  def processDecode(fgSettings: FactorGraphSettings) = {
+    val io = new LocalIOAssistant
+    val mReader = new LocalFactorGraphModelReader
+    val testFgModel = mReader.readModel(io, fgSettings.modelFile.get)
+    val factorModel = new FactorModel(new CategoricalGLPPredictor(testFgModel.fnet), testFgModel.fwts)
+    val singleModel = new FactorModel(new CategoricalGLPPredictor(testFgModel.snet), testFgModel.swts)
+    val alphabetset = AlphabetSet(testFgModel.sfa, testFgModel.ffa, testFgModel.sla, testFgModel.fla)
+    val decodeFg = FactorGraph.gatherFactorGraph(fgSettings, alphabetset)
+    val runtime = new TrainedFactorGraph(factorModel, singleModel, decodeFg, fgSettings.sgAlpha)
+    runtime.mapInfer(fgSettings.subGradEpochs)
+    val outFile = fgSettings.outputFile
+    runtime.renderMapOutput(outFile.get, testFgModel.sla)
+    logger.info("Test Accuracy: " + runtime.getAccuracy)
+  }
 }
 
-object FGProcessor {
+object FGProcessor extends org.mitre.mandolin.config.LogInit {
   def main(args: Array[String]): Unit = {
     val appSettings = new FactorGraphSettings(args)
     val mode = appSettings.appMode
@@ -65,7 +98,7 @@ object FGProcessor {
     val fgProcessor = new FGProcessor
     mode match {
       case "train"             => fgProcessor.processTrain(appSettings)
-      //case "decode"            => localProcessor.processDecode(appSettings)
+      case "decode"            => fgProcessor.processDecode(appSettings)
       case "train-test"        => fgProcessor.processTrainTest(appSettings)
       //case "train-decode"      => localProcessor.processTrainDecode(appSettings)
       //case "train-decode-dirs" => localProcessor.processTrainTestDirectories(appSettings)

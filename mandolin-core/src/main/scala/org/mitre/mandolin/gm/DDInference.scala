@@ -10,6 +10,7 @@ abstract class DDInference {
  */
 class SubgradientInference(val fm: FactorModel, val sm: FactorModel, init: Double) extends DDInference {
   
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   var alpha = init.toFloat
   
   def mapInfer(f: Vector[MultiFactor], s: Vector[SingletonFactor], maxN: Int) = {
@@ -19,14 +20,15 @@ class SubgradientInference(val fm: FactorModel, val sm: FactorModel, init: Doubl
       s foreach {single => single.setModeHard(sm, true)}
       f foreach {factor =>
         val fAssignment = factor.varAssignment
-        print("Factor mode assignment: ")
-        fAssignment foreach {v => print(" " + v)}
-        println
+        logger.info("Factor mode assignment: ")
+        val sb = new StringBuilder
+        fAssignment foreach {v => sb append (" " + v)}
+        logger.info(sb.toString)
         var j = 0; while (j < factor.numVars) {
           val fjAssign = fAssignment(j)
           val sjAssign = factor.singletons(j).currentAssignment
           if (fjAssign != sjAssign) { // disagreement in variable assignment
-            println("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
+            logger.info("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
             factor.deltas(j)(fjAssign) += alpha
             factor.deltas(j)(sjAssign) -= alpha
           }
@@ -41,6 +43,7 @@ class SubgradientInference(val fm: FactorModel, val sm: FactorModel, init: Doubl
 }
 
 trait ComputeFullGradient {
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def computeGradientNorm(factors: Vector[MultiFactor], singletons: Vector[SingletonFactor]) = {
     var n = 0.0
     singletons foreach {s =>
@@ -53,10 +56,8 @@ trait ComputeFullGradient {
         iVal += 1
       }
     }
-    println("Grad norm: " + math.sqrt(n))
-  }
-  
-  
+    logger.info("Grad norm: " + math.sqrt(n))
+  }  
 }
 
 /**
@@ -97,8 +98,9 @@ class SmoothedGradientInference(val fm: FactorModel, val sm: FactorModel, init: 
 
 class StarCoordinatedBlockMinimizationInference(val fm: FactorModel, val sm: FactorModel, tau: Double) extends DDInference with ComputeFullGradient {
   
+  
   def mapInfer(factors: Vector[MultiFactor], singletons: Vector[SingletonFactor], maxN: Int) = {
-    println("Performing MAP inference using star-updates")
+    logger.info("Performing MAP inference using star-updates")
     var i = 0; while (i < maxN) {
       val shuffled = util.Random.shuffle(singletons)
       shuffled foreach {s =>

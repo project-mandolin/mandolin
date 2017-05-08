@@ -14,11 +14,32 @@ import net.ceedubs.ficus.Ficus._
  * <a href="http://spark.apache.org/docs/latest/configuration.html">here</a>
  * @param args - command-line arguments as a Seq of String objects
  */ 
-abstract class GeneralSettings(val config: Config) {
+abstract class GeneralSettings(confOptions: Option[ConfigGeneratedCommandOptions], conf: Option[Config]) {
   import scala.collection.JavaConverters._
   import org.apache.log4j.{ Level, Logger, LogManager }
   
-  def this(args: Seq[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
+  def this(c: Config) = this(None, Some(c))
+  def this(args: Seq[String]) = this(Some(new ConfigGeneratedCommandOptions(args)), None)
+  
+  lazy val config = conf.getOrElse(getConfig)
+  
+  def getAttVals(s: String) : (String, Any) = {
+    val s1 = s.split('=')
+    val k = s1(0)
+    val v = s1(1)
+    (k,v)
+  }
+  
+  def getConfig = {
+    val options = confOptions.get
+    val overs = try { options.overrides() } catch {  case _:Throwable => Nil }
+    val conf1 = options.finalConfig    
+    val nc = overs.foldLeft(conf1){case (ac, s) => 
+      val (k,v) = getAttVals(s)
+      ac.withValue(k, com.typesafe.config.ConfigValueFactory.fromAnyRef(v))
+    }
+    nc.resolve()
+  }
   
   //protected val commandOptions = new ConfigGeneratedCommandOptions(args.toSeq)        
   //lazy val config = commandOptions.finalConfig
@@ -125,26 +146,13 @@ abstract class GeneralSettings(val config: Config) {
     lf foreach {l => System.setProperty("log4j.logOutFile", l)}
     lf
   }
-  
-  /*
-  protected val getAppJar : Option[String] = asStrOpt("mandolin.jar-file")  
-  protected lazy val defaultAppJar : Seq[String] = {
-    SparkContext.jarOfClass(this.getClass) match {
-      case Some(f) => Seq(SparkContext.jarOfClass(this.getClass).get)
-      case None => Seq.empty
-    }
-   }
-  
-  /** The application jar itself - if not provided it is inferred */
-  def appJar : Seq[String] = getAppJar match {case None => defaultAppJar case Some(j) => Seq(j) }
-  */
 }
 
 /**
  * Mandolin application settings
  * @param args - command-line args
  */ 
-abstract class AppSettings(conf: Config) extends GeneralSettings(conf) {
+abstract class AppSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends GeneralSettings(_confOptions, _conf) {
   /** Name for the app */
   val name             = asStr("mandolin.name")
   /** Mode for application (train|decode|train-test|train-decode) */
@@ -158,7 +166,7 @@ abstract class AppSettings(conf: Config) extends GeneralSettings(conf) {
  * Settings specific to all Mandolin learners
  * @param args - command-line args
  */ 
-abstract class LearnerSettings(conf: Config) extends AppSettings(conf) {   
+abstract class LearnerSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings(_confOptions, _conf) {   
     
   
   val numFeatures      = asInt("mandolin.trainer.num-hash-features")
@@ -204,7 +212,8 @@ abstract class LearnerSettings(conf: Config) extends AppSettings(conf) {
   
 }
 
-abstract class GeneralLearnerSettings[S <: GeneralLearnerSettings[S]](conf: Config) extends LearnerSettings(conf) {
+abstract class GeneralLearnerSettings[S <: GeneralLearnerSettings[S]](_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
+extends LearnerSettings(_confOptions, _conf) {
   def withSets(avs: Seq[(String, Any)]) : S
 }
 

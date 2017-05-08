@@ -7,10 +7,11 @@ import com.typesafe.config.{Config}
 import org.slf4j.LoggerFactory
 import net.ceedubs.ficus.Ficus._
 
-class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettings(config) {
+class MxModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
+extends GLPModelSettings(_confOptions, _conf) {
   
-  def this(s: String) = this(com.typesafe.config.ConfigFactory.parseString(s))
-  def this(args: Seq[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
+  def this(s: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(s)))
+  def this(args: Seq[String]) = this(Some(new ConfigGeneratedCommandOptions(args)),None)
   def this() = this(Seq())
   
   import scala.collection.JavaConversions._
@@ -65,6 +66,6 @@ class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettin
         case v2: Any =>
           ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
       }
-    new MxModelSettings(nc) 
+    new MxModelSettings(None,Some(nc)) 
   }
 }
