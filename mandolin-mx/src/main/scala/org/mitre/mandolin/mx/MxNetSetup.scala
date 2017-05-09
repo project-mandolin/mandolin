@@ -60,7 +60,7 @@ trait MxNetSetup {
   
   def getTrainIO(appSettings: MxModelSettings, dataShape: Shape) = {
     val preProcessThreads = appSettings.preProcThreads
-    IO.ImageRecordIter(Map(
+    val mp = Map(
       "path_imgrec" -> appSettings.trainFile.get,
       "label_name" -> "softmax_label",
       "mean_img" -> appSettings.meanImgFile,
@@ -70,13 +70,14 @@ trait MxNetSetup {
       "rand_mirror" -> "True",
       "shuffle" -> "True",
       "preprocess_threads" -> preProcessThreads.toString
-      )
-    )
+      )    
+    val mp1 = if (appSettings.mxResizeShortest > 0) mp + ("resize" -> appSettings.mxResizeShortest.toString) else mp
+    IO.ImageRecordIter(mp1)
   }
   
   def getTestIO(appSettings: MxModelSettings, dataShape: Shape) = {
     val preProcessThreads = appSettings.preProcThreads
-    IO.ImageRecordIter(Map(
+    val mp = Map(
       "path_imgrec" -> appSettings.testFile.get,
       "label_name" -> "softmax_label",
       "mean_img" -> appSettings.meanImgFile,
@@ -87,7 +88,8 @@ trait MxNetSetup {
       "shuffle" -> "False",
       "preprocess_threads" -> preProcessThreads.toString
       )
-    )
+    val mp1 = if (appSettings.mxResizeShortest > 0) mp + ("resize" -> appSettings.mxResizeShortest.toString) else mp
+    IO.ImageRecordIter(mp1)
   }
   
   def getMNISTTrainIO(appSettings: MxModelSettings, dataShape: Shape) = {

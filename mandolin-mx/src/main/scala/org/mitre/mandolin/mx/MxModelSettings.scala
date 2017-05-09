@@ -50,6 +50,7 @@ extends GLPModelSettings(_confOptions, _conf) {
   val ydim     = asIntOpt("mandolin.mx.img.ydim").getOrElse(0)
   val meanImgFile = asStrOpt("mandolin.mx.img.mean-image").getOrElse("mean-img")
   val preProcThreads = asIntOpt("mandolin.mx.img.preprocess-threads").getOrElse(8)
+  val mxResizeShortest   = asIntOpt("mandolin.mx.img.resize-shortest").getOrElse(0)
   
   // this allows GPU hosts to be specified in the configuration
   val gpuHosts = try config.as[List[String]]("mandolin.mx.gpu-hosts") catch {case _:Throwable => Nil}
