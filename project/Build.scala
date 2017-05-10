@@ -123,6 +123,7 @@ object MandolinBuild extends Build {
   def mxNetDependencySettings : Seq[Setting[_]] = {
     Seq(
       libraryDependencies ++= Seq(
+      	"commons-logging" % "commons-logging" % "1.2"
         // "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT")
       )
         
