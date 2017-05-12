@@ -5,6 +5,7 @@ import sbtassembly.AssemblyUtils._
 import AssemblyKeys._
 import laika.sbt.LaikaSbtPlugin.{LaikaPlugin, LaikaKeys}
 import LaikaKeys._
+import _root_.java.nio.file.Files
 
 object MandolinBuild extends Build {
 
@@ -37,7 +38,10 @@ object MandolinBuild extends Build {
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore, mandolinMx)
   
 
-  def rootSettings = sharedSettings ++ Seq( name := "mandolin" )
+  def rootSettings = sharedSettings ++ Seq(
+    name := "mandolin",
+    fullBuildFlag := true
+  )
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre.mandolin",
@@ -88,8 +92,45 @@ object MandolinBuild extends Build {
     name := "mandolin-spark"
   )
 
+  val fullBuildFlag = SettingKey[Boolean]("full-build", "Build including all native code")
+
+  val conditionalMoveTask = Def.taskDyn {
+    val mvTask = (Def.task { moveLibsTask }).taskValue
+    val noMvTask = (Def.task { moveLibsNoNativeTask }).taskValue
+    if (fullBuildFlag.value) {
+      Def.task {
+        println("Full build")
+        mvTask.value
+      }
+      } else {
+        Def.task {
+	  println("Full build - no native")
+	  noMvTask.value
+	}
+      }
+  }
+
   def mxNetSettings : Seq[Setting[_]] = sharedSettings ++ Seq(
-    name := "mandolin-mx"
+    name := "mandolin-mx",
+    fullBuildFlag := true,
+
+    unmanagedClasspath in Compile <++= baseDirectory map { base =>
+      val lib = base / "lib"
+      val libFiles = lib ** "*.jar"
+      libFiles.get
+    },
+    // force the new .jar files in the lib directory to be added to classpath prior to compiling
+    compile in Compile <<= (compile in Compile) dependsOn(unmanagedClasspath in Compile),
+    assemblyLeaveOutMxNetTask := Def.sequential(
+      Def.task { moveLibsNoNativeTask },
+      assembly
+    ).value,
+    
+    assemblyFullTask := Def.sequential(
+      Def.task { moveLibsTask },
+      assembly
+    ).value
+    
   )
 
   def coreDependencySettings : Seq[Setting[_]] = {
@@ -129,6 +170,61 @@ object MandolinBuild extends Build {
         
     )
   }
+
+
+  lazy val assemblyLeaveOutMxNetTask = TaskKey[Unit]("core") // leave out mxnet natives
+  lazy val assemblyFullTask = TaskKey[Unit]("full")
+
+  val osXJVMLibs =
+     (file("mandolin-mx") / "pre-compiled" / "xgboost" / "osx" * "*.jar") +++
+     (file("mandolin-mx") / "pre-compiled" / "mxnet" / "osx" * "*.jar")
+
+  val linuxJVMLibs =
+     (file("mandolin-mx") / "pre-compiled" / "xgboost" / "linux" * "*.jar") +++
+     (file("mandolin-mx") / "pre-compiled" / "mxnet" / "linux-cpu" * "*.jar")
+
+  val linuxJVMLibsGPU =
+     (file("mandolin-mx") / "pre-compiled" / "xgboost" / "linux" * "*.jar") +++
+     (file("mandolin-mx") / "pre-compiled" / "mxnet" / "linux-gpu" * "*.jar")
+
+  val nonNativeMxOSXLibs =
+    (file("mandolin-mx") / "pre-compiled" / "xgboost" / "osx" * "*.jar") +++
+    (file("mandolin-mx") / "pre-compiled" / "mxnet" * "*.jar")
+
+  val nonNativeMxLinuxLibs =
+    (file("mandolin-mx") / "pre-compiled" / "xgboost" / "linux" * "*.jar") +++
+    (file("mandolin-mx") / "pre-compiled" / "mxnet" * "*.jar")
+
+
+  private def moveLibsTask = { 
+    val destDir = file("mandolin-mx") / "lib"
+    val files = sys.props.get("os.name") match {
+      case Some("Mac OS X") => osXJVMLibs.get        
+      case _ => linuxJVMLibs.get
+    }
+    files foreach {file =>
+	      val fn = file.getName()
+	      val dstFile = (destDir / fn).toPath
+	      Files.deleteIfExists(dstFile)
+	      Files.copy(file.toPath, dstFile)
+      }
+  }
+
+  private def moveLibsNoNativeTask = {
+    println("Executing move without mxnet natives")
+    val destDir = file("mandolin-mx") / "lib"
+    val files = sys.props.get("os.name") match {
+      case Some("Mac OS X") => nonNativeMxOSXLibs.get        
+      case _ => nonNativeMxLinuxLibs.get
+    }    
+    files.get foreach {file =>
+	      val fn = file.getName()
+	      val dstFile = (destDir / fn).toPath
+	      Files.deleteIfExists(dstFile)
+	      Files.copy(file.toPath, dstFile)
+	      }
+  }
+  
 
   def versionDependencies(v:String) = v match {
     case "2.10.5" => "net.ceedubs" %% "ficus" % "1.0.1"
