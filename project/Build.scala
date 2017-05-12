@@ -198,6 +198,7 @@ object MandolinBuild extends Build {
 
   private def moveLibsTask = { 
     val destDir = file("mandolin-mx") / "lib"
+    Files.createDirectory(destDir.toPath)
     val files = sys.props.get("os.name") match {
       case Some("Mac OS X") => osXJVMLibs.get        
       case _ => linuxJVMLibs.get
@@ -211,8 +212,8 @@ object MandolinBuild extends Build {
   }
 
   private def moveLibsNoNativeTask = {
-    println("Executing move without mxnet natives")
     val destDir = file("mandolin-mx") / "lib"
+    Files.createDirectory(destDir.toPath)    
     val files = sys.props.get("os.name") match {
       case Some("Mac OS X") => nonNativeMxOSXLibs.get        
       case _ => nonNativeMxLinuxLibs.get
