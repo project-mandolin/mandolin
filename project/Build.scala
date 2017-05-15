@@ -24,8 +24,8 @@ object MandolinBuild extends Build {
   // The MXNet library comes pre-built and resides in mandolin/mandolin-mx/lib
   // In addition, the native code is pre-built in mandolin/mandolin-mx/native  
   lazy val mandolinMx = Project(id = "mandolin-mx", base = file("mandolin-mx")).
-                            settings(mxNetSettings:_*).
-                            // settings(mxNetDependencySettings:_*).
+                            settings(mxNetSettings("mx"):_*).
+                            //settings(mxNetDependencySettings:_*).
                             settings(assemblyProjSettings("mx"):_*).
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
@@ -39,11 +39,13 @@ object MandolinBuild extends Build {
   
 
   def rootSettings = sharedSettings ++ Seq(
-    name := "mandolin",
-    fullBuildFlag := true
+    name := "mandolin"
   )
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
+    commands += Command.command("linux-assembly") { state =>
+        "linux-core" ::
+	"assembly" :: state },
     organization := "org.mitre.mandolin",
     version := "0.3.5-SNAPSHOT",
     scalaVersion := "2.11.8",
@@ -92,28 +94,8 @@ object MandolinBuild extends Build {
     name := "mandolin-spark"
   )
 
-  val fullBuildFlag = SettingKey[Boolean]("full-build", "Build including all native code")
-
-  val conditionalMoveTask = Def.taskDyn {
-    val mvTask = (Def.task { moveLibsTask }).taskValue
-    val noMvTask = (Def.task { moveLibsNoNativeTask }).taskValue
-    if (fullBuildFlag.value) {
-      Def.task {
-        println("Full build")
-        mvTask.value
-      }
-      } else {
-        Def.task {
-	  println("Full build - no native")
-	  noMvTask.value
-	}
-      }
-  }
-
-  def mxNetSettings : Seq[Setting[_]] = sharedSettings ++ Seq(
+  def mxNetSettings(subProj: String) : Seq[Setting[_]] = sharedSettings ++ Seq(
     name := "mandolin-mx",
-    fullBuildFlag := true,
-
     unmanagedClasspath in Compile <++= baseDirectory map { base =>
       val lib = base / "lib"
       val libFiles = lib ** "*.jar"
@@ -121,16 +103,25 @@ object MandolinBuild extends Build {
     },
     // force the new .jar files in the lib directory to be added to classpath prior to compiling
     compile in Compile <<= (compile in Compile) dependsOn(unmanagedClasspath in Compile),
-    assemblyLeaveOutMxNetTask := Def.sequential(
-      Def.task { moveLibsNoNativeTask },
+    assemblyLinuxCoreTask := {      
+      Def.sequential(      
+      Def.task { linuxCoreTask },
+      assembly
+      ).value
+    },
+    assemblyLinuxFullTask := Def.sequential(
+      Def.task { linuxFullTask },
       assembly
     ).value,
-    
-    assemblyFullTask := Def.sequential(
-      Def.task { moveLibsTask },
+    assemblyOSXCoreTask := Def.sequential(
+      Def.task { osxCoreTask },
       assembly
-    ).value
-    
+    ).value,
+    assemblyOSXFullTask := Def.sequential(
+      Def.task { osxFullTask },
+      assembly
+    ).value    
+
   )
 
   def coreDependencySettings : Seq[Setting[_]] = {
@@ -164,16 +155,18 @@ object MandolinBuild extends Build {
   def mxNetDependencySettings : Seq[Setting[_]] = {
     Seq(
       libraryDependencies ++= Seq(
-      	"commons-logging" % "commons-logging" % "1.2"
-        // "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT")
+      	// "commons-logging" % "commons-logging" % "1.2"
+	// "ml.dmlc" % "xgboost4j" % "0.7",
+        // "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT"
       )
-        
     )
+    
   }
 
-
-  lazy val assemblyLeaveOutMxNetTask = TaskKey[Unit]("core") // leave out mxnet natives
-  lazy val assemblyFullTask = TaskKey[Unit]("full")
+  lazy val assemblyLinuxFullTask = TaskKey[Unit]("linux-full")
+  lazy val assemblyLinuxCoreTask = TaskKey[Unit]("linux-core")
+  lazy val assemblyOSXFullTask = TaskKey[Unit]("osx-full")
+  lazy val assemblyOSXCoreTask = TaskKey[Unit]("osx-core")
 
   val osXJVMLibs =
      (file("mandolin-mx") / "pre-compiled" / "xgboost" / "osx" * "*.jar") +++
@@ -195,37 +188,39 @@ object MandolinBuild extends Build {
     (file("mandolin-mx") / "pre-compiled" / "xgboost" / "linux" * "*.jar") +++
     (file("mandolin-mx") / "pre-compiled" / "mxnet" * "*.jar")
 
-
-  private def moveLibsTask = { 
-    val destDir = file("mandolin-mx") / "lib"
-    Files.createDirectory(destDir.toPath)
-    val files = sys.props.get("os.name") match {
-      case Some("Mac OS X") => osXJVMLibs.get        
-      case _ => linuxJVMLibs.get
-    }
-    files foreach {file =>
-	      val fn = file.getName()
-	      val dstFile = (destDir / fn).toPath
-	      Files.deleteIfExists(dstFile)
-	      Files.copy(file.toPath, dstFile)
-      }
+  private def copyFile(destDir: File, file: File) = {
+    val fn = file.getName()
+    val dstFile = (destDir / fn).toPath
+    Files.deleteIfExists(dstFile)
+    Files.copy(file.toPath, dstFile)    
   }
 
-  private def moveLibsNoNativeTask = {
+  private def linuxCoreTask = {
     val destDir = file("mandolin-mx") / "lib"
-    Files.createDirectory(destDir.toPath)    
-    val files = sys.props.get("os.name") match {
-      case Some("Mac OS X") => nonNativeMxOSXLibs.get        
-      case _ => nonNativeMxLinuxLibs.get
-    }    
-    files.get foreach {file =>
-	      val fn = file.getName()
-	      val dstFile = (destDir / fn).toPath
-	      Files.deleteIfExists(dstFile)
-	      Files.copy(file.toPath, dstFile)
-	      }
+    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    nonNativeMxLinuxLibs.get foreach { f => copyFile(destDir, f) }
   }
-  
+
+  private def linuxFullTask = {
+    val destDir = file("mandolin-mx") / "lib"
+    // Files.createDirectory(destDir.toPath)
+    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    linuxJVMLibs.get foreach { f => copyFile(destDir, f) }
+  }
+
+  private def osxCoreTask = {
+    val destDir = file("mandolin-mx") / "lib"
+    // Files.createDirectory(destDir.toPath)
+    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    nonNativeMxOSXLibs.get foreach { f => copyFile(destDir, f) }
+  }
+
+  private def osxFullTask = {
+    val destDir = file("mandolin-mx") / "lib"
+    // Files.createDirectory(destDir.toPath)
+    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    osXJVMLibs.get foreach { f => copyFile(destDir, f) }
+  }
 
   def versionDependencies(v:String) = v match {
     case "2.10.5" => "net.ceedubs" %% "ficus" % "1.0.1"
@@ -234,7 +229,6 @@ object MandolinBuild extends Build {
 
   def assemblyProjSettings(subProj: String) : Seq[Setting[_]] = assemblySettings ++ Seq(
     test in assembly := {},
-    jarName in assembly := ("mandolin-"+subProj+"-assembly-" + version.value + "_" + scalaVersion.value + ".jar"),
     logLevel in assembly := Level.Error, 
     mergeStrategy in assembly := conflictRobustMergeStrategy
   )
