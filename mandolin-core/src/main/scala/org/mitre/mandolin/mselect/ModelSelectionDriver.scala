@@ -22,7 +22,7 @@ abstract class ModelSelectionDriver(trainFile: String, testFile: String, numWork
   val ev: ModelEvaluator
 
   def search(): Unit = {
-    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers))
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(numWorkers+10))
     val system = ActorSystem("ModelSelectionActorSystem")
     val master = system.actorOf(Props(new ModelConfigEvaluator[ModelConfig]), name = "master")    
     val scoringFun = 

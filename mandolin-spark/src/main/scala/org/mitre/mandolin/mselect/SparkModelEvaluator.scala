@@ -17,19 +17,15 @@ extends ModelEvaluator with Serializable {
     val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainBC = trainBC
     val _testBC = testBC
-    val accuracy = configRDD.mapPartitions { configs =>
-      val cv1 = configs.toList
-      val cvec = cv1.par
-      // set tasksupport to allocate N threads so each item is processed concurrently
-      cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
+    val accuracy = configRDD.mapPartitions { configIter =>
       val trData  = _trainBC.value
       val tstData = _testBC.value
-      val accuracies = cvec map {config => 
+      val accuracies = configIter map {config =>
         val learner = MandolinModelInstance(config)
         val acc = learner.train(trData, tstData)
         acc
       }
-      accuracies.toIterator
+      accuracies
     }.collect()
     accuracy.toSeq(0)
   }
@@ -42,19 +38,15 @@ extends ModelEvaluator with Serializable {
     val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainBC = trainBC
     val _testBC = testBC    
-    val accuracy = configRDD.mapPartitions { configs =>
-      val cv1 = configs.toList
-      val cvec = cv1.par
-      // set tasksupport to allocate N threads so each item is processed concurrently
-      cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
+    val accuracy = configRDD.mapPartitions { configIter =>
       val trData  = _trainBC.value
       val tstData = _testBC.value
-      val accuracies = cvec map {config => 
+      val accuracies = configIter map {config =>
         val learner = MxModelInstance(config)
         val acc = learner.train(trData, tstData)
         acc
       }
-      accuracies.toIterator
+      accuracies
     }.collect()
     accuracy.toSeq(0)
   }
@@ -66,18 +58,13 @@ extends ModelEvaluator with Serializable {
     val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainData = trainData
     val _testData = testData
-    val accuracy = configRDD.mapPartitions { configs =>
-      println("Creating file system mx training instance ...")
-      val cv1 = configs.toList
-      //val cvec = cv1.par      
-      // set tasksupport to allocate N threads so each item is processed concurrently
-      //cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-      val accuracies = cv1 map {config =>
+    val accuracy = configRDD.mapPartitions { configIter =>
+      val accuracies = configIter map {config =>
         val learner = FileSystemImgMxModelInstance(config)
         val acc = learner.train(Vector(new java.io.File(_trainData)), Vector(new java.io.File(_testData)))
         acc        
       }
-      accuracies.toIterator
+      accuracies
     }.collect()
     accuracy.toSeq(0)
   }
