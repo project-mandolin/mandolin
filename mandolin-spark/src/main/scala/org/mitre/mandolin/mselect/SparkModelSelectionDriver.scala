@@ -41,7 +41,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   }
 }
 
-object SparkModelSelectionDriver {
+object SparkModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
   
   def main(args: Array[String]) : Unit = {
     val appSettings = new GLPModelSettings(args) with ModelSelectionSettings

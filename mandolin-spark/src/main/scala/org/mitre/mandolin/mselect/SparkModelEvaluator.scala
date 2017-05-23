@@ -10,18 +10,24 @@ import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
 import org.mitre.mandolin.util.LocalIOAssistant
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
+import scala.concurrent._
+import java.util.concurrent.Executors
 
 class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]) 
 extends ModelEvaluator with Serializable {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   override def evaluate(c: ModelConfig): Double = {
     val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainBC = trainBC
     val _testBC = testBC
     val accuracy = configRDD.mapPartitions { configs =>
       val cv1 = configs.toList
-      val cvec = cv1.par
+      val cvec = cv1.par      
+      val support = new ForkJoinTaskSupport(new ForkJoinPool(cvec.length))
+      logger.info("Support Parallelism level: " + support.parallelismLevel)
       // set tasksupport to allocate N threads so each item is processed concurrently
-      cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
+      cvec.tasksupport_=(support)
       val trData  = _trainBC.value
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
@@ -46,6 +52,7 @@ extends ModelEvaluator with Serializable {
       val cv1 = configs.toList
       val cvec = cv1.par
       // set tasksupport to allocate N threads so each item is processed concurrently
+      // implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(cvec.length))
       cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
       val trData  = _trainBC.value
       val tstData = _testBC.value

@@ -46,6 +46,9 @@ object MandolinBuild extends Build {
     commands += Command.command("linux-assembly") { state =>
         "linux-core" ::
 	"assembly" :: state },
+    commands += Command.command("osx-assembly") { state =>
+        "osx-core" ::
+	"assembly" :: state },	
     organization := "org.mitre.mandolin",
     version := "0.3.5-SNAPSHOT",
     scalaVersion := "2.11.8",
@@ -105,23 +108,18 @@ object MandolinBuild extends Build {
     compile in Compile <<= (compile in Compile) dependsOn(unmanagedClasspath in Compile),
     assemblyLinuxCoreTask := {      
       Def.sequential(      
-      Def.task { linuxCoreTask },
-      assembly
+        Def.task { linuxCoreTask }
       ).value
     },
     assemblyLinuxFullTask := Def.sequential(
-      Def.task { linuxFullTask },
-      assembly
+      Def.task { linuxFullTask }
     ).value,
     assemblyOSXCoreTask := Def.sequential(
-      Def.task { osxCoreTask },
-      assembly
+      Def.task { osxCoreTask }
     ).value,
     assemblyOSXFullTask := Def.sequential(
-      Def.task { osxFullTask },
-      assembly
+      Def.task { osxFullTask }
     ).value    
-
   )
 
   def coreDependencySettings : Seq[Setting[_]] = {
@@ -197,28 +195,28 @@ object MandolinBuild extends Build {
 
   private def linuxCoreTask = {
     val destDir = file("mandolin-mx") / "lib"
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
     nonNativeMxLinuxLibs.get foreach { f => copyFile(destDir, f) }
   }
 
   private def linuxFullTask = {
     val destDir = file("mandolin-mx") / "lib"
     // Files.createDirectory(destDir.toPath)
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
     linuxJVMLibs.get foreach { f => copyFile(destDir, f) }
   }
 
   private def osxCoreTask = {
     val destDir = file("mandolin-mx") / "lib"
     // Files.createDirectory(destDir.toPath)
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
     nonNativeMxOSXLibs.get foreach { f => copyFile(destDir, f) }
   }
 
   private def osxFullTask = {
     val destDir = file("mandolin-mx") / "lib"
     // Files.createDirectory(destDir.toPath)
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
     osXJVMLibs.get foreach { f => copyFile(destDir, f) }
   }
 

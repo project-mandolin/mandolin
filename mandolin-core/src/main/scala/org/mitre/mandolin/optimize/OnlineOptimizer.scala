@@ -7,7 +7,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import scala.reflect.ClassTag
 import org.mitre.mandolin.util.{ Tensor1, DenseTensor1 }
 import org.mitre.mandolin.config.{ LearnerSettings }
-
+import scala.concurrent._
+import java.util.concurrent.Executors
+import org.slf4j.LoggerFactory
 
 
 /**
@@ -26,7 +28,11 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
   val workersPerPartition: Int = 16, synchronous: Boolean = false, numSubEpochs: Int = 1, skipProb: Double = 0.0, 
   miniBatchSize: Int = 1, concurrentBatch: Int = 0)
   extends Serializable {
+  
+  val logger = LoggerFactory.getLogger(this.getClass)
 
+  import scala.collection.parallel.ForkJoinTaskSupport
+  import scala.concurrent.forkjoin.ForkJoinPool
   /*
    * Get a new thread processor for this epoch; either asynchronous or synchronous
    */
@@ -51,7 +57,15 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
     val factor = (partitionInsts.size.toDouble / workersPerPartition).ceil.toInt
     val subPartitions = partitionInsts.grouped(factor) // split up data into sub-slices
     val rwLock = if (synchronous) Some(new ReentrantReadWriteLock) else None
+    logger.info("DEBUG: Number of worker threads processing single data partition: " + workersPerPartition)
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(64 + workersPerPartition))
     val workers = (subPartitions map { sub => getThreadProcessor(sub, w, updater, rwLock, timeout) }).toList.par
+    logger.info("Workers length = " + workers.length)
+    
+    val support = new ForkJoinTaskSupport(new ForkJoinPool(workersPerPartition))
+    workers.tasksupport_=(support)
+    logger.info("Support Parallelism level: " + support.parallelismLevel)
+    
     var totalLoss: Double = 0
     var totalTime = 0L
     for (i <- 1 to numSubEpochs) {
@@ -84,10 +98,11 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
   val n = data.length
   def process() = {
     @volatile var totalLoss = 0.0
+    System.err.println("DEBUG: Running process on thread " + Thread.currentThread().getId)
     var continue = true
     val startTime = System.nanoTime()
     var i = 0; while (continue) {
-      if ((skipProb <= 0.0) || (util.Random.nextDouble() < skipProb)) {
+      if ((skipProb <= 0.0) || (scala.util.Random.nextDouble() < skipProb)) {
         val totalLossGrad = if (miniBatchSize > 1) {
           val items = math.min(miniBatchSize + i, n) - i
           val lossGrads = for (jj <- i until math.min(miniBatchSize + i, n)) yield evaluator.evaluateTrainingUnit(data(jj), weights, updater)
@@ -136,7 +151,7 @@ class SynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <
     var continue = true
     val startTime = System.nanoTime
     var i = 0; while (continue) {
-      if ((skipProb <= 0.0) || (util.Random.nextDouble() < skipProb)) {
+      if ((skipProb <= 0.0) || (scala.util.Random.nextDouble() < skipProb)) {
         readLock.lock()
         val totalLossGrad = if (miniBatchSize > 1) {
           val items = math.min(miniBatchSize + i, n) - i
