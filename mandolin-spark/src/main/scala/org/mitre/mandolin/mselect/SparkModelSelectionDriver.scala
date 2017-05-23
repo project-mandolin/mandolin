@@ -1,9 +1,10 @@
 package org.mitre.mandolin.mselect
 
 import org.apache.spark.SparkContext
+import org.mitre.mandolin.glp.spark.AppConfig
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, CategoricalGLPPredictor, GLPFactor, GLPWeights, ANNetwork, SparseInputLType }
+import org.mitre.mandolin.glp.{ANNetwork, CategoricalGLPPredictor, GLPFactor, GLPModelSettings, GLPTrainerBuilder, GLPWeights, SparseInputLType}
 
 class SparkModelSelectionDriver(val sc: SparkContext, val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: String, 
     numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
@@ -45,7 +46,7 @@ object SparkModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
   
   def main(args: Array[String]) : Unit = {
     val appSettings = new GLPModelSettings(args) with ModelSelectionSettings
-    val sc = new SparkContext
+    val sc = AppConfig.getSparkContext(appSettings)
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)
     val builder = new MandolinModelSpaceBuilder(appSettings.modelSpace)    

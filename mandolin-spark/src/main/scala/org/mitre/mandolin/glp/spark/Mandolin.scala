@@ -1,12 +1,12 @@
-  package org.mitre.mandolin.glp.spark
+package org.mitre.mandolin.glp.spark
 
 import org.mitre.mandolin.glp.GLPModelSettings
-import org.mitre.mandolin.glp.local.LocalProcessor
+
 
 /**
  * @author wellner
  */
-object Mandolin {
+object Mandolin extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]): Unit = {
     val appSettings = new GLPModelSettings(args)
