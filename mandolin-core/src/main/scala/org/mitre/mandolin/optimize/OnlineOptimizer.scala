@@ -29,7 +29,6 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
   miniBatchSize: Int = 1, concurrentBatch: Int = 0)
   extends Serializable {
   
-  val logger = LoggerFactory.getLogger(this.getClass)
 
   import scala.collection.parallel.ForkJoinTaskSupport
   import scala.concurrent.forkjoin.ForkJoinPool
@@ -57,15 +56,10 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
     val factor = (partitionInsts.size.toDouble / workersPerPartition).ceil.toInt
     val subPartitions = partitionInsts.grouped(factor) // split up data into sub-slices
     val rwLock = if (synchronous) Some(new ReentrantReadWriteLock) else None
-    logger.info("DEBUG: Number of worker threads processing single data partition: " + workersPerPartition)
-    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(64 + workersPerPartition))
+
     val workers = (subPartitions map { sub => getThreadProcessor(sub, w, updater, rwLock, timeout) }).toList.par
-    logger.info("Workers length = " + workers.length)
-    
     val support = new ForkJoinTaskSupport(new ForkJoinPool(workersPerPartition))
     workers.tasksupport_=(support)
-    logger.info("Support Parallelism level: " + support.parallelismLevel)
-    
     var totalLoss: Double = 0
     var totalTime = 0L
     for (i <- 1 to numSubEpochs) {

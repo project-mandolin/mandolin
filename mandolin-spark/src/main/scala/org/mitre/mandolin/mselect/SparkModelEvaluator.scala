@@ -24,10 +24,10 @@ extends ModelEvaluator with Serializable {
     val accuracy = configRDD.mapPartitions { configs =>
       val cv1 = configs.toList
       val cvec = cv1.par      
-      val support = new ForkJoinTaskSupport(new ForkJoinPool(cvec.length))
-      logger.info("Support Parallelism level: " + support.parallelismLevel)
+      // val support = new ForkJoinTaskSupport(new ForkJoinPool(cvec.length))
+      // logger.info("Support Parallelism level: " + support.parallelismLevel)
       // set tasksupport to allocate N threads so each item is processed concurrently
-      cvec.tasksupport_=(support)
+      // cvec.tasksupport_=(support)
       val trData  = _trainBC.value
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
@@ -53,7 +53,7 @@ extends ModelEvaluator with Serializable {
       val cvec = cv1.par
       // set tasksupport to allocate N threads so each item is processed concurrently
       // implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(cvec.length))
-      cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
+      // cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
       val trData  = _trainBC.value
       val tstData = _testBC.value
       val accuracies = cvec map {config => 
