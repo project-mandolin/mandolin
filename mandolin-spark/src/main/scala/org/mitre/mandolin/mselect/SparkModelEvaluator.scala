@@ -10,9 +10,13 @@ import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
 import org.mitre.mandolin.util.LocalIOAssistant
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
+import scala.concurrent._
+import java.util.concurrent.Executors
 
 class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]]) 
 extends ModelEvaluator with Serializable {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   override def evaluate(c: ModelConfig): Double = {
     val configRDD: RDD[ModelConfig] = sc.parallelize(Seq(c), 1)
     val _trainBC = trainBC

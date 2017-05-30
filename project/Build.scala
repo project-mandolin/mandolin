@@ -1,8 +1,8 @@
 import sbt._
 import Keys._
-import sbtassembly.Plugin._
-import sbtassembly.AssemblyUtils._
-import AssemblyKeys._
+import sbtassembly.AssemblyPlugin.autoImport._
+import sbtassembly.MergeStrategy
+
 import laika.sbt.LaikaSbtPlugin.{LaikaPlugin, LaikaKeys}
 import LaikaKeys._
 import _root_.java.nio.file.Files
@@ -36,6 +36,8 @@ object MandolinBuild extends Build {
                             settings(assemblyProjSettings("spark"):_*).
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore, mandolinMx)
+
+  val mainVersion = "0.3.5"
   
 
   def rootSettings = sharedSettings ++ Seq(
@@ -46,8 +48,11 @@ object MandolinBuild extends Build {
     commands += Command.command("linux-assembly") { state =>
         "linux-core" ::
 	"assembly" :: state },
+    commands += Command.command("osx-assembly") { state =>
+        "osx-core" ::
+	"assembly" :: state },	
     organization := "org.mitre.mandolin",
-    version := "0.3.5-SNAPSHOT",
+    version := mainVersion+"-SNAPSHOT",
     scalaVersion := "2.11.8",
     crossScalaVersions := Seq("2.10.5","2.11.8"),
     publishTo := {
@@ -105,23 +110,18 @@ object MandolinBuild extends Build {
     compile in Compile <<= (compile in Compile) dependsOn(unmanagedClasspath in Compile),
     assemblyLinuxCoreTask := {      
       Def.sequential(      
-      Def.task { linuxCoreTask },
-      assembly
+        Def.task { linuxCoreTask }
       ).value
     },
     assemblyLinuxFullTask := Def.sequential(
-      Def.task { linuxFullTask },
-      assembly
+      Def.task { linuxFullTask }
     ).value,
     assemblyOSXCoreTask := Def.sequential(
-      Def.task { osxCoreTask },
-      assembly
+      Def.task { osxCoreTask }
     ).value,
     assemblyOSXFullTask := Def.sequential(
-      Def.task { osxFullTask },
-      assembly
+      Def.task { osxFullTask }
     ).value    
-
   )
 
   def coreDependencySettings : Seq[Setting[_]] = {
@@ -195,30 +195,35 @@ object MandolinBuild extends Build {
     Files.copy(file.toPath, dstFile)    
   }
 
+  private def setupDistDir() = {
+     try { Files.createDirectory(file("dist").toPath) } catch {case _: Throwable => } 
+  }
+
   private def linuxCoreTask = {
     val destDir = file("mandolin-mx") / "lib"
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
     nonNativeMxLinuxLibs.get foreach { f => copyFile(destDir, f) }
   }
 
   private def linuxFullTask = {
     val destDir = file("mandolin-mx") / "lib"
-    // Files.createDirectory(destDir.toPath)
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
     linuxJVMLibs.get foreach { f => copyFile(destDir, f) }
   }
 
   private def osxCoreTask = {
     val destDir = file("mandolin-mx") / "lib"
-    // Files.createDirectory(destDir.toPath)
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
     nonNativeMxOSXLibs.get foreach { f => copyFile(destDir, f) }
   }
 
   private def osxFullTask = {
     val destDir = file("mandolin-mx") / "lib"
-    // Files.createDirectory(destDir.toPath)
-    try { Files.createDirectory(destDir.toPath) } catch {case _ => }
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
     osXJVMLibs.get foreach { f => copyFile(destDir, f) }
   }
 
@@ -227,10 +232,13 @@ object MandolinBuild extends Build {
     case _ => "net.ceedubs" %% "ficus" % "1.1.2"
   }
 
-  def assemblyProjSettings(subProj: String) : Seq[Setting[_]] = assemblySettings ++ Seq(
+  def assemblyProjSettings(subProj: String) : Seq[Setting[_]] = Seq(
     test in assembly := {},
-    logLevel in assembly := Level.Error, 
-    mergeStrategy in assembly := conflictRobustMergeStrategy
+    logLevel in assembly := Level.Error,
+
+    assemblyMergeStrategy in assembly := conflictRobustMergeStrategy,
+    assemblyJarName in assembly := ("mandolin-"+subProj+"-"+mainVersion+".jar"),
+    assemblyOutputPath in assembly := file("dist") / ("mandolin-"+subProj+"-"+mainVersion+".jar")
   )
 
   def siteSettings : Seq[Setting[_]] = 
