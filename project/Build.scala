@@ -3,6 +3,8 @@ import Keys._
 import sbtassembly.AssemblyPlugin.autoImport._
 import sbtassembly.MergeStrategy
 
+import com.lightbend.paradox.sbt.{ParadoxPlugin}
+import com.lightbend.paradox.sbt.ParadoxPlugin.autoImport._
 import laika.sbt.LaikaSbtPlugin.{LaikaPlugin, LaikaKeys}
 import LaikaKeys._
 
