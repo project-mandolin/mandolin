@@ -3,14 +3,19 @@ import Keys._
 import sbtassembly.AssemblyPlugin.autoImport._
 import sbtassembly.MergeStrategy
 
+import com.lightbend.paradox.sbt.{ParadoxPlugin}
+import com.lightbend.paradox.sbt.ParadoxPlugin.autoImport._
 import laika.sbt.LaikaSbtPlugin.{LaikaPlugin, LaikaKeys}
 import LaikaKeys._
+
 import _root_.java.nio.file.Files
 
 object MandolinBuild extends Build {
 
   lazy val root = Project(id = "mandolin", base = file(".")).
                             settings(rootSettings:_*).
+			    enablePlugins(ParadoxPlugin).
+			    settings(paradoxTheme := Some(builtinParadoxTheme("generic"))).
                             aggregate(mandolinCore, mandolinSpark, mandolinMx)
 
   lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
