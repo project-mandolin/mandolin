@@ -92,7 +92,6 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
   val n = data.length
   def process() = {
     @volatile var totalLoss = 0.0
-    System.err.println("DEBUG: Running process on thread " + Thread.currentThread().getId)
     var continue = true
     val startTime = System.nanoTime()
     var i = 0; while (continue) {
