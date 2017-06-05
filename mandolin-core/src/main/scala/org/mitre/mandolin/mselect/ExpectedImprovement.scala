@@ -98,6 +98,8 @@ class UpperConfidenceBound(k: Double) extends AcquisitionFunction {
   }
 }
 
+
+
 class MockScoringFunction extends ScoringFunction {
 
   def scoreConcurrent(configs: Vector[ModelConfig], n: Int): Vector[(Double, ModelConfig)] = Vector()
@@ -109,9 +111,17 @@ class MockScoringFunction extends ScoringFunction {
     Thread.sleep(ms)
   }
 
-  def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]): Double = throw new RuntimeException("Unimplemented")
+  def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]) : Double = throw new RuntimeException("Unimplemented")
+  def getUpdatedK(bm: Vector[ModelConfig]) : Option[BreezeMat[Double]] = None
+}
 
-  def getUpdatedK(bm: Vector[ModelConfig]): Option[BreezeMat[Double]] = throw new RuntimeException("Unimplemented")
+class RandomScoringFunction extends ScoringFunction {
+  
+  def scoreConcurrent(configs: Vector[ModelConfig], n: Int) : Vector[(Double, ModelConfig)] = configs map {c => (util.Random.nextDouble(), c)}
+  def score(config: ModelConfig) : Double = util.Random.nextDouble()
+  def train(evalResults: Seq[ScoredModelConfig]) : Unit = {}
+  def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]) : Double = throw new RuntimeException("Unimplemented")
+  def getUpdatedK(bm: Vector[ModelConfig]) : Option[BreezeMat[Double]] = None
 }
 
 trait MetaParameterHandler {
@@ -273,7 +283,9 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
   def getMspec(n: Int): IndexedSeq[LType] = {
     val dim = math.min(fa.getSize * 2, math.max(3, n / 10))
     if (linear) IndexedSeq(LType(InputLType), LType(LinearLType))
-    else IndexedSeq(LType(InputLType), LType(TanHLType, dim = dim, l2 = 0.001f, maxNorm = 10.0f), LType(TanHLType, dim = dim, l2 = 0.001f, maxNorm = 10.0f), LType(LinearLType))
+    else IndexedSeq(LType(InputLType),
+        LType(TanHLType, dim=dim, l2 = 0.001f, maxNorm = 10.0f), 
+        LType(TanHLType, dim=dim, l2 = 0.001f, maxNorm = 10.0f), LType(LinearLType))
   }
 
   var curDecoder: Option[MetaParamDecoder] = None
@@ -424,13 +436,9 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
       }
       throw new RuntimeException("NaN in neural net output with input: " + buf.toString())
     }
-    val v = BreezeVec.tabulate(inV.getDim + 1) { i =>
-      if (i > 0) {
-        val v = inV(i - 1).toDouble;
-        if (v > 0.0) v - math.random * 0.04 else v + math.random * 0.04
-      }
-      else 1.0
-    } // add in bias to designmatrix
+    val v = BreezeVec.tabulate(inV.getDim + 1){i =>
+      if (i > 0) { val v = inV(i-1).toDouble; if (v > 0.0) v - math.random * 0.01 else v + math.random * 0.01 } 
+      else 1.0} // add in bias to designmatrix
     BreezeMat(v)
   }
 

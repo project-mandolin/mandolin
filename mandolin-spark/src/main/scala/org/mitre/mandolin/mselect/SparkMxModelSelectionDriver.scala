@@ -9,12 +9,14 @@ import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPModelSettings, Categorical
 
 class SparkMxModelSelectionDriver(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, 
     numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
-    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false) 
-extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
+    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
+    hyperMax: Int = 81) 
+extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix,hyperMax) {
   
   def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
     this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers,  
-    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband,
+    appSettings.hyperbandMixParam, appSettings.numEpochs)
   }      
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
@@ -40,15 +42,17 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
 }
 
 class SparkLocalFileSystemImgMxModelSelector(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
-    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false) 
-extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
+    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f, 
+    hyperMax: Int = 81) 
+extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
   
   
   // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
   def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
     this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
-    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband,
+    appSettings.hyperbandMixParam, appSettings.numEpochs)
   }
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
@@ -62,11 +66,11 @@ object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]) : Unit = {
     val a1 = new MxModelSettings(args)
-    val appSettings1 = new MxModelSettings(a1.config) with ModelSelectionSettings
+    val appSettings1 = new MxModelSettings(None,Some(a1.config)) with ModelSelectionSettings
     val appSettings2 = if (appSettings1.useHyperband && appSettings1.useCheckpointing) appSettings1 else {
       appSettings1.withSets(Seq(("mandolin.trainer.model-file","null"))) // clunky - but ensure this is null if we're running model selection distributed
     }
-    val appSettings = new MxModelSettings(appSettings2.config) with ModelSelectionSettings
+    val appSettings = new MxModelSettings(None,Some(appSettings2.config)) with ModelSelectionSettings
     val sc = new SparkContext
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)

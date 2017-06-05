@@ -7,10 +7,11 @@ import com.typesafe.config.{Config}
 import org.slf4j.LoggerFactory
 import net.ceedubs.ficus.Ficus._
 
-class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettings(config) {
+class MxModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
+extends GLPModelSettings(_confOptions, _conf) {
   
-  def this(s: String) = this(com.typesafe.config.ConfigFactory.parseString(s))
-  def this(args: Seq[String]) = this(new ConfigGeneratedCommandOptions(args).finalConfig)
+  def this(s: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(s)))
+  def this(args: Seq[String]) = this(Some(new ConfigGeneratedCommandOptions(args)),None)
   def this() = this(Seq())
   
   import scala.collection.JavaConversions._
@@ -49,9 +50,14 @@ class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettin
   val ydim     = asIntOpt("mandolin.mx.img.ydim").getOrElse(0)
   val meanImgFile = asStrOpt("mandolin.mx.img.mean-image").getOrElse("mean-img")
   val preProcThreads = asIntOpt("mandolin.mx.img.preprocess-threads").getOrElse(8)
+  val mxResizeShortest   = asIntOpt("mandolin.mx.img.resize-shortest").getOrElse(0)
   
   // this allows GPU hosts to be specified in the configuration
   val gpuHosts = try config.as[List[String]]("mandolin.mx.gpu-hosts") catch {case _:Throwable => Nil}
+  
+  // set this up to have a device mapping
+  // gpu-host1 => 0,1,2,3, gpu-host2 => 0,1, etc.
+  val gpuHostMapping = try config.getAnyRefList("mandolin.mx.gpu-host-map") catch {case _:Throwable => null}
   
   override def withSets(avs: Seq[(String, Any)]) : MxModelSettings  = {
     val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) =>       
@@ -61,6 +67,6 @@ class MxModelSettings(config: com.typesafe.config.Config) extends GLPModelSettin
         case v2: Any =>
           ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
       }
-    new MxModelSettings(nc) 
+    new MxModelSettings(None,Some(nc)) 
   }
 }

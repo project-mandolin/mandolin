@@ -102,7 +102,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
     val mx = mxEpochs.getOrElse(maxEpochs)
     var finalLoss = 0.0
     for (i <- 1 to mx) {
-      val (loss, time, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater, expectedTime)
+      val (loss, time, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater, 0L)
       val ct = (System.nanoTime() - t0) / 1.0E9
       optOut.writeln(i.toString() + "\t" + loss + "\t" + ct)
       newWeights.resetMass()
@@ -110,9 +110,9 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
       weights = newWeights
       updater = newUpdater
       finalLoss = loss
-      val localExpectedTime = time / numPartitions
-      if (numEpochs < 2) expectedTime = localExpectedTime * 10 // set the previous expected time to large factor more than first epoch expected time to be conservative
-      expectedTime = getNewExpectedTime(localExpectedTime)
+      // val localExpectedTime = time / numPartitions
+      // if (numEpochs < 2) expectedTime = localExpectedTime * 10 // set the previous expected time to large factor more than first epoch expected time to be conservative
+      // expectedTime = getNewExpectedTime(localExpectedTime)
     }
     (weights, finalLoss)
   }

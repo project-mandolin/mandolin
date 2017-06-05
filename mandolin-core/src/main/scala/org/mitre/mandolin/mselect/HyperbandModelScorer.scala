@@ -6,20 +6,27 @@ import org.slf4j.LoggerFactory
 import breeze.linalg.DenseMatrix
 
 class HyperbandModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMaster: ActorRef,
-                  sampleSize: Int, acqFnThreshold: Int, totalEvals: Int, concurrentEvals: Int, maxIters: Int=81) 
+                  sampleSize: Int, acqFnThreshold: Int, totalEvals: Int, concurrentEvals: Int, maxIters: Int=81, mixParam: Float = 1.0f) 
 extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThreshold, totalEvals, concurrentEvals) { 
 
   import WorkPullingPattern._
   
+  
+  
   lazy val eta = 3.0
-  def logEta(x: Double) = math.log(x) / math.log(eta)
+  def logEta(x: Double) = {    
+    math.log(x) / math.log(eta)
+  }
   
   private var targetRatiosTable : Map[(Int,Int),Double] = Map()  // map n_i,r_i => ratio
   private var currentCounts : Map[(Int,Int), Int] = Map()
   private var currentTotal = 0
   val targetRatioVec = setUpRatioTable()
   
-  lazy val sMax = logEta(maxIters.toDouble).toInt
+  lazy val sMax = {
+    logEta(maxIters.toDouble).round.toInt    
+  }
+  
   lazy val B = (sMax+1) * maxIters
     
   // keeps eval results stratified by budget (i.e. number of iterations)
@@ -31,7 +38,6 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
   private lazy val bandedResults = Array.tabulate(sMax+1){_ => new PriorityQueue[ScoredModelConfig]()(ScoredModelConfigOrdering) }  
   
   def setUpRatioTable() = {
-    val power = 1.1
     var ratioCnt : Map[(Int,Int), Int] = Map()
     var total = 0
     for (s <- sMax to 0 by -1) {
@@ -81,7 +87,9 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
         val band2 = band1 map {conf =>
           // apply scoring function - but consider currently evaluating models using new "K" which will pin down variance 
           val acqFnScore = kMat match {case Some(k) => acqFn.scoreWithNewK(conf.mc, k) case None => acqFn.score(conf.mc)}
-          ((conf.sc + acqFnScore), conf)} sortWith {(a,b) => a._1 > b._1}
+          // total score obtained by adding score on previous resource allocation + weighted acquisition function score
+          val totalScore = conf.sc + mixParam * acqFnScore
+          (totalScore, conf)} sortWith {(a,b) => a._1 > b._1}
         val toEval = band2.head._2
         band2.tail foreach {case (_,c) => band += c}
         val toEvalMc = toEval.mc
@@ -92,7 +100,7 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
         currentCounts += (config.get -> (cc + 1))        
         toEvalMc.withBudgetAndSource(curEvalLevel,prevEvalLevel)
       } else { // fall back to drawing uniformly if we don't have enough
-        val (k,k1) = config.get
+        val (k,_) = config.get
         val cc = currentCounts((k,0))
         currentCounts += (config.get -> (cc + 1))
         val configs = getScoredConfigs(sampleSize, curEvalLevel, kMat)
@@ -117,7 +125,7 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
       toEval = c :: toEval
       candSet += c
     }
-    toEval.toVector
+    toEval.reverse.toVector // make sure these are ordered properly or bias can arise
   }
   
   override def preStart() = {
@@ -125,19 +133,20 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
     val scored = getScoredConfigs(sampleSize,1, None) map {_._2}
     val epic = new Epic[ModelConfig] {
       override val iterator = scored.toIterator
-    }
+    } 
     evalMaster ! epic
     log.info("SCORER: Finished pre-start")
   }
   
   override def receive = {
-    case CurrentlyEvaluating(c) => currentlyEvaluating += c
+    case CurrentlyEvaluating(c) =>
+      currentlyEvaluating += c
     case ModelEvalResult(r) =>
       currentlyEvaluating -= r.mc   // remove this from set of currently evaluating model configs
       evalResults += r // keep all eval results
       receivedSinceLastScore += 1      
-      log.info("accuracy:" + r.sc + " " + r.mc + "\n")
-      outWriter.print("accuracy:" + r.sc + " " + r.mc + "\n")
+      log.info("accuracy:" + r.sc + " cumulativeTime:" + ((System.nanoTime() - startWallTime) / 1E9) + " " + r.mc + "\n")
+      outWriter.print("accuracy:" + r.sc + " cumulativeTime:" + ((System.nanoTime() - startWallTime) / 1E9) + " " + r.mc + "\n")
       outWriter.flush()
       if (totalReceived >= totalEvals) {
         outWriter.close()

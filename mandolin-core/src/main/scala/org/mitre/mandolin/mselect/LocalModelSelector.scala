@@ -13,12 +13,14 @@ import org.mitre.mandolin.transform.FeatureExtractor
 
 class LocalModelSelector(val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, 
     scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
-    appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false) 
-extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
+    appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
+    hyperMax: Int = 81) 
+extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
   
   def this(_msb: MandolinModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
     this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
-    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
+    appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband, 
+    appSettings.hyperbandMixParam, appSettings.numEpochs)
   }
   
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new ExpectedImprovement}
