@@ -1,0 +1,33 @@
+Example to train image classification models using the Caltech-101 image dataset.
+
+1) Download data:
+	 - Data can be found at: http://www.vision.caltech.edu/Image_Datasets/Caltech101/
+
+The unpacked data should consist of 101 directories, each named with the category associated with the images
+within the sub-directory.
+
+2) Create RecordIO File
+
+Assuming the downloaded archive was unpacked into the directory "CalTech",
+Using MXNet's im2rec.py tool, run:
+
+python $MXNET/tools/im2rec.py --list=1 --recursive=1 --shuffle=1 --train-ratio=0.8 --test-ratio=0.2 CalTech/caltech CalTech/101_ObjectCategories
+
+This will create the files CalTech/caltech_train.lst and CalTech/caltech_test.lst
+
+Invoke the same script again with the following arguments:
+
+python $MXNET/tools/im2rec.py --num-thread=12 --pass-through=1  CalTech/caltech CalTech/101_ObjectCategories
+
+This second invocation will read the *.lst files and generate .rec files in the CalTech directory:
+
+     CalTech/caltech_train.rec
+     CalTech/caltech_test.rec
+
+Place these data files in the mandolin/examples/caltech/data/ subdirectory
+
+3) Train a model
+
+Invoke Mandolin with MXNet via the command:
+
+java -Djava.library.path=<path to mxnet> -Xmx2g -cp $MANDOLIN/mandolin-mx-assembly-0.3.5-SNAPSHOT_2.11.8.jar org.mitre.mandolin.mx.local.MxMain --conf caltech.conf

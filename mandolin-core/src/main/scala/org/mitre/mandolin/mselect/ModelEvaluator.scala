@@ -8,43 +8,41 @@ import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
 
 /**
- * ModelEvaluator is the class wrapping whatever functionality is required to train and test a
- * model configuration against a provided dataset, using x-validation, etc.
- */
+  * ModelEvaluator is the class wrapping whatever functionality is required to train and test a
+  * model configuration against a provided dataset, using x-validation, etc.
+  */
 abstract class ModelEvaluator {
-  def evaluate(c: Seq[ModelConfig], generation: Int) : Seq[Double]
+  /**
+    * Evaluate a sequence of configs, using a budget (usually number of iterations)
+    */
+  def evaluate(c: ModelConfig, generation:Int = 0): (Double, Long)
   def cancel(generation: Int)
 }
 
 // XXX - this is for testing purposes only
 class MockRandomModelEvaluator extends ModelEvaluator {
-  
+
   private def pauseTime() = {
     val nsecs = util.Random.nextInt(10) * 1000
     Thread.sleep(nsecs)
   }
-  
-  def evaluate(c: Seq[ModelConfig], generation : Int) : Seq[Double] = {
+
+  def evaluate(c: ModelConfig, generation : Int = 0): (Double, Long) = {
     pauseTime() // simulate this taking a while
-    c.map(_=>util.Random.nextDouble())
+    (util.Random.nextDouble(), util.Random.nextLong())
   }
 
   def cancel(generation: Int) {}
 }
 
 class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
-  override def evaluate(c: Seq[ModelConfig], generation : Int): Seq[Double] = {
-
-    val configs = c.toList
-    val cvec = configs.par
-
-    cvec.tasksupport_=(new ForkJoinTaskSupport(new ForkJoinPool(cvec.length)))
-    val accuracies = cvec map {config =>
-      val learner = GenericModelFactory.getLearnerInstance(config)
-      val acc = learner.train(trData, tstData)
-      acc
-    }
-    accuracies.seq
+  override def evaluate(c: ModelConfig, generation: Int): (Double, Long) = {
+    val config = c
+    val learner = MandolinModelInstance(config)
+    val startTime = System.currentTimeMillis()
+    val acc = learner.train(trData, tstData)
+    val endTime = System.currentTimeMillis()
+    (acc, endTime - startTime)
   }
    def cancel(generation: Int) {}
 }

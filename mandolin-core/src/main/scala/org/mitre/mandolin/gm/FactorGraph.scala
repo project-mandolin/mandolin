@@ -60,6 +60,18 @@ extends FactorGraph(_fs, _ss, _a) {
     val cor = singletons.foldLeft(0){case (ac,v) => if (v.label == v.getMode(singletonModel, true)) ac + 1 else ac}
     cor.toDouble / singletons.length
   }
+  
+  def renderMapOutput(ofile: String, la: Alphabet) = {
+    val o = new java.io.PrintWriter(new java.io.File(ofile))
+    val invLa = la.getInverseMapping
+    singletons foreach {v =>
+      o.print(v.getInput.getUniqueKey.getOrElse("?"))
+      o.print(' ')
+      o.print(invLa(v.getMode(singletonModel, true)))
+      o.print('\n')
+    }
+    o.close
+  }
 }
 
 object FactorGraph {
@@ -229,10 +241,10 @@ class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet) e
   
   def extractFeatures(s: String) : SingletonFactor = {
     val p = s.split(sep).toList
-    val lab = p.head
+    val uniqueId = p.head
     val rest = p.tail
         
-    val lb = lab.split('-').toList
+    val lb = uniqueId.split('-').toList // ensure not a factor
     lb match {
       case v1 :: Nil =>
         val label = rest.head
@@ -248,7 +260,7 @@ class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet) e
         val l_ind = singletonLa.ofString(label)
         val lv = DenseVec.zeros(singletonLa.getSize)
         lv.update(l_ind,1.0f) // one-hot encoding
-        val sgf = new StdGLPFactor(-1, dVec, lv, None)
+        val sgf = new StdGLPFactor(-1, dVec, lv, Some(uniqueId))
         val factor = new SingletonFactor(sgf, l_ind)
         variableToSingletonFactors += (v1 -> factor)
         factor

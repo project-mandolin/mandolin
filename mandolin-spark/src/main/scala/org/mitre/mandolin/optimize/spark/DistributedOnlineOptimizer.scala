@@ -5,7 +5,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkContext
 import org.mitre.mandolin.util.{ Tensor1, DenseTensor1 }
-import org.mitre.mandolin.config.{ LearnerSettings, OnlineLearnerSettings }
+import org.mitre.mandolin.config.{ LearnerSettings }
 import org.apache.spark.Partitioner
 import org.mitre.mandolin.optimize._
 
@@ -69,7 +69,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
   miniBatchSize: Int = 1,
   oversample: Double = 0.0) extends DistributedOptimizerEstimator[T, W] {
 
-  def this(_sc: SparkContext, _iw: W, _e: TrainingUnitEvaluator[T, W, LG, U], _u: U, _as: OnlineLearnerSettings) = {
+  def this(_sc: SparkContext, _iw: W, _e: TrainingUnitEvaluator[T, W, LG, U], _u: U, _as: LearnerSettings) = {
     this(_sc, _iw, _e, _u, _as.numEpochs, _as.numSubEpochs,
       _as.numThreads, _as.detailsFile,
       synchronous = _as.synchronous, skipProb = _as.skipProb, miniBatchSize = _as.miniBatchSize,
@@ -102,7 +102,7 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
     val mx = mxEpochs.getOrElse(maxEpochs)
     var finalLoss = 0.0
     for (i <- 1 to mx) {
-      val (loss, time, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater, expectedTime)
+      val (loss, time, newWeights, newUpdater) = processEpoch(rdd, numPartitions, i, weights, updater, 0L)
       val ct = (System.nanoTime() - t0) / 1.0E9
       optOut.writeln(i.toString() + "\t" + loss + "\t" + ct)
       newWeights.resetMass()
@@ -110,9 +110,9 @@ class DistributedOnlineOptimizer[T: ClassTag, W <: Weights[W]: ClassTag, LG <: L
       weights = newWeights
       updater = newUpdater
       finalLoss = loss
-      val localExpectedTime = time / numPartitions
-      if (numEpochs < 2) expectedTime = localExpectedTime * 10 // set the previous expected time to large factor more than first epoch expected time to be conservative
-      expectedTime = getNewExpectedTime(localExpectedTime)
+      // val localExpectedTime = time / numPartitions
+      // if (numEpochs < 2) expectedTime = localExpectedTime * 10 // set the previous expected time to large factor more than first epoch expected time to be conservative
+      // expectedTime = getNewExpectedTime(localExpectedTime)
     }
     (weights, finalLoss)
   }

@@ -4,11 +4,6 @@ package org.mitre.mandolin.optimize
  */
 
 import java.util.concurrent.locks.ReentrantReadWriteLock
-import scala.reflect.ClassTag
-import org.mitre.mandolin.util.{ Tensor1, DenseTensor1 }
-import org.mitre.mandolin.config.{ LearnerSettings, OnlineLearnerSettings }
-
-
 
 /**
  * Handles the processing of a single partition within a single <i>epoch</i>. The partition is processed by spawning separate
@@ -87,7 +82,7 @@ class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U 
     var continue = true
     val startTime = System.nanoTime()
     var i = 0; while (continue) {
-      if ((skipProb <= 0.0) || (util.Random.nextDouble() < skipProb)) {
+      if ((skipProb <= 0.0) || (scala.util.Random.nextDouble() < skipProb)) {
         val totalLossGrad = if (miniBatchSize > 1) {
           val items = math.min(miniBatchSize + i, n) - i
           val lossGrads = for (jj <- i until math.min(miniBatchSize + i, n)) yield evaluator.evaluateTrainingUnit(data(jj), weights, updater)
@@ -136,7 +131,7 @@ class SynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <
     var continue = true
     val startTime = System.nanoTime
     var i = 0; while (continue) {
-      if ((skipProb <= 0.0) || (util.Random.nextDouble() < skipProb)) {
+      if ((skipProb <= 0.0) || (scala.util.Random.nextDouble() < skipProb)) {
         readLock.lock()
         val totalLossGrad = if (miniBatchSize > 1) {
           val items = math.min(miniBatchSize + i, n) - i

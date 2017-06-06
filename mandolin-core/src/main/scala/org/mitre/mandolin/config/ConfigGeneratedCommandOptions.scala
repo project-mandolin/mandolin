@@ -32,6 +32,8 @@ class ConfigGeneratedCommandOptions(args: Seq[String]) extends ScallopConf(args)
       throw new RuntimeException("Invalid config argument: " + p)
     }
   }
+  
+  def getOverrides = overrides()
 
   def applyArgs(config: Config, commandConfig: Config) = {
     try {
@@ -60,10 +62,11 @@ class ConfigGeneratedCommandOptions(args: Seq[String]) extends ScallopConf(args)
         case Some(f) => ConfigFactory.parseFile(new java.io.File(f)).withFallback(ConfigFactory.load())
         case None => ConfigFactory.load()
     }
-    val conf = applyArgs(fileAugConfig, ConfigFactory.empty())
-    val opts = com.typesafe.config.ConfigResolveOptions.defaults().setAllowUnresolved(true)
-    val updated = fileAugConfig.resolveWith(conf, opts)
-    applyArgs(fileAugConfig, updated.withFallback(fileAugConfig).resolve()).resolve()
+    // val conf = applyArgs(fileAugConfig, ConfigFactory.empty())
+    // val opts = com.typesafe.config.ConfigResolveOptions.defaults().setAllowUnresolved(true)
+    // val updated = fileAugConfig.resolveWith(conf, opts)
+    // applyArgs(fileAugConfig, updated.withFallback(fileAugConfig).resolve()).resolve()
+    fileAugConfig
   }
 
   def getOptValAsString(s: String): Option[String] = {

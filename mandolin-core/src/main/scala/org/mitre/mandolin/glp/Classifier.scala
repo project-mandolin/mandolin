@@ -4,26 +4,31 @@ package org.mitre.mandolin.glp
  */
 
 import org.mitre.mandolin.util.DenseTensor1
-import org.mitre.mandolin.config.{ LearnerSettings, DeepNetSettings, OnlineLearnerSettings, BatchLearnerSettings, DecoderSettings }
+import org.mitre.mandolin.config.{ ConfigGeneratedCommandOptions, LearnerSettings, DeepNetSettings, GeneralLearnerSettings, BatchLearnerSettings, DecoderSettings }
 import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
 import org.mitre.mandolin.predict.OutputConstructor
 import org.mitre.mandolin.glp.local.LocalProcessor
+import com.typesafe.config.Config
 import scala.reflect.ClassTag
 
-class GLPModelSettings(args: Array[String]) extends LearnerSettings(args) 
-  with OnlineLearnerSettings with BatchLearnerSettings with DecoderSettings with DeepNetSettings {
-  
-  def this() = this(Array())
+// abstract class 
+class GLPModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
+extends GeneralLearnerSettings[GLPModelSettings](_confOptions, _conf) 
+  with BatchLearnerSettings with DecoderSettings with DeepNetSettings with Serializable {
+     
+  def this(str: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(str)))
+  def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)),None)
+  def this() = this(Array(): Array[String])
 
+  import scala.collection.JavaConversions._
+  
   /**
    * Returns a new settings object with the config name `key` set to `v` 
    */
   def set(key: String, v: Any) = {
     val curConfig = this.config
     val nConf = curConfig.withValue(key, com.typesafe.config.ConfigValueFactory.fromAnyRef(v))
-    new GLPModelSettings(Array()) {
-      override lazy val config = nConf 
-    }
+    new GLPModelSettings(None,Some(nConf)) 
   }
   
   //def withComplexSets(avs: )
@@ -31,13 +36,16 @@ class GLPModelSettings(args: Array[String]) extends LearnerSettings(args)
   /**
    * Returns a new settings object with the sequence of tuple arguments values set accordingly
    */
-  def withSets(avs: Seq[(String, Any)]) : GLPModelSettings = {
-    val nc = avs.foldLeft(this.config){case (ac, v) => ac.withValue(v._1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v._2))}
-    new GLPModelSettings(Array()) {
-      override lazy val config = nc
-    }
-  } 
-  
+  def withSets(avs: Seq[(String, Any)]) : GLPModelSettings  = {
+    val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) => 
+      v2 match {
+        case v2: List[_] =>
+          if (v2 != null) ac.withValue(v1,com.typesafe.config.ConfigValueFactory.fromIterable(v2)) else ac
+        case v2: Any =>
+          ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
+      }    
+    new GLPModelSettings(None,Some(nc))     
+  }   
 }
 
 /**

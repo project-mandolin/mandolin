@@ -10,6 +10,7 @@ class FactorGraphSettings(args: Array[String]) extends GLPModelSettings(args) {
   val singletonTestFile = asStr("mandolin.gm.singleton-test-file")
   val factorTestFile = asStr("mandolin.gm.factor-test-file")
   
+  
   val subGradEpochs = asInt("mandolin.gm.subgrad-epochs")
   val sgAlpha   = asDouble("mandolin.gm.sg-alpha")
 }

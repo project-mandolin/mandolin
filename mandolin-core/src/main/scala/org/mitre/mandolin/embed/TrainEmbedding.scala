@@ -4,10 +4,14 @@ import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, LocalIOAssistant}
 import org.mitre.mandolin.optimize.{TrainingUnitEvaluator, Updater}
 import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
-import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings, DecoderSettings}
+import org.mitre.mandolin.config.{ConfigGeneratedCommandOptions, LearnerSettings, DecoderSettings}
+import com.typesafe.config.Config
 
-class EmbeddingModelSettings(args: Array[String]) extends LearnerSettings(args) with OnlineLearnerSettings with DecoderSettings {
+class EmbeddingModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
+extends LearnerSettings(None,_conf) with DecoderSettings {
  
+  def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)), None)
+  
   val embedMethod = asStr("mandolin.embed.method")
   val eDim        = asInt("mandolin.embed.dim")
   val contextSize = asInt("mandolin.embed.window")

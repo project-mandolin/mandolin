@@ -14,7 +14,7 @@ object WorkPullingPattern {
   trait Epic[T] extends Iterable[T]
 
   //used by master to create work (in a streaming way)
-  case class ProvideWork(batchSize: Int) extends Message
+  case object ProvideWork extends Message
 
   case object CurrentlyBusy extends Message
 
@@ -32,8 +32,10 @@ object WorkPullingPattern {
   
   case object Hello extends Message
 
+  case class CurrentlyEvaluating(c: ModelConfig) extends Message
+  
   // config should end up being a model config/specification
-  case class ModelEvalResult(configResults: Seq[ScoredModelConfig]) extends Message
+  case class ModelEvalResult(configResults: ScoredModelConfig) extends Message
 
 }
 
@@ -77,14 +79,14 @@ class ModelConfigEvaluator[T]() extends Actor {
       log.info(s"worker $worker died - taking off the set of workers")
       workers.remove(worker)
 
-    case ProvideWork(batchSize) => currentEpic match {
+    case ProvideWork => currentEpic match {
       case None =>
         log.info("workers asked for work but we've no more work to do")
       //scorer ! ProvideWork(numConfigs) // request work from the scorer
       case Some(epic) ⇒
-        log.info(s"Received ProvideWork($batchSize), checking epic")
+        log.info(s"Received ProvideWork, checking epic")
         val iter = epic.iterator
-        val batch = (1 to batchSize).map { i =>
+        val batch = 
           if (currentEpic.isDefined && iter.hasNext) {
             Some(iter.next())
           } else {
@@ -92,10 +94,8 @@ class ModelConfigEvaluator[T]() extends Actor {
             currentEpic = None
             None
           }
-        }.filter(_.isDefined).map(_.get)
-        log.info(s"Sending batch of size ${batch.length} to worker $sender")
-        if (batch.length > 0) sender ! Work(batch, generation)
-
+        log.info(s"Sending work to worker $sender")
+        batch foreach {b => sender ! Work(b, generation) }
     }
 
     case x => log.info("Received unrecognized message " + x.toString)
@@ -106,7 +106,7 @@ class ModelConfigEvaluator[T]() extends Actor {
 /**
   * This worker actor will actually take work from the master in the form of models to evaluate
   */
-class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, modelEvaluator: ModelEvaluator, batchSize: Int) extends Actor {
+class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, modelEvaluator: ModelEvaluator) extends Actor {
 
   var busy : Boolean = false
 
@@ -129,14 +129,16 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
   def receive = {
     case WorkAvailable => {
       log.info(s"Worker $this received work available, asking master to provide work")
-      if (!busy) master ! ProvideWork(batchSize)
+      if (!busy) master ! ProvideWork
     }
-    case Work(w: Seq[ModelConfig], gen: Int) =>
+    case Work(w: ModelConfig, gen: Int) =>
+      log.info(s"Worker $this about to do work...")
+      modelScorer ! CurrentlyEvaluating(w)
       doWork(w, gen) onComplete { case r =>
-        log.info(s"Worker $this finished configuration; sending result of " + r.get.configResults.seq(0).sc + " to " + modelScorer)
+        log.info(s"Worker $this finished configuration; sending result of " + r.get.configResults.sc + " to " + modelScorer)
         modelScorer ! r.get // send result to modelScorer
         busy = false
-        master ! ProvideWork(batchSize)
+        master ! ProvideWork
       }
     case CancelTraining(gen: Int) =>
       modelEvaluator.cancel(gen)
@@ -144,14 +146,15 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
     case x => log.error("Received unrecognized message " + x)
   }
 
-  def doWork(w: Seq[ModelConfig], gen: Int): Future[ModelEvalResult] = {
+  def doWork(w: ModelConfig, gen: Int): Future[ModelEvalResult] = {
     busy = true
     Future({
-      val score = modelEvaluator.evaluate(w, gen)
+      log.info("About to evaluate model ...")
+      val (acc, time): (Double, Long) = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result
       // send to modelScorer
-      log.info("Scores: " + score.mkString(" "))
-      ModelEvalResult(score zip w map {case (s,c) => ScoredModelConfig(s,c)})
+      log.info("Acc: " + acc + " Time: " + time)
+      ModelEvalResult(ScoredModelConfig(acc, time, w))
     })
   }
 }

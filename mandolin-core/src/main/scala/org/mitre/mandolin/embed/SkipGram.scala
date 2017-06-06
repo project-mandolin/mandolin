@@ -4,7 +4,7 @@ import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, LocalIOAssistant}
 import org.mitre.mandolin.optimize.{TrainingUnitEvaluator, Updater}
 import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
-import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings, DecoderSettings}
+import org.mitre.mandolin.config.{LearnerSettings, DecoderSettings}
 
 
 

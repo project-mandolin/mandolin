@@ -3,15 +3,13 @@ package org.mitre.mandolin.glp
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.config.{LearnerSettings, OnlineLearnerSettings}
+import org.mitre.mandolin.config.{LearnerSettings, GeneralLearnerSettings}
 
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{Alphabet, AlphabetWithUnitScaling, StdAlphabet, IdentityAlphabet, IOAssistant}
 import org.mitre.mandolin.gm.Feature
 import org.mitre.mandolin.util.{LineParser, DenseTensor1 => DenseVec, SparseTensor1 => SparseVec, Tensor1 => Vec}
 
-
-class GLPSettings(a: Seq[String]) extends LearnerSettings(a) with OnlineLearnerSettings 
 
 
 /**

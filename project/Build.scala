@@ -1,16 +1,22 @@
 import sbt._
 import Keys._
-import sbtassembly.Plugin._
-import sbtassembly.AssemblyUtils._
-import AssemblyKeys._
+import sbtassembly.AssemblyPlugin.autoImport._
+import sbtassembly.MergeStrategy
+
+import com.lightbend.paradox.sbt.{ParadoxPlugin}
+import com.lightbend.paradox.sbt.ParadoxPlugin.autoImport._
 import laika.sbt.LaikaSbtPlugin.{LaikaPlugin, LaikaKeys}
 import LaikaKeys._
+
+import _root_.java.nio.file.Files
 
 object MandolinBuild extends Build {
 
   lazy val root = Project(id = "mandolin", base = file(".")).
                             settings(rootSettings:_*).
-                            aggregate(mandolinCore, mandolinSpark)
+			    enablePlugins(ParadoxPlugin).
+			    settings(paradoxTheme := Some(builtinParadoxTheme("generic"))).
+                            aggregate(mandolinCore, mandolinSpark, mandolinMx)
 
   lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
                             settings(coreSettings:_*).
@@ -20,20 +26,40 @@ object MandolinBuild extends Build {
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
 
+  // The MXNet library comes pre-built and resides in mandolin/mandolin-mx/lib
+  // In addition, the native code is pre-built in mandolin/mandolin-mx/native  
+  lazy val mandolinMx = Project(id = "mandolin-mx", base = file("mandolin-mx")).
+                            settings(mxNetSettings("mx"):_*).
+                            //settings(mxNetDependencySettings:_*).
+                            settings(assemblyProjSettings("mx"):_*).
+                            //settings(siteSettings:_*).
+                            settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
+
   lazy val mandolinSpark = Project(id = "mandolin-spark", base = file("mandolin-spark")).
                             settings(sparkSettings:_*).
                             settings(sparkDependencySettings:_*).
                             settings(assemblyProjSettings("spark"):_*).
                             //settings(siteSettings:_*).
-                            settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
+                            settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore, mandolinMx)
 
-  def rootSettings = sharedSettings ++ Seq( name := "mandolin" )
+  val mainVersion = "0.3.5"
+  
+
+  def rootSettings = sharedSettings ++ Seq(
+    name := "mandolin"
+  )
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(
+    commands += Command.command("linux-assembly") { state =>
+        "linux-core" ::
+	"assembly" :: state },
+    commands += Command.command("osx-assembly") { state =>
+        "osx-core" ::
+	"assembly" :: state },	
     organization := "org.mitre.mandolin",
-    version := "0.3.3-SNAPSHOT",
-    scalaVersion := "2.11.7",
-    crossScalaVersions := Seq("2.10.5","2.11.7"),
+    version := mainVersion+"-SNAPSHOT",
+    scalaVersion := "2.11.8",
+    crossScalaVersions := Seq("2.10.5","2.11.8"),
     publishTo := {
        val nexus = "https://oss.sonatype.org/"
        if (isSnapshot.value)
@@ -64,6 +90,7 @@ object MandolinBuild extends Build {
     resolvers += "Akka Repository" at "http://repo.akka.io/releases/",
     resolvers += "Secured Central Repository" at "https://repo1.maven.org/maven2",
     resolvers += "Snapshot Repo" at "https://oss.sonatype.org/content/repositories/snapshots/",
+    resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository",
     externalResolvers := Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false),
     javacOptions ++= Seq("-source","1.7","-target","1.7"),
     scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value+"/src/root-doc.txt", "-unchecked")
@@ -75,6 +102,31 @@ object MandolinBuild extends Build {
 
   def sparkSettings : Seq[Setting[_]] = sharedSettings ++ Seq(  
     name := "mandolin-spark"
+  )
+
+  def mxNetSettings(subProj: String) : Seq[Setting[_]] = sharedSettings ++ Seq(
+    name := "mandolin-mx",
+    unmanagedClasspath in Compile <++= baseDirectory map { base =>
+      val lib = base / "lib"
+      val libFiles = lib ** "*.jar"
+      libFiles.get
+    },
+    // force the new .jar files in the lib directory to be added to classpath prior to compiling
+    compile in Compile <<= (compile in Compile) dependsOn(unmanagedClasspath in Compile),
+    assemblyLinuxCoreTask := {      
+      Def.sequential(      
+        Def.task { linuxCoreTask }
+      ).value
+    },
+    assemblyLinuxFullTask := Def.sequential(
+      Def.task { linuxFullTask }
+    ).value,
+    assemblyOSXCoreTask := Def.sequential(
+      Def.task { osxCoreTask }
+    ).value,
+    assemblyOSXFullTask := Def.sequential(
+      Def.task { osxFullTask }
+    ).value    
   )
 
   def coreDependencySettings : Seq[Setting[_]] = {
@@ -103,19 +155,95 @@ object MandolinBuild extends Build {
       "org.apache.spark" %% "spark-mllib"  % "2.1.0"
       )
     )
-  }  
+  }
+
+  def mxNetDependencySettings : Seq[Setting[_]] = {
+    Seq(
+      libraryDependencies ++= Seq(
+      	// "commons-logging" % "commons-logging" % "1.2"
+	// "ml.dmlc" % "xgboost4j" % "0.7",
+        // "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT"
+      )
+    )
+    
+  }
+
+  lazy val assemblyLinuxFullTask = TaskKey[Unit]("linux-full")
+  lazy val assemblyLinuxCoreTask = TaskKey[Unit]("linux-core")
+  lazy val assemblyOSXFullTask = TaskKey[Unit]("osx-full")
+  lazy val assemblyOSXCoreTask = TaskKey[Unit]("osx-core")
+
+  val osXJVMLibs =
+     (file("mandolin-mx") / "pre-compiled" / "xgboost" / "osx" * "*.jar") +++
+     (file("mandolin-mx") / "pre-compiled" / "mxnet" / "osx" * "*.jar")
+
+  val linuxJVMLibs =
+     (file("mandolin-mx") / "pre-compiled" / "xgboost" / "linux" * "*.jar") +++
+     (file("mandolin-mx") / "pre-compiled" / "mxnet" / "linux-cpu" * "*.jar")
+
+  val linuxJVMLibsGPU =
+     (file("mandolin-mx") / "pre-compiled" / "xgboost" / "linux" * "*.jar") +++
+     (file("mandolin-mx") / "pre-compiled" / "mxnet" / "linux-gpu" * "*.jar")
+
+  val nonNativeMxOSXLibs =
+    (file("mandolin-mx") / "pre-compiled" / "xgboost" / "osx" * "*.jar") +++
+    (file("mandolin-mx") / "pre-compiled" / "mxnet" * "*.jar")
+
+  val nonNativeMxLinuxLibs =
+    (file("mandolin-mx") / "pre-compiled" / "xgboost" / "linux" * "*.jar") +++
+    (file("mandolin-mx") / "pre-compiled" / "mxnet" * "*.jar")
+
+  private def copyFile(destDir: File, file: File) = {
+    val fn = file.getName()
+    val dstFile = (destDir / fn).toPath
+    Files.deleteIfExists(dstFile)
+    Files.copy(file.toPath, dstFile)    
+  }
+
+  private def setupDistDir() = {
+     try { Files.createDirectory(file("dist").toPath) } catch {case _: Throwable => } 
+  }
+
+  private def linuxCoreTask = {
+    val destDir = file("mandolin-mx") / "lib"
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
+    nonNativeMxLinuxLibs.get foreach { f => copyFile(destDir, f) }
+  }
+
+  private def linuxFullTask = {
+    val destDir = file("mandolin-mx") / "lib"
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
+    linuxJVMLibs.get foreach { f => copyFile(destDir, f) }
+  }
+
+  private def osxCoreTask = {
+    val destDir = file("mandolin-mx") / "lib"
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
+    nonNativeMxOSXLibs.get foreach { f => copyFile(destDir, f) }
+  }
+
+  private def osxFullTask = {
+    val destDir = file("mandolin-mx") / "lib"
+    try { Files.createDirectory(destDir.toPath) } catch {case _: Throwable => }
+    // setupDistDir()
+    osXJVMLibs.get foreach { f => copyFile(destDir, f) }
+  }
 
   def versionDependencies(v:String) = v match {
     case "2.10.5" => "net.ceedubs" %% "ficus" % "1.0.1"
     case _ => "net.ceedubs" %% "ficus" % "1.1.2"
   }
 
-  def assemblyProjSettings(subProj: String) : Seq[Setting[_]] = assemblySettings ++ Seq(
+  def assemblyProjSettings(subProj: String) : Seq[Setting[_]] = Seq(
     test in assembly := {},
-    jarName in assembly := ("mandolin-"+subProj+"-assembly-" + version.value + "_" + scalaVersion.value + ".jar"),
-    logLevel in assembly := Level.Error, 
-    mergeStrategy in assembly := conflictRobustMergeStrategy,
-    mainClass in assembly := Some("org.mitre.mandolin.app.Driver")
+    logLevel in assembly := Level.Error,
+
+    assemblyMergeStrategy in assembly := conflictRobustMergeStrategy,
+    assemblyJarName in assembly := ("mandolin-"+subProj+"-"+mainVersion+".jar"),
+    assemblyOutputPath in assembly := file("dist") / ("mandolin-"+subProj+"-"+mainVersion+".jar")
   )
 
   def siteSettings : Seq[Setting[_]] = 
