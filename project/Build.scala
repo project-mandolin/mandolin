@@ -15,7 +15,9 @@ object MandolinBuild extends Build {
   lazy val root = Project(id = "mandolin", base = file(".")).
                             settings(rootSettings:_*).
 			    enablePlugins(ParadoxPlugin).
-			    settings(paradoxTheme := Some(builtinParadoxTheme("generic"))).
+			    settings(
+			      paradoxTheme := Some(builtinParadoxTheme("generic")),
+			      paradoxGroups := Map("Platforms" -> Seq("Linux", "Mac"))).
                             aggregate(mandolinCore, mandolinSpark, mandolinMx)
 
   lazy val mandolinCore = Project(id = "mandolin-core", base = file("mandolin-core")).
