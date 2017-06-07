@@ -58,8 +58,8 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
     val rwLock = if (synchronous) Some(new ReentrantReadWriteLock) else None
 
     val workers = (subPartitions map { sub => getThreadProcessor(sub, w, updater, rwLock, timeout) }).toList.par
-    val support = new ForkJoinTaskSupport(new ForkJoinPool(workersPerPartition))
-    workers.tasksupport_=(support)
+    // val support = new ForkJoinTaskSupport(new ForkJoinPool(workersPerPartition))
+    // workers.tasksupport_=(support)
     var totalLoss: Double = 0
     var totalTime = 0L
     for (i <- 1 to numSubEpochs) {
