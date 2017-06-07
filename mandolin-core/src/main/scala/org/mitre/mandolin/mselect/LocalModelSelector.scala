@@ -11,14 +11,14 @@ import org.mitre.mandolin.predict.{ DiscreteConfusion }
 import org.mitre.mandolin.transform.FeatureExtractor
 
 
-class LocalModelSelector(val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, 
+class LocalModelSelector(val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, 
     scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
     hyperMax: Int = 81) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
   
   def this(_msb: MandolinModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
-    this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
+    this(_msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband, 
     appSettings.hyperbandMixParam, appSettings.numEpochs)
   }
@@ -45,7 +45,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   val ev = {
     val io = new LocalIOAssistant
     val trVecs = (io.readLines(trainFile) map { l => fe.extractFeatures(l) } toVector)
-    val tstVecs = (io.readLines(testFile) map { l => fe.extractFeatures(l) } toVector)
+    val tstVecs = testFile map { tf => (io.readLines(tf) map { l => fe.extractFeatures(l) } toVector) }
     new LocalModelEvaluator(trVecs, tstVecs)
   }
 }

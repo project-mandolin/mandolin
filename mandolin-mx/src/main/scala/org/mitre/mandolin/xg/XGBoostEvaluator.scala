@@ -2,7 +2,7 @@ package org.mitre.mandolin.xg
 
 import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor, SparseGLPFactor}
 import ml.dmlc.xgboost4j.LabeledPoint
-import ml.dmlc.xgboost4j.scala.{DMatrix, XGBoost}
+import ml.dmlc.xgboost4j.scala.{DMatrix, XGBoost, Booster}
 
 class XGBoostEvaluator(settings: XGModelSettings) {
   
@@ -11,6 +11,7 @@ class XGBoostEvaluator(settings: XGModelSettings) {
   paramMap.put("max_depth", settings.maxDepth)
   paramMap.put("objective", settings.objective)
   paramMap.put("scale_pos_weight", settings.scalePosWeight)
+  paramMap.put("silent", settings.silent)
 
   def mapGLPFactorToLabeledPoint(gf: GLPFactor) : LabeledPoint = {
     gf match {
@@ -27,14 +28,28 @@ class XGBoostEvaluator(settings: XGModelSettings) {
     }
   }
   
-  def evaluateTrainingSet(train: Iterator[GLPFactor], test: Option[Iterator[GLPFactor]]) = {
+  def gatherTestAUC(s: String) = {
+    s.split('\t').toList match {
+      case rnd :: tst :: _ => tst.split(':')(1).toFloat
+      case _ => throw new RuntimeException("Unable to parse cross validation metric: " + s)
+    }
+  }
+  
+  def evaluateTrainingSet(train: Iterator[GLPFactor], test: Option[Iterator[GLPFactor]]) : (Float, Option[Booster]) = {
     val trIter = train map mapGLPFactorToLabeledPoint
     val tstIter = test map {iter => iter map mapGLPFactorToLabeledPoint }
     val trainDm = new DMatrix(trIter)
     tstIter match {
-      case Some(tst) => 
-        XGBoost.train(trainDm, paramMap.toMap, settings.rounds, Map("auc" -> new DMatrix(tst)))
-      case None => XGBoost.train(trainDm, paramMap.toMap, settings.rounds)
+      case Some(tst) =>
+        val metrics = Array(Array.fill(settings.rounds)(0.0f))
+        val b = XGBoost.train(trainDm, paramMap.toMap, settings.rounds, Map("auc" -> new DMatrix(tst)), metrics, null, null)
+        // val xv = XGBoost.crossValidation(trainDm, paramMap.toMap, settings.rounds, 5, Array("auc"), null, null)        
+        // val finalTestMetric = gatherTestAUC(xv.last)
+        (1.0f - metrics(0)(settings.rounds - 1), Some(b))
+      case None => 
+        val xv = XGBoost.crossValidation(trainDm, paramMap.toMap, settings.rounds, 5, Array("auc"), null, null)
+        val finalTestMetric = gatherTestAUC(xv.last)
+        (finalTestMetric, None)
     }
   }
   

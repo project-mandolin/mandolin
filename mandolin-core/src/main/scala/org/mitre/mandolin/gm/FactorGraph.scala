@@ -2,7 +2,7 @@ package org.mitre.mandolin.gm
 
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{ StdAlphabet, IdentityAlphabet, Alphabet, DenseTensor1 => DenseVec }
-import org.mitre.mandolin.glp.{ StdGLPFactor, ANNetwork, LType, InputLType, SoftMaxLType, GLPFactor, GLPWeights, GLPLossGradient, 
+import org.mitre.mandolin.glp.{ StdGLPFactor, ANNetwork, ANNBuilder, LType, InputLType, SoftMaxLType, GLPFactor, GLPWeights, GLPLossGradient, 
   CategoricalGLPPredictor, GLPAdaGradUpdater, GLPInstanceEvaluator }
 import org.mitre.mandolin.glp.local.LocalGLPOptimizer
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
@@ -20,8 +20,8 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
   
   def getComponents(fgSettings: FactorGraphSettings, as: AlphabetSet) = {
     val fgProcessor = new FactorGraphProcessor
-    val singletonSp = fgProcessor.getGLPSpec(fgSettings.netspec, as.sa.getSize, as.sla.getSize)
-    val factorSp   = fgProcessor.getGLPSpec(fgSettings.netspec, as.fa.getSize, as.fla.getSize)
+    val singletonSp = ANNBuilder.getGLPSpec(fgSettings.netspec, as.sa.getSize, as.sla.getSize)
+    val factorSp   = ANNBuilder.getGLPSpec(fgSettings.netspec, as.fa.getSize, as.fla.getSize)
     //val singletonAnn = ANNetwork(IndexedSeq(LType(InputLType, as.sa.getSize), LType(SoftMaxLType,as.sla.getSize)))
     //val factorAnn    = ANNetwork(IndexedSeq(LType(InputLType, as.fa.getSize), LType(SoftMaxLType,as.fla.getSize)))
     (ANNetwork(singletonSp), ANNetwork(factorSp))    

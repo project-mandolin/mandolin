@@ -1,8 +1,9 @@
 package org.mitre.mandolin.gm
 
-import org.mitre.mandolin.glp.GLPModelSettings
+import org.mitre.mandolin.glp.{ GLPModelSettings }
+import org.mitre.mandolin.config.DeepNetSettings
 
-class FactorGraphSettings(args: Array[String]) extends GLPModelSettings(args) {
+class FactorGraphSettings(args: Array[String]) extends GLPModelSettings(args) with DeepNetSettings {
   
   val singletonFile = asStr("mandolin.gm.singleton-file")
   val factorFile = asStr("mandolin.gm.factor-file")

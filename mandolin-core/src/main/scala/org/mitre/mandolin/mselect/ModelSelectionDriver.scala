@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext
 /**
   * Created by jkraunelis on 1/30/17.
   */
-abstract class ModelSelectionDriver(trainFile: String, testFile: String, numWorkers: Int,
+abstract class ModelSelectionDriver(trainFile: String, testFile: Option[String], numWorkers: Int,
                                     scoreSampleSize: Int, acqFunRelearnSize: Int, 
                                     totalEvals: Int, hyperBand: Boolean = false, hyperMix: Float = 1.0f,
                                     hyperMax: Int = 81) {

@@ -28,11 +28,10 @@ class MxModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilder {
   }
        
   def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[MxModelSettings]) : ModelSpace = {    
-    val it = if (sparse) LType(SparseInputLType, idim) else LType(InputLType, odim)
     val budget = appSettings match {case Some(m) => m.numEpochs case None => -1}
     // Pull out important parameters to preserve here and pass into model space
     val appConfig = appSettings map {a => a.config.root.render()}
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, it, LType(SoftMaxLType, odim), idim, odim, appConfig, budget)    
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, idim, odim, appConfig, budget)    
   }  
 }
 
@@ -53,12 +52,15 @@ trait MxLearnerBuilderHelper {
 class MxModelInstance(appSettings: MxModelSettings, nfs: Int, modelId: Int, startFrom: Int) 
 extends LearnerInstance[GLPFactor] with MxNetSetup {
     
-  def train(trVecs: Vector[GLPFactor], tstVecs: Vector[GLPFactor]) : Double = {
+  def train(trVecs: Vector[GLPFactor], tstVecs: Option[Vector[GLPFactor]]) : Double = {
     val devices = getDeviceArray(appSettings)
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)    
     val shape = Shape(nfs)
     val trIter = new GLPFactorIter(trVecs.toIterator, shape, appSettings.miniBatchSize)
-    val tstIter = new GLPFactorIter(tstVecs.toIterator, shape, appSettings.miniBatchSize)
+    val tstIter = tstVecs match {
+      case Some(tst) => new GLPFactorIter(tst.toIterator, shape, appSettings.miniBatchSize)
+      case None => trIter
+    }
     val lr = appSettings.initialLearnRate
     val opt = getOptimizer(appSettings)
     val updater = new MxNetOptimizer(opt)
@@ -73,6 +75,7 @@ extends LearnerInstance[GLPFactor] with MxNetSetup {
     sym.dispose()
     lg.loss
   }
+    
 }
 
 object MxModelInstance extends MxLearnerBuilderHelper {
@@ -86,7 +89,7 @@ class FileSystemImgMxModelInstance(appSettings: MxModelSettings, nfs: Int, model
 extends LearnerInstance[java.io.File] with MxNetSetup {
   val log = LoggerFactory.getLogger(getClass)
   
-  def train(trData: Vector[java.io.File], tstData: Vector[java.io.File]) : Double = {
+  def train(trData: Vector[java.io.File], tstData: Option[Vector[java.io.File]]) : Double = {
     val devices = getDeviceArray(appSettings)
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)
     val (shape, trIter, tstIter) = if (appSettings.inputType equals "mnist") {
@@ -113,6 +116,8 @@ extends LearnerInstance[java.io.File] with MxNetSetup {
     sym.dispose()
     lg.loss
   }
+  
+  
 }
 object FileSystemImgMxModelInstance extends MxLearnerBuilderHelper {
   def apply(config: ModelConfig) : FileSystemImgMxModelInstance = {
@@ -127,13 +132,13 @@ class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) ex
   
   def evaluate(c: ModelConfig) : Double = {
       val learner = FileSystemImgMxModelInstance(c)
-      val acc = learner.train(Vector(trData), Vector(tstData))
+      val acc = learner.train(Vector(trData), Some(Vector(tstData)))
       acc
   }
 }
 
 
-class LocalMxModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
+class LocalMxModelEvaluator(trData: Vector[GLPFactor], tstData: Option[Vector[GLPFactor]]) extends ModelEvaluator with Serializable {
 
   def evaluate(c: ModelConfig): Double = {
       val learner = MxModelInstance(c)
