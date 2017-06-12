@@ -149,7 +149,7 @@ class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) ex
     (acc, endTime - startTime)
   }
 
-  override def cancel(generation: Int): Unit = null
+  override def cancel(generation: Int): Unit = {}
 }
 
 
@@ -162,5 +162,5 @@ class LocalMxModelEvaluator(trData: Vector[GLPFactor], tstData: Option[Vector[GL
     val endTime = System.currentTimeMillis()
     (acc, endTime - startTime)
   }
-  override def cancel(generation: Int): Unit = null
+  override def cancel(generation: Int): Unit = {}
 }
