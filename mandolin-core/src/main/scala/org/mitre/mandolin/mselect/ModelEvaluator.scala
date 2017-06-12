@@ -35,7 +35,7 @@ class MockRandomModelEvaluator extends ModelEvaluator {
   def cancel(generation: Int) {}
 }
 
-class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Vector[GLPFactor]) extends ModelEvaluator with Serializable {
+class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Option[Vector[GLPFactor]]) extends ModelEvaluator with Serializable {
   override def evaluate(c: ModelConfig, generation: Int): (Double, Long) = {
     val config = c
     val learner = MandolinModelInstance(config)

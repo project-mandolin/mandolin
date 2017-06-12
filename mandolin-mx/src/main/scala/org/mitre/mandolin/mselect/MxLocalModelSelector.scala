@@ -6,7 +6,7 @@ import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.glp.{ GLPModelSettings, GLPTrainerBuilder, GLPFactor }
 
 
-class LocalMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+class LocalMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
     hyperMax: Int = 81) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
@@ -14,7 +14,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
   def this(_msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
-    this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
+    this(_msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband,
     appSettings.hyperbandMixParam, appSettings.numEpochs)
   }
@@ -38,12 +38,12 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   override val ev = {
     val io = new LocalIOAssistant
     val trVecs = (io.readLines(trainFile) map { l => fe.extractFeatures(l) } toVector)
-    val tstVecs = (io.readLines(testFile) map { l => fe.extractFeatures(l) } toVector)
+    val tstVecs = testFile map {tf => (io.readLines(tf) map { l => fe.extractFeatures(l) } toVector) }
     new LocalMxModelEvaluator(trVecs, tstVecs)
   }
 }
 
-class LocalFileSystemImgMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: String, numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+class LocalFileSystemImgMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband : Boolean = false, hyperMix: Float = 1.0f,
     hyperMax: Int = 81) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
@@ -51,7 +51,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
   def this(_msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
-    this(_msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
+    this(_msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband,
     appSettings.hyperbandMixParam, appSettings.numEpochs)
   }
@@ -59,7 +59,10 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   
   val ms: ModelSpace = msb.build(0, 0, false, appSettings)
   override val ev = {
-    new FileSystemMxModelEvaluator(new java.io.File(trainFile), new java.io.File(testFile))
+    if (testFile.isDefined)
+      new FileSystemMxModelEvaluator(new java.io.File(trainFile), new java.io.File(testFile.get))
+    else 
+      new FileSystemMxModelEvaluator(new java.io.File(trainFile), new java.io.File(trainFile))
   }
 }
 

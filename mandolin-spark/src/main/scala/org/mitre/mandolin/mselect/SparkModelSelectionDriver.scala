@@ -6,13 +6,13 @@ import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.glp.{ANNetwork, CategoricalGLPPredictor, GLPFactor, GLPModelSettings, GLPTrainerBuilder, GLPWeights, SparseInputLType}
 
-class SparkModelSelectionDriver(val sc: SparkContext, val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: String, 
+class SparkModelSelectionDriver(val sc: SparkContext, val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: Option[String], 
     numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
   
   def this(sc: SparkContext, _msb: MandolinModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
-    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile.getOrElse(appSettings.trainFile.get), appSettings.numWorkers, 
+    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
   }     
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
@@ -34,7 +34,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   override val ev = {
     val io = new LocalIOAssistant
     val trVecs = io.readLines(trainFile) map { l => fe.extractFeatures(l) }
-    val tstVecs = io.readLines(testFile) map { l => fe.extractFeatures(l) }
+    val tstVecs = testFile match {case Some(tf) => io.readLines(tf) map { l => fe.extractFeatures(l) } case None => trVecs }
     val trainBC = sc.broadcast(trVecs.toVector)
     val testBC = sc.broadcast(tstVecs.toVector)
 

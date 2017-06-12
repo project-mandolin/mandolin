@@ -21,8 +21,6 @@ class ModelConfig(
                    _realMetaParamSet: Vector[ValuedMetaParameter[RealValue]],
                    _categoricalMetaParamSet: Vector[ValuedMetaParameter[CategoricalValue]],
                    _intMetaParamSet: Vector[ValuedMetaParameter[IntValue]],                   
-                   val inLType : LType,
-                   val outLType: LType,
                    _inDim: Int,
                    _outDim: Int,
                    _serializedSettings : Option[String],
@@ -34,7 +32,7 @@ with Serializable {
   
 
   def withBudgetAndSource(b: Int, s: Int) = {
-    new ModelConfig(id, _realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, inLType, outLType, _inDim, _outDim, _serializedSettings, b, s)
+    new ModelConfig(id, _realMetaParamSet, _categoricalMetaParamSet, _intMetaParamSet, _inDim, _outDim, _serializedSettings, b, s)
   }
 
   override def toString(): String = {
@@ -71,8 +69,6 @@ abstract class AbstractModelSpace(
  */
 class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[CategoricalMetaParameter],
     _intMPs: Vector[IntegerMetaParameter],
-    val inLType: LType,
-    val outLType: LType,
     _idim: Int,
     _odim: Int,
     _settings: Option[String],
@@ -80,7 +76,7 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     extends AbstractModelSpace(_realMPs, _catMPs, _intMPs, _idim, _odim, _settings) with Serializable {
 
   def this(rmps: Vector[RealMetaParameter], cmps: Vector[CategoricalMetaParameter], ints: Vector[IntegerMetaParameter]) =
-    this(rmps, cmps, ints, LType(InputLType), LType(SoftMaxLType), 0,0, None, -1)
+    this(rmps, cmps, ints, 0,0, None, -1)
     
   var curUid = 0
 
@@ -102,7 +98,7 @@ class ModelSpace(_realMPs: Vector[RealMetaParameter], _catMPs: Vector[Categorica
     val intValued = intMPs map {mp => mp.drawRandomValue }
     val id = curUid
     curUid += 1
-    new ModelConfig(id, realValued, catValued, intValued, inLType, outLType, idim, odim, settings, budget)    
+    new ModelConfig(id, realValued, catValued, intValued, idim, odim, settings, budget)    
   }
 }
 

@@ -19,28 +19,10 @@ case class GLPComponentSet(
     labelAlphabet: Alphabet,
     dim: Int,
     npts: Int)
-
-/**
- * General driver/processor class for GLP and linear models. Includes various utility methods
- * used by subclasses for reading in training/test data, determining GLP model topology from
- * a specification provided in the configuration file and setting/interpreting all of the
- * various configuration options.
- * @param appSettings GLPModelSettings that specify everything for training/decoding/etc.
- * @author wellner
- */
-abstract class AbstractProcessor extends LineParser {
-
-  def getLabelAlphabet(labFile: Option[String] = None, io: IOAssistant): Alphabet = {
-    if (labFile.isDefined) {
-      val labels = io.readLines(labFile.get)
-      val la = new StdAlphabet
-      labels foreach { l => la.ofString(l) }
-      la.ensureFixed
-      la
-    } else new StdAlphabet
-  }
-  
-  def mapSpecToList(conf: Map[String, Map[String, String]]) = {
+    
+    
+object ANNBuilder {
+    def mapSpecToList(conf: Map[String, Map[String, String]]) = {
     val layerNames = conf.keySet
     var prevName = ""
     val nextMap = layerNames.toSet.foldLeft(Map():Map[String,String]){case (ac,v) =>
@@ -112,6 +94,31 @@ abstract class AbstractProcessor extends LineParser {
     }
   }
 
+
+}
+
+/**
+ * General driver/processor class for GLP and linear models. Includes various utility methods
+ * used by subclasses for reading in training/test data, determining GLP model topology from
+ * a specification provided in the configuration file and setting/interpreting all of the
+ * various configuration options.
+ * @param appSettings GLPModelSettings that specify everything for training/decoding/etc.
+ * @author wellner
+ */
+abstract class AbstractProcessor extends LineParser {
+
+  import ANNBuilder._
+  
+  def getLabelAlphabet(labFile: Option[String] = None, io: IOAssistant): Alphabet = {
+    if (labFile.isDefined) {
+      val labels = io.readLines(labFile.get)
+      val la = new StdAlphabet
+      labels foreach { l => la.ofString(l) }
+      la.ensureFixed
+      la
+    } else new StdAlphabet
+  }
+  
   def getAlphabet(inputLines: Vector[String], la: StdAlphabet, scaling: Boolean, selectFeatures: Int, fd: Option[String], io: IOAssistant): (Alphabet, Int) = {
     getAlphabet(inputLines.iterator, la, scaling, selectFeatures, fd, io)
   }

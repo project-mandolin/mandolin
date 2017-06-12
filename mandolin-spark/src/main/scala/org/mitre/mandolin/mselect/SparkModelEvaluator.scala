@@ -28,8 +28,9 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]
       val tstData = _testBC.value
       val accuracies = configIter map {config =>
         val learner = MandolinModelInstance(config)
+
         val startTime = System.currentTimeMillis()
-        val acc = learner.train(trData, tstData)
+        val acc = learner.train(trData, Some(tstData))
         val endTime = System.currentTimeMillis()
         (acc, endTime - startTime)
       }
@@ -56,7 +57,7 @@ class SparkMxModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFacto
       val accuracies = configIter map {config =>
         val learner = MxModelInstance(config)
         val startTime = System.currentTimeMillis()
-        val acc = learner.train(trData, tstData)
+        val acc = learner.train(trData, Some(tstData))
         val endTime = System.currentTimeMillis()
         (acc, endTime - startTime)
       }
@@ -78,7 +79,7 @@ class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: String, testD
       val accuracies = configIter map {config =>
         val learner = FileSystemImgMxModelInstance(config)
         val startTime = System.currentTimeMillis()
-        val acc = learner.train(Vector(new java.io.File(_trainData)), Vector(new java.io.File(_testData)))
+        val acc = learner.train(Vector(new java.io.File(_trainData)), Some(Vector(new java.io.File(_testData))))
         val endTime = System.currentTimeMillis()
         (acc, endTime - startTime)
       }

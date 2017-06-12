@@ -20,29 +20,6 @@ trait ModelSelectionSettings extends GLPModelSettings {
   def buildModelSpaceFromConfig() = {
     val cobj = config.getConfig("mandolin.model-selection")
     
-    val (inLType, outLType) = {
-      //val (is, os) = config.getConfigList("mandolin.trainer.specification").toList match {
-      val li = try {
-        config.as[List[Map[String,String]]]("mandolin.trainer.specification")
-      } catch {case _: Throwable => this.mapSpecToList(config.as[Map[String, Map[String, String]]]("mandolin.trainer.specification"))}
-      val (is, os) = 
-      li match {
-        case a :: rest => (a, rest.reverse.head)
-        case _ => throw new RuntimeException("Invalid mandolin.trainer.specification")
-        }
-      val inLType = is("ltype") match {
-        case "Input" => LType(InputLType)
-        case "InputSparse" => LType(SparseInputLType)
-        case a => throw new RuntimeException("Invalid LType " + a)
-      }
-      val outLType = os("ltype") match {
-        case "SoftMax" => LType(SoftMaxLType)
-        case "Linear" => LType(LinearLType)
-        case a => throw new RuntimeException("Invalid LType " + a)
-      }
-      (inLType, outLType)
-    }
-        
     val cats = cobj.getConfigList("categorical") map {c => 
       val key = c.getString("name")
       // these values should be strings
@@ -72,7 +49,7 @@ trait ModelSelectionSettings extends GLPModelSettings {
       }
     }
     val budget = if (this.useHyperband) this.numEpochs else -1
-    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, inLType, outLType, 0, 0, None, budget)
+    new ModelSpace(reals.toVector, cats.toVector, ints.toVector, 0, 0, None, budget)
   }
   
   val modelSpace = buildModelSpaceFromConfig()

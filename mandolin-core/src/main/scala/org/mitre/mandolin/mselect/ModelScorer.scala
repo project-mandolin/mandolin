@@ -54,7 +54,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
       if (totalReceived >= totalEvals) {
         outWriter.close()
         val hours = (System.currentTimeMillis() - startTime) / 1000.0 / 60 / 60
-        log.info(s"Total time for $totalEvals configs was $hours hours")
+        log.info(s"Total time for $totalEvals model evaluations was $hours hours")
         System.exit(0)
       }
       if (receivedSinceLastScore >= acqFnThreshold) {
