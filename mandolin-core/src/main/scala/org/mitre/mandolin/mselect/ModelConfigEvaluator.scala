@@ -24,7 +24,9 @@ object WorkPullingPattern {
 
   case class Terminated(worker: ActorRef) extends Message
 
-  case class Work[T](work: T) extends Message
+  case class Work[T](work: T, generation: Int) extends Message
+
+  case class CancelTraining(generation: Int) extends Message
 
   case class Update(acquisitionFunction: AcquisitionFunction) extends Message
   
@@ -48,6 +50,7 @@ class ModelConfigEvaluator[T]() extends Actor {
   val log = LoggerFactory.getLogger(getClass)
   val workers = collection.mutable.Set.empty[ActorRef]
   var currentEpic: Option[Epic[T]] = None
+  var generation : Int = 0
 
   def receive = {
     case epic: Epic[T] =>
@@ -56,7 +59,11 @@ class ModelConfigEvaluator[T]() extends Actor {
         //System.exit(0)
       }
       log.info("Got new epic from ModelScorer")
+      //workers foreach {
+      //  _ ! CancelTraining(generation)
+      //}
       currentEpic = Some(epic)
+      generation += 1
       log.info("Telling workers there is work available")
       workers foreach {
         _ ! WorkAvailable
@@ -86,9 +93,9 @@ class ModelConfigEvaluator[T]() extends Actor {
             log.info(s"done with current epic $epic")
             currentEpic = None
             None
-          }        
+          }
         log.info(s"Sending work to worker $sender")
-        batch foreach {b => sender ! Work(b) }
+        batch foreach {b => sender ! Work(b, generation) }
     }
 
     case x => log.info("Received unrecognized message " + x.toString)
@@ -124,27 +131,30 @@ class ModelConfigEvalWorker(val master: ActorRef, val modelScorer: ActorRef, mod
       log.info(s"Worker $this received work available, asking master to provide work")
       if (!busy) master ! ProvideWork
     }
-    case Work(w: ModelConfig) =>
+    case Work(w: ModelConfig, gen: Int) =>
       log.info(s"Worker $this about to do work...")
       modelScorer ! CurrentlyEvaluating(w)
-      doWork(w) onComplete { case r =>
+      doWork(w, gen) onComplete { case r =>
         log.info(s"Worker $this finished configuration; sending result of " + r.get.configResults.sc + " to " + modelScorer)
         modelScorer ! r.get // send result to modelScorer
         busy = false
         master ! ProvideWork
       }
+    case CancelTraining(gen: Int) =>
+      modelEvaluator.cancel(gen)
+      busy = false
     case x => log.error("Received unrecognized message " + x)
   }
 
-  def doWork(w: ModelConfig): Future[ModelEvalResult] = {
+  def doWork(w: ModelConfig, gen: Int): Future[ModelEvalResult] = {
     busy = true
     Future({
       log.info("About to evaluate model ...")
-      val score = modelEvaluator.evaluate(w)
+      val (acc, time): (Double, Long) = modelEvaluator.evaluate(w)
       // actually get the model configs evaluation result
       // send to modelScorer
-      log.info("Score: " + score)
-      ModelEvalResult(ScoredModelConfig(score, w))
+      log.info("Acc: " + acc + " Time: " + time)
+      ModelEvalResult(ScoredModelConfig(acc, time, w))
     })
   }
 }

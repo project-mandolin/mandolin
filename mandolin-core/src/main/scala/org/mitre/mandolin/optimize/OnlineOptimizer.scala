@@ -4,13 +4,6 @@ package org.mitre.mandolin.optimize
  */
 
 import java.util.concurrent.locks.ReentrantReadWriteLock
-import scala.reflect.ClassTag
-import org.mitre.mandolin.util.{ Tensor1, DenseTensor1 }
-import org.mitre.mandolin.config.{ LearnerSettings }
-import scala.concurrent._
-import java.util.concurrent.Executors
-import org.slf4j.LoggerFactory
-
 
 /**
  * Handles the processing of a single partition within a single <i>epoch</i>. The partition is processed by spawning separate
@@ -28,10 +21,7 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
   val workersPerPartition: Int = 16, synchronous: Boolean = false, numSubEpochs: Int = 1, skipProb: Double = 0.0, 
   miniBatchSize: Int = 1, concurrentBatch: Int = 0)
   extends Serializable {
-  
 
-  import scala.collection.parallel.ForkJoinTaskSupport
-  import scala.concurrent.forkjoin.ForkJoinPool
   /*
    * Get a new thread processor for this epoch; either asynchronous or synchronous
    */
@@ -56,10 +46,7 @@ class EpochProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W,
     val factor = (partitionInsts.size.toDouble / workersPerPartition).ceil.toInt
     val subPartitions = partitionInsts.grouped(factor) // split up data into sub-slices
     val rwLock = if (synchronous) Some(new ReentrantReadWriteLock) else None
-
     val workers = (subPartitions map { sub => getThreadProcessor(sub, w, updater, rwLock, timeout) }).toList.par
-    // val support = new ForkJoinTaskSupport(new ForkJoinPool(workersPerPartition))
-    // workers.tasksupport_=(support)
     var totalLoss: Double = 0
     var totalTime = 0L
     for (i <- 1 to numSubEpochs) {

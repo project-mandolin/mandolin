@@ -6,10 +6,8 @@ import java.util.Calendar
 
 import akka.actor.{ActorRef, Actor}
 import org.slf4j.LoggerFactory
-import org.mitre.mandolin.util.Alphabet
 
-case class ScoredModelConfig(sc: Double, mc: ModelConfig, src: Int = 0)
-
+case class ScoredModelConfig(sc: Double, t: Long, mc: ModelConfig, src: Int = 0)
 
 /**
   * Encapsulates functionality to apply Bayesian regression model to "score"
@@ -23,6 +21,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
 
   val log = LoggerFactory.getLogger(getClass)
   val now = Calendar.getInstance.getTime
+  // TODO outfile should be config parameter
   val outWriter = new PrintWriter(new File("mselect-" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(now) + ".csv"))
   var evalResults = new collection.mutable.ArrayBuffer[ScoredModelConfig]
   // keep track of models currently being evaluated
@@ -49,8 +48,8 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
       currentlyEvaluating -= r.mc   // remove this from set of currently evaluating model configs
       evalResults += r
       receivedSinceLastScore += 1
-      log.info("accuracy:" + r.sc + " " + r.mc + "\n")
-      outWriter.print("accuracy:" + r.sc + " cumulativeTime:" + ((System.nanoTime() - startWallTime) / 1E9) + " " + r.mc + "\n")
+      log.info("accuracy:" + r.sc + " cumulativeTime:" + r.t + " " + r.mc + "\n")
+      outWriter.print("accuracy:" + r.sc + " cumulativeTime:" + r.t + " " + r.mc + "\n")
       outWriter.flush()
       if (totalReceived >= totalEvals) {
         outWriter.close()
@@ -59,6 +58,7 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
         System.exit(0)
       }
       if (receivedSinceLastScore >= acqFnThreshold) {
+        outWriter.print("*"*20+"\n")
         log.info("Training acquisition function")
         receivedSinceLastScore = 0
         acqFn.train(evalResults)  
