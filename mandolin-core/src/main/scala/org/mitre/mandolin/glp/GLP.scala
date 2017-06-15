@@ -3,7 +3,7 @@ package org.mitre.mandolin.glp
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.config.{LearnerSettings, GeneralLearnerSettings}
+import org.mitre.mandolin.config.{MandolinMLPSettings, GeneralLearnerSettings}
 
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{Alphabet, AlphabetWithUnitScaling, StdAlphabet, IdentityAlphabet, IOAssistant}

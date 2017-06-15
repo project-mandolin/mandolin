@@ -96,18 +96,6 @@ abstract class GeneralSettings(confOptions: Option[ConfigGeneratedCommandOptions
   protected def asBoolean(key: String) = {
     try config.getBoolean(key) catch {case _: Throwable => false}        
   }
-
-  /*  
-  protected def mapStorage(s: String) = s match {
-    case "mem_only"          => StorageLevel.MEMORY_ONLY
-    case "mem_and_disk"      => StorageLevel.MEMORY_AND_DISK
-    case "disk_only"         => StorageLevel.DISK_ONLY
-    case "mem_and_disk_ser"  => StorageLevel.MEMORY_AND_DISK_SER
-    case "mem_only_ser"      => StorageLevel.MEMORY_ONLY_SER
-    case "none"              => StorageLevel.NONE
-    case _                   => StorageLevel.MEMORY_ONLY
-  }
-  */
   
   protected def mapLogLevel(s: String) = s match {
     case "INFO"  => Level.INFO
@@ -123,9 +111,7 @@ abstract class GeneralSettings(confOptions: Option[ConfigGeneratedCommandOptions
   /** Number of Spark partitions/slices to use for the application */
   val numPartitions   = asInt("mandolin.partitions")
   
-  /** Spark storage level for application */
-  //val storageLevel    = mapStorage(asStr("spark.storage"))
-  
+
   /** General log-level for Spark and Mandolin */
   val logLevel = {
     val ll = asStrOpt("mandolin.log-level")
@@ -157,7 +143,7 @@ abstract class AppSettings(_confOptions: Option[ConfigGeneratedCommandOptions], 
   val name             = asStr("mandolin.name")
   /** Mode for application (train|decode|train-test|train-decode) */
   val appMode          = asStr("mandolin.mode")
-  val storage          = asStr("mandolin.spark.storage")
+  val storage          = asStr("mandolin.spark.storage") // TODO
 }
 
 
@@ -166,54 +152,54 @@ abstract class AppSettings(_confOptions: Option[ConfigGeneratedCommandOptions], 
  * Settings specific to all Mandolin learners
  * @param args - command-line args
  */ 
-abstract class LearnerSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings(_confOptions, _conf) {   
-    
-  
-  val numFeatures      = asInt("mandolin.trainer.num-hash-features")
+abstract class MandolinMLPSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings(_confOptions, _conf) {
+
+
+  val numFeatures      = asInt("mandolin.mmlp.num-hash-features")
   val trainFile        = asStrOpt("mandolin.trainer.train-file")
   val testFile         = asStrOpt("mandolin.trainer.test-file")
-  val testFreq         = asInt("mandolin.trainer.eval-freq")
-  val testPartitions   = asInt("mandolin.trainer.test-partitions")
-  val modelFile        = asStrOpt("mandolin.trainer.model-file")
+  val testFreq         = asInt("mandolin.mmlp.eval-freq")
+  val testPartitions   = asInt("mandolin.mmlp.test-partitions")
+  val modelFile        = asStrOpt("mandolin.mmlp.model-file")
 
-  val numEpochs        = asInt("mandolin.trainer.num-epochs")
-  val numSubEpochs     = asInt("mandolin.trainer.num-subepochs")
-  val detailsFile      = asStrOpt("mandolin.trainer.detail-file")
-  val progressFile     = asStrOpt("mandolin.trainer.progress-file")
-  //val lossFunction     = asStrOpt("mandolin.trainer.loss-function")
-  val labelFile        = asStrOpt("mandolin.trainer.label-file")
+  val numEpochs        = asInt("mandolin.mmlp.num-epochs")
+  val numSubEpochs     = asInt("mandolin.mmlp.num-subepochs")
+  val detailsFile      = asStrOpt("mandolin.mmlp.detail-file")
+  val progressFile     = asStrOpt("mandolin.mmlp.progress-file")
+  //val lossFunction     = asStrOpt("mandolin.mmlp.loss-function")
+  val labelFile        = asStrOpt("mandolin.mmlp.label-file")
   // unused?
-  val modelType        = asStrOpt("mandolin.trainer.model-type")
-  val ensureSparse     = asBoolean("mandolin.trainer.ensure-sparse")
-  val useRandom        = asBoolean("mandolin.trainer.use-random-features")
-  val printFeatureFile = asStrOpt("mandolin.trainer.print-feature-file")
-  val filterFeaturesMI = asInt("mandolin.trainer.max-features-mi")
-  
-  // these should move to model specification as they are specific to loss functions
-  val coef1            = asDouble("mandolin.trainer.coef1")
-  val qval             = asDouble("mandolin.trainer.qval")
-  
+  val modelType        = asStrOpt("mandolin.mmlp.model-type")
+  val ensureSparse     = asBoolean("mandolin.mmlp.ensure-sparse")
+  val useRandom        = asBoolean("mandolin.mmlp.use-random-features")
+  val printFeatureFile = asStrOpt("mandolin.mmlp.print-feature-file")
+  val filterFeaturesMI = asInt("mandolin.mmlp.max-features-mi")
 
-  val oversampleRatio  = asDouble("mandolin.trainer.oversample")
-  val denseVectorSize  = asInt("mandolin.trainer.dense-vector-size")
-  val scaleInputs      = asBoolean("mandolin.trainer.scale-inputs")
-  val composeStrategy  = asStr("mandolin.trainer.updater-compose-strategy")
-  val maxNorm          = asBoolean("mandolin.trainer.max-norm")
-  val denseOutputFile  = asStrOpt("mandolin.trainer.dense-output-file") // output vectors in dense format
-  val numThreads       =     asInt("mandolin.trainer.threads")
-  val skipProb : Double = asFloat("mandolin.trainer.skip-probability")
-  val miniBatchSize    =     asInt("mandolin.trainer.mini-batch-size")
-  val synchronous      = asBoolean("mandolin.trainer.synchronous")
-  val sgdLambda        =  asFloat("mandolin.trainer.optimizer.lambda")  
-  val epsilon          =  asFloat("mandolin.trainer.optimizer.epsilon")
-  val rho              =  asFloat("mandolin.trainer.optimizer.rho")
-  val method           =     asStr("mandolin.trainer.optimizer.method")
-  val initialLearnRate =  asFloat("mandolin.trainer.optimizer.initial-learning-rate")
-  
+  // these should move to model specification as they are specific to loss functions
+  val coef1            = asDouble("mandolin.mmlp.coef1")
+  val qval             = asDouble("mandolin.mmlp.qval")
+
+// TODO are these unique to mmlp?
+  val oversampleRatio  = asDouble("mandolin.mmlp.oversample")
+  val denseVectorSize  = asInt("mandolin.mmlp.dense-vector-size")
+  val scaleInputs      = asBoolean("mandolin.mmlp.scale-inputs")
+  val composeStrategy  = asStr("mandolin.mmlp.updater-compose-strategy")
+  val maxNorm          = asBoolean("mandolin.mmlp.max-norm")
+  val denseOutputFile  = asStrOpt("mandolin.mmlp.dense-output-file") // output vectors in dense format
+  val numThreads       =     asInt("mandolin.mmlp.threads")
+  val skipProb : Double = asFloat("mandolin.mmlp.skip-probability")
+  val miniBatchSize    =     asInt("mandolin.mmlp.mini-batch-size")
+  val synchronous      = asBoolean("mandolin.mmlp.synchronous")
+  val sgdLambda        =  asFloat("mandolin.mmlp.optimizer.lambda")
+  val epsilon          =  asFloat("mandolin.mmlp.optimizer.epsilon")
+  val rho              =  asFloat("mandolin.mmlp.optimizer.rho")
+  val method           =     asStr("mandolin.mmlp.optimizer.method")
+  val initialLearnRate =  asFloat("mandolin.mmlp.optimizer.initial-learning-rate")
+
 }
 
-abstract class GeneralLearnerSettings[S <: GeneralLearnerSettings[S]](_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
-extends LearnerSettings(_confOptions, _conf) {
+abstract class GeneralLearnerSettings[S <: GeneralLearnerSettings[S]](_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config])
+extends MandolinMLPSettings(_confOptions, _conf) {
   def withSets(avs: Seq[(String, Any)]) : S
 }
 
@@ -221,7 +207,7 @@ extends LearnerSettings(_confOptions, _conf) {
  * Trait holds options specific to batch learner
  */
 trait BatchLearnerSettings extends AppSettings {
-  val densityRatio = asDouble("mandolin.trainer.density-ratio")  
+  val densityRatio = asDouble("mandolin.mmlp.density-ratio")
 }
 
 

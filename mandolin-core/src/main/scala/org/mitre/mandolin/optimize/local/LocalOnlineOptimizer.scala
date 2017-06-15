@@ -4,7 +4,7 @@ package org.mitre.mandolin.optimize.local
  */
 
 import org.mitre.mandolin.optimize.{Weights, LossGradient,Updater,TrainingUnitEvaluator,ModelWriter,OptimizerWriter,EpochProcessor}
-import org.mitre.mandolin.config.{ LearnerSettings }
+import org.mitre.mandolin.config.{ MandolinMLPSettings }
 import scala.reflect.ClassTag
 
 trait LocalOptimizerEstimator[T, W <: Weights[W]] {
@@ -32,7 +32,7 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
   miniBatchSize : Int = 1,
   shuffle: Boolean = true) extends LocalOptimizerEstimator[T, W] {
   
-  def this(_iw: W, _ev: TrainingUnitEvaluator[T,W,LG, U], _u: U, _as: LearnerSettings) = {
+  def this(_iw: W, _ev: TrainingUnitEvaluator[T,W,LG, U], _u: U, _as: MandolinMLPSettings) = {
     this(_iw, _ev, _u, _as.numEpochs, _as.numSubEpochs,
           _as.numThreads, _as.detailsFile,
           synchronous = _as.synchronous, skipProb = _as.skipProb, 

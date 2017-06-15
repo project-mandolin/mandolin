@@ -1,6 +1,6 @@
 package org.mitre.mandolin.mx.local
 
-import org.mitre.mandolin.config.{ LearnerSettings, BatchLearnerSettings, DecoderSettings, DeepNetSettings }
+import org.mitre.mandolin.config.{ MandolinMLPSettings, BatchLearnerSettings, DecoderSettings, DeepNetSettings }
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 
 import org.mitre.mandolin.mx._

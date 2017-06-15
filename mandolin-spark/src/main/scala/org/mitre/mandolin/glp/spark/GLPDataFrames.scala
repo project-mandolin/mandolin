@@ -1,6 +1,6 @@
 package org.mitre.mandolin.glp.spark
 
-import org.mitre.mandolin.config.{LearnerSettings}
+import org.mitre.mandolin.config.{MandolinMLPSettings}
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
