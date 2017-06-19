@@ -24,8 +24,9 @@ other datastructures, tools, and MLLib's rich ML Pipeline framework.
 @@@ index
 
 * [User Guide](user-guide/index.md)
-* [Examples](examples/index.md)
 * [Quick Start](quick-start/linear-classifier.md)
 * [Spark ML](spark-ml/index.md)
+* [Model Selection](model-selection/mselect.md)
+* [Examples](examples/index.md)
 
 @@@

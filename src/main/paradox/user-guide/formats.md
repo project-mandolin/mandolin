@@ -1,7 +1,10 @@
-# Formats
+# File Formats
 
-The general format for all inputs using existing Mandolin classifiers has the following
-form for each line of the input
+Mandolin includes a standard file format for representing training and test instances that
+is based on the sparse vector representation used by libSVM. 
+
+For classification problems, the input  has the following
+form for each training/test instances:
 
     <label> <feature_1>:<value> <feature_2>:<value> ... <feature_N>:<value> 
 
@@ -12,9 +15,6 @@ to which component in the input vector the feature corresponds to.  This input f
 itself well to *sparse* representations where the total number of features in the model
 is large, but for any given instance a relatively small number of features will have a non-zero
 value.
-
-From this single input format, different representations can be derived depending on
-the number of features, whether they are dense or sparse, etc.
 
 ## Dense Vector Representation
 

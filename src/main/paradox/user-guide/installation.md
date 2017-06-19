@@ -7,40 +7,46 @@ Mandolin is written in Scala and grouped into three sub-projects: `mandolin-core
 * `mandolin-mx`: This artifact contains wrappers around MXNet (for deep learning) and XGBoost (for gradient
 boosted trees). It relies on pre-built shared objects in the case of MXNet. It depends on `mandolin-core`.
 
-* `mandolin-spark`: This artfact includes functionality for using Apache Spark to speed
+* `mandolin-spark`: This artfact includes functionality leveraging Apache Spark to speed
 up training and/or to provide concurrent model selection using a compute cluster. It depends on
-`mandolin-mx`. It also includes some additional functionality that interoperates with `spark.ml`.
+`mandolin-mx`. It also includes additional functionality that provides interoperability with `spark.ml`.
 
 All three artifacts can be built from source by downloading [SBT](http://www.scala-sbt.org/download.html).
-Builds are platform dependent (due to MXNet and XGBoost relying on native code); currently Linux and Mac
-are supported:
 
-Linux
-:   @@snip [linux-install.txt](install/linux.txt) 
-
-Mac
-:   @@snip [mac-install.txt](install/mac.txt)
-
+@@snip [linux-install.txt](install/linux.txt) 
 
 This will build three assembly artifacts (i.e. "fat" jar files) :
 `mandolin-core-0.3.5.jar`, `mandolin-mx-0.3.5.jar` and `mandolin-spark-0.3.5.jar`.
 These are placed in the directory `mandolin/dist`.
 
-If only the the mandolin-core artifact is of interest, just that component can be compiled by executing:
+If **only** the the `mandolin-core` artifact is required, it can be compiled by executing:
 
     > sbt "project mandolin-core" assembly
 
-This is especially helpful if MXNet, XGBoost and Spark are not necessary as building those components,
-especially Spark, requires a number of libraries to be downloaded.
+This is helpful one is training only "native" Mandolin multi-layer perceptron or linear models and
+Apache Spark nor XGBoost or MXNet are not needed.  
 
-## Building Mandolin with MXNet and XGBoost
+## Building with MXNet and XGBoost
 
-The `mandolin-mx-0.3.5.jar` artifact includes native code pre-compiled for XGBoost depending on the
-platform specified in the SBT assembly target (e.g. `linux-assembly` or `osx-assembly`). The native
-code for MXNet is ***not*** included, however, as this build is much less compatible across different
-linux distributions and assumes various 3rd party libraries are available in the library path.
-Further, MXNet is often compiled with GPU support. These complexities prevent providing pre-compiled
-versions of MXNet.  Instead, the shared library for MXNet must be compiled separately and designated
-at runtime if the intent is to use MXNet. If MXNet is not needed, the `mandolin-mx` and `mandolin-spark`
-libraries can still be used with XGBoost or Mandolin's native MLP implementations.  See the
-examples for more details.
+The `mandolin-mx-0.3.5.jar` artifact provides bindings to both MXNet and XGBoost as well as Mandolin
+code that supports model specification via configuration as well as model selection. The native
+code for both MXNet and XGBoost is ***not*** included in this artifact, however. Pre-compiled shared
+libraries for XGBoost are provided in `mandolin-mx/pre-compiled/xgboost` for both `linux` and `osx`.
+A pre-compiled shared library for MXNet on `osx` is available. A pre-built library for MXNet on `linux`
+is not provided due to the variety of the builds, e.g. different BLAS implementations, optional GPU support.
+
+## Mandolin with Spark
+
+Currently the Spark build `mandolin-spark` depends on the `mandolin-mx` artifact. It provides fast
+distributed training of individual models using a Spark cluster; it also enables fast distributed
+model selection.  As with the `mandolin-mx` artifact, the native code for MXNet and/or XGBoost
+must be specified at runtime.
+
+## Using MXNet and XGBoost
+
+Runtime libraries must be included in the library path available ot the JVM. This can be done via
+the `LD_LIBRARY_PATH` environment variable or using the option `Djava.library.path=<path>` provided
+on the command line when invoking the JVM.  When using Spark via the `spark-submit` script, various
+options are available to provide shared libraries at runtime; see the Apache Spark documentation
+as well as the section documenting Mandolin examples using Spark.
+
