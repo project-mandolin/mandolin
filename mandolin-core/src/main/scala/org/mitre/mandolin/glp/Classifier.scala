@@ -3,19 +3,56 @@ package org.mitre.mandolin.glp
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.util.DenseTensor1
-import org.mitre.mandolin.config.{ ConfigGeneratedCommandOptions, MandolinMLPSettings, DeepNetSettings, GeneralLearnerSettings, BatchLearnerSettings, DecoderSettings }
-import org.mitre.mandolin.util.{ RandomAlphabet, StdAlphabet, IdentityAlphabet, Alphabet, AlphabetWithUnitScaling, IOAssistant }
+import org.mitre.mandolin.config._
+import org.mitre.mandolin.util.{Alphabet, IOAssistant}
 import org.mitre.mandolin.predict.OutputConstructor
-import org.mitre.mandolin.glp.local.LocalProcessor
 import com.typesafe.config.Config
-import scala.reflect.ClassTag
 
-// abstract class 
-class GLPModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
-extends GeneralLearnerSettings[GLPModelSettings](_confOptions, _conf) 
-  with BatchLearnerSettings with DecoderSettings with DeepNetSettings with Serializable {
-     
+
+class GLPModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings(_confOptions, _conf) with Serializable {
+
+  val decoderInputFile  = asStrOpt("mandolin.decoder.input-file")
+  val outputFile        = asStrOpt("mandolin.decoder.output-file")
+  val inputModelFile    = asStrOpt("mandolin.decoder.model-file")
+
+  val numFeatures      = asInt("mandolin.mmlp.num-hash-features")
+  val trainFile        = asStrOpt("mandolin.mmlp.train-file")
+  val testFile         = asStrOpt("mandolin.mmlp.test-file")
+  val testFreq         = asInt("mandolin.mmlp.eval-freq")
+  val testPartitions   = asInt("mandolin.mmlp.test-partitions")
+  val modelFile        = asStrOpt("mandolin.mmlp.model-file")
+
+  val numEpochs        = asInt("mandolin.mmlp.num-epochs")
+  val numSubEpochs     = asInt("mandolin.mmlp.num-subepochs")
+  val detailsFile      = asStrOpt("mandolin.mmlp.detail-file")
+  val progressFile     = asStrOpt("mandolin.mmlp.progress-file")
+  val labelFile        = asStrOpt("mandolin.mmlp.label-file")
+  val ensureSparse     = asBoolean("mandolin.mmlp.ensure-sparse")
+  val useRandom        = asBoolean("mandolin.mmlp.use-random-features")
+  val printFeatureFile = asStrOpt("mandolin.mmlp.print-feature-file")
+  val filterFeaturesMI = asInt("mandolin.mmlp.max-features-mi")
+
+  // these should move to model specification as they are specific to loss functions
+  val coef1            = asDouble("mandolin.mmlp.coef1")
+  val qval             = asDouble("mandolin.mmlp.qval")
+
+  val oversampleRatio  = asDouble("mandolin.mmlp.oversample")
+  val denseVectorSize  = asInt("mandolin.mmlp.dense-vector-size")
+  val scaleInputs      = asBoolean("mandolin.mmlp.scale-inputs")
+  val composeStrategy  = asStr("mandolin.mmlp.updater-compose-strategy")
+  val denseOutputFile  = asStrOpt("mandolin.mmlp.dense-output-file") // output vectors in dense format
+  val numThreads       =     asInt("mandolin.mmlp.threads")
+  val skipProb : Double = asFloat("mandolin.mmlp.skip-probability")
+  val miniBatchSize    =     asInt("mandolin.mmlp.mini-batch-size")
+  val synchronous      = asBoolean("mandolin.mmlp.synchronous")
+
+  val sgdLambda        =  asFloat("mandolin.mmlp.optimizer.lambda")
+  val epsilon          =  asFloat("mandolin.mmlp.optimizer.epsilon")
+  val rho              =  asFloat("mandolin.mmlp.optimizer.rho")
+  val method           =     asStr("mandolin.mmlp.optimizer.method")
+  val initialLearnRate =  asFloat("mandolin.mmlp.optimizer.initial-learning-rate")
+
+
   def this(str: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(str)))
   def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)),None)
   def this() = this(Array(): Array[String])
@@ -45,7 +82,36 @@ extends GeneralLearnerSettings[GLPModelSettings](_confOptions, _conf)
           ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
       }    
     new GLPModelSettings(None,Some(nc))     
-  }   
+  }
+
+  def mapSpecToList(conf: Map[String, Map[String, String]]) = {
+    val layerNames = conf.keySet
+    var prevName = ""
+    val nextMap = layerNames.toSet.foldLeft(Map():Map[String,String]){case (ac,v) =>
+      val cc = conf(v)
+      try {
+        val inLayer = cc("data")
+        ac + (inLayer -> v)
+      } catch {case _:Throwable =>
+        prevName = v  // this is the name for the input layer (as it has no "data" field")
+        ac}
+    }
+    var building = true
+    val buf = new collection.mutable.ArrayBuffer[String]
+    buf append prevName // add input layer name first
+    while (building) {
+      val current = nextMap.get(prevName)
+      current match {case Some(c) => buf append c; prevName = c case None => building = false}
+    }
+    buf.toList map {n => conf(n)} // back out as an ordered list
+  }
+
+  val netspec       = try { config.as[List[Map[String,String]]]("mandolin.mmlp.specification") } catch {case _: Throwable =>
+    Nil
+  }
+  val netspecConfig : Option[Map[String, Map[String, String]]] =
+    try { Some(config.as[Map[String, Map[String,String]]]("mandolin.mmlp.specification")) }
+    catch {case _: Throwable => None }
 }
 
 /**
@@ -198,21 +264,4 @@ object DenseVectorWriter {
     }
     os.close()
   }
-  
-  def main(args: Array[String]) : Unit = {
-    /*
-    val appSettings = new GLPModelSettings(args)
-    val lines = scala.io.Source.fromFile(appSettings.trainFile).getLines().toVector
-    val localProcessor = new LocalProcessor(appSettings)
-    val (_,_,_,fe,fa,la) = localProcessor.getFullComponents()
-    appSettings.denseOutputFile foreach { nf =>
-        val f = new java.io.File(nf)        
-        val fvecs = lines map { l => fe.extractFeatures(l) }
-        exportVectorsDense(f, fvecs, fa, la)
-      }
-      *
-      */
-  }
-} 
-
-
+}

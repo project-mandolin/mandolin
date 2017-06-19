@@ -4,47 +4,20 @@ package org.mitre.mandolin.glp.spark
  */
 
 
-import org.mitre.mandolin.util.{ StdAlphabet, PrescaledAlphabet, RandomAlphabet, Alphabet, IdentityAlphabet, AlphabetWithUnitScaling, IOAssistant }
+import org.mitre.mandolin.util.{Alphabet, IOAssistant}
 import org.mitre.mandolin.util.spark.SparkIOAssistant
-import org.mitre.mandolin.optimize.spark.{
-  DistributedOnlineOptimizer,
-  DistributedOptimizerEstimator
-}
-import org.mitre.mandolin.predict.{
-  DiscreteConfusion,
-  EvalPredictor,
-  OutputConstructor,
-  Predictor
-}
-
-import org.mitre.mandolin.predict.spark.{
-  EvalDecoder,
-  PosteriorDecoder,
-  TrainDecoder,
-  TrainTester,  
-  Decoder,
-  Trainer
-}
-
-import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, CategoricalGLPPredictor, GLPModelReader,
-  GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPLossGradient, GLPModelSpec, GLPInstanceEvaluator, ANNetwork}
-import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
-import org.mitre.mandolin.gm.{ Feature, NonUnitFeature }
-import org.mitre.mandolin.util.LineParser
+import org.mitre.mandolin.optimize.spark.DistributedOptimizerEstimator
+import org.mitre.mandolin.predict.DiscreteConfusion
+import org.mitre.mandolin.predict.spark.{PosteriorDecoder, TrainTester, Trainer}
+import org.mitre.mandolin.glp.{ANNetwork, AbstractProcessor, CategoricalGLPPredictor, GLPFactor, GLPLossGradient, GLPModelReader, GLPModelSettings, GLPModelSpec, GLPModelWriter, GLPPosteriorOutputConstructor, GLPWeights}
+import org.mitre.mandolin.transform.FeatureExtractor
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkConf
 import org.apache.spark.storage.StorageLevel
-import scala.reflect.ClassTag
 import com.twitter.chill.EmptyScalaKryoInstantiator
-
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{ FileSystem, Path }
 import com.esotericsoftware.kryo.Kryo
-import com.twitter.chill.AllScalaRegistrar
 import org.apache.spark.serializer.KryoRegistrator
-import org.mitre.mandolin.config.MandolinRegistrator
-import org.mitre.mandolin.config.AppSettings
+import org.mitre.mandolin.config.{AppSettings, MandolinRegistrator}
 
 
 /**
@@ -112,7 +85,7 @@ object AppConfig {
    * to be specified in a unified way via the Typesafe configuration framework.
    * @param appSettings Application settings object
    */
-  private def getSparkConf(appSettings: AppSettings) = {
+  private def getSparkConf(appSettings: AppSettings ) = {
     val unwrappedA = appSettings.config.getConfig("spark").entrySet().toList
     val unwrapped = unwrappedA map {entry => (entry.getKey(), entry.getValue.unwrapped().toString) }
     

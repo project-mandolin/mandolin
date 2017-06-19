@@ -1,11 +1,8 @@
 package org.mitre.mandolin.mx
 
-import org.mitre.mandolin.config.{ConfigGeneratedCommandOptions}
-import org.mitre.mandolin.glp.{GLPModelSettings}
-import org.mitre.mandolin.config.GeneralLearnerSettings
-import com.typesafe.config.{Config}
-import org.slf4j.LoggerFactory
-import net.ceedubs.ficus.Ficus._
+import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
+import org.mitre.mandolin.glp.GLPModelSettings
+import com.typesafe.config.Config
 
 class MxModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
 extends GLPModelSettings(_confOptions, _conf) {
@@ -19,9 +16,7 @@ extends GLPModelSettings(_confOptions, _conf) {
   // input type: 1) glp, 2) ndarray, 3) recordio ... others?
   val inputType       = asStrOpt("mandolin.mx.input-type").getOrElse("glp")
   val numberOfClasses = asIntOpt("mandolin.mx.num-classes").getOrElse(2)
-  
-  //val specification = config.
-  //val mxSpecification = try config.as[List[Config]]("mandolin.mx.specification") catch {case _: Throwable => Nil}
+
   val mxSpecification = try config.getAnyRefList("mandolin.mx.specification") catch {case _: Throwable => null}
   val gpus = try config.getAnyRefList("mandolin.mx.gpus") catch {case _: Throwable => null}
   val cpus = try config.getAnyRefList("mandolin.mx.cpus") catch {case _: Throwable => null}
