@@ -89,11 +89,12 @@ object AppConfig {
     *
     * @param appSettings Application settings object
     */
-  private def getSparkConf(appName: String, sparkConf: Config) = {
+  private def getSparkConf[S <: AppSettings[S]](appSettings: AppSettings[S]) = {
+    val sparkConf = appSettings.config.getConfig("spark")
     val unwrappedA = sparkConf.entrySet().toList
     val unwrapped = unwrappedA map { entry => (entry.getKey(), entry.getValue.unwrapped().toString) }
 
-    val conf = new SparkConf().setAppName(appName)
+    val conf = new SparkConf().setAppName(appSettings.name)
 
     unwrapped foreach { case (k, v) =>
       println("Setting conf: " + ("spark." + k) + " to " + v)
@@ -109,8 +110,8 @@ object AppConfig {
     *
     * @param appSettings Application settings object
     */
-  def getSparkContext(appName : String, sparkConf : Config) = {
-    val conf = getSparkConf(appName, sparkConf)
+  def getSparkContext[S <: AppSettings[S]](appSettings : AppSettings[S]) = {
+    val conf = getSparkConf(appSettings)
     val context = new SparkContext(conf)
     context
   }
@@ -136,7 +137,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
 
   def processTrain(appSettings: MandolinMLPSettings) = {
     if (appSettings.trainFile.isEmpty) throw new RuntimeException("Training file required")
-    val sc = AppConfig.getSparkContext(appSettings.name, appSettings.config.getConfig("spark"))
+    val sc = AppConfig.getSparkContext(appSettings)
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor
@@ -155,7 +156,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
 
   def processDecode(appSettings: MandolinMLPSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required as input in decoding mode")
-    val sc = AppConfig.getSparkContext(appSettings.name, appSettings.config.getConfig("spark"))
+    val sc = AppConfig.getSparkContext(appSettings)
     val io = new SparkIOAssistant(sc)
     val modelSpec = (new DistributedGLPModelReader(sc)).readModel(appSettings.modelFile.get, io)
     val testLines = sc.textFile(appSettings.testFile.get, numPartitions).coalesce(numPartitions, true)
@@ -170,7 +171,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
 
   def processTrainTest(appSettings: MandolinMLPSettings) = {
     if (appSettings.trainFile.isEmpty) throw new RuntimeException("Training file required")
-    val sc = AppConfig.getSparkContext(appSettings.name, appSettings.config.getConfig("spark"))
+    val sc = AppConfig.getSparkContext(appSettings)
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor
@@ -187,7 +188,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
   }
 
   def processTrainDecode(appSettings: MandolinMLPSettings) = {
-    val sc = AppConfig.getSparkContext(appSettings.name, appSettings.config.getConfig("spark"))
+    val sc = AppConfig.getSparkContext(appSettings)
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor

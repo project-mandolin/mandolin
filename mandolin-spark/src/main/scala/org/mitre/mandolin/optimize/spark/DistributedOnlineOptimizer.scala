@@ -2,11 +2,9 @@ package org.mitre.mandolin.optimize.spark
 
 import scala.reflect.ClassTag
 import org.apache.spark.rdd.RDD
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkContext
-import org.mitre.mandolin.util.{ Tensor1, DenseTensor1 }
-import org.mitre.mandolin.config.{ MandolinMLPSettings }
 import org.apache.spark.Partitioner
+import org.mitre.mandolin.glp.MandolinMLPSettings
 import org.mitre.mandolin.optimize._
 
 /**

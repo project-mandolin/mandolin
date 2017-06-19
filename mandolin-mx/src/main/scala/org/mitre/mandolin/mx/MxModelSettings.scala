@@ -3,6 +3,7 @@ package org.mitre.mandolin.mx
 import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
 import org.mitre.mandolin.glp.MandolinMLPSettings
 import com.typesafe.config.Config
+import net.ceedubs.ficus.Ficus._
 
 class MxModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
 extends MandolinMLPSettings(_confOptions, _conf) {

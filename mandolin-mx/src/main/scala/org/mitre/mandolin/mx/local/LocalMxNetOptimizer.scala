@@ -1,27 +1,20 @@
 package org.mitre.mandolin.mx.local
 
-import org.mitre.mandolin.config.{ MandolinMLPSettings, BatchLearnerSettings, DecoderSettings, DeepNetSettings }
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
-
 import org.mitre.mandolin.mx._
-import org.mitre.mandolin.glp.{ GLPFactor, MandolinMLPSettings }
-import org.mitre.mandolin.optimize.TrainingUnitEvaluator
-
-
-import ml.dmlc.mxnet.{ Symbol, Context, Shape, FeedForward, NDArray, Uniform, Xavier }
-import ml.dmlc.mxnet.optimizer.{ SGD }
-
-
+import org.mitre.mandolin.glp.GLPFactor
+import ml.dmlc.mxnet.{Symbol, Context, Shape, NDArray, Uniform, Xavier}
+import ml.dmlc.mxnet.optimizer.SGD
 
 /**
- * This follows the LocalGLPOptimizer but really just thinly wraps MxNet
- * allowing for data conventions used by Mandolin and to ensure that local
- * and Spark-based usage is consistent.
- */
+  * This follows the LocalGLPOptimizer but really just thinly wraps MxNet
+  * allowing for data conventions used by Mandolin and to ensure that local
+  * and Spark-based usage is consistent.
+  */
 object LocalMxNetOptimizer {
-  
+
   val batchSize = 64
-  
+
   // hardcoded example
   def getMlp: Symbol = {
     val data = Symbol.Variable("data")
@@ -33,10 +26,10 @@ object LocalMxNetOptimizer {
     val mlp = Symbol.SoftmaxOutput(name = "softmax")()(Map("data" -> fc3))
     mlp
   }
-  
+
   val uniInit = new Uniform(0.1f)
-  val xavierInit = new Xavier(factorType="in", magnitude = 2.32f)
-  
+  val xavierInit = new Xavier(factorType = "in", magnitude = 2.32f)
+
   def initializeParameters(net: Symbol, inputShapes: Map[String, Shape]) = {
     val (argShapes, _, auxShapes) = net.inferShape(inputShapes)
     val argNames = net.listArguments()
@@ -53,26 +46,24 @@ object LocalMxNetOptimizer {
     val auxParams = (auxNames zip auxShapes).map { case (name, shape) =>
       (name, NDArray.zeros(shape))
     }.toMap
-    argParams foreach {case (name, shape) => xavierInit(name, shape)}
-    auxParams foreach {case (name, shape) => xavierInit(name, shape)}
+    argParams foreach { case (name, shape) => xavierInit(name, shape) }
+    auxParams foreach { case (name, shape) => xavierInit(name, shape) }
     new MxNetWeights(argParams, auxParams, 1.0f)
   }
-  
-  //def getLocalOptimizer(appSettings: GLPModelSettings) = {
+
   def getLocalOptimizer() = {
     val sgd = new SGD(learningRate = 0.1f)
     val updater = new MxNetOptimizer(sgd)
     val inDim = 784
     val mlp = getMlp
-    
+
     val evaluator = new MxNetGlpEvaluator(mlp, Array(Context.cpu(0), Context.cpu(1)), 784)
-    val params = initializeParameters(mlp, Map("data"-> Shape(batchSize, 784), "softmax_label" -> Shape(batchSize)))
+    val params = initializeParameters(mlp, Map("data" -> Shape(batchSize, 784), "softmax_label" -> Shape(batchSize)))
     val mxEpochs = 10
     val numSubEpochs = 1
     val workersPerPartition = 1
-    val optDetails : Option[String] = None
-    new LocalOnlineOptimizer[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetOptimizer](params, 
-        evaluator, updater, mxEpochs, numSubEpochs, workersPerPartition, optDetails)
+    val optDetails: Option[String] = None
+    new LocalOnlineOptimizer[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetOptimizer](params,
+      evaluator, updater, mxEpochs, numSubEpochs, workersPerPartition, optDetails)
   }
-    
 }

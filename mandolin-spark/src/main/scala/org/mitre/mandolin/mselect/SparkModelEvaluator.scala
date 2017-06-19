@@ -66,7 +66,7 @@ class SparkMxModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFacto
     accuracy.toSeq(0)
   }
 
-  override def cancel(generation: Int): Unit = null
+  override def cancel(generation: Int): Unit = {}
 }
 
 class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: String, testData: String)
@@ -87,5 +87,5 @@ class SparkMxFileSystemModelEvaluator(sc: SparkContext, trainData: String, testD
     }.collect()
     accuracy.toSeq(0)
   }
-  def cancel(generation: Int) : Unit = null
+  def cancel(generation: Int) : Unit = {}
 }

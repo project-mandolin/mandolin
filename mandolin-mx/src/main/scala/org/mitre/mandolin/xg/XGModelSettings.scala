@@ -1,6 +1,6 @@
 package org.mitre.mandolin.xg
 
-import org.mitre.mandolin.config.{ GeneralLearnerSettings, ConfigGeneratedCommandOptions }
+import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
 import org.mitre.mandolin.glp.MandolinMLPSettings
 import com.typesafe.config.Config
 
