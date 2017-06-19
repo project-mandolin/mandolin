@@ -195,7 +195,7 @@ abstract class AbstractProcessor extends LineParser {
     (finalAlphabet,numPoints)
   }
 
-  def getAlphabet(appSettings: GLPModelSettings, la: Alphabet, io: IOAssistant): (Alphabet, Int) = {
+  def getAlphabet(appSettings: MandolinMLPSettings, la: Alphabet, io: IOAssistant): (Alphabet, Int) = {
     if (appSettings.useRandom) (new RandomAlphabet(appSettings.numFeatures), 1000)
     else {
       println("Building alphabet with training input data")
@@ -204,7 +204,7 @@ abstract class AbstractProcessor extends LineParser {
     }
   }
   
-  def getSubComponents(appSettings: GLPModelSettings, idim: Int, odim: Int) : (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
+  def getSubComponents(appSettings: MandolinMLPSettings, idim: Int, odim: Int) : (ANNetwork, CategoricalGLPPredictor, GLPPosteriorOutputConstructor) = {
     val specs = appSettings.netspecConfig match {case Some(c) => getGLPSpec(c, idim, odim) case None => getGLPSpec(appSettings.netspec, idim, odim)}
     getSubComponents(specs)
   }
@@ -237,7 +237,7 @@ abstract class AbstractProcessor extends LineParser {
     GLPComponentSet(nn, predictor, outConstructor, fe, new IdentityAlphabet(1), dim, 1000)
   }
 
-  def getComponentsDenseVecs(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
+  def getComponentsDenseVecs(appSettings: MandolinMLPSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
     val fa = 
       if (appSettings.scaleInputs) getScaledDenseVecAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.denseVectorSize) 
@@ -261,7 +261,7 @@ abstract class AbstractProcessor extends LineParser {
     GLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, randFeatures, 1000)
   }
 
-  def getComponentsHashedFeatures(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
+  def getComponentsHashedFeatures(appSettings: MandolinMLPSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
     val fa = new RandomAlphabet(appSettings.numFeatures)
     val cspec = appSettings.netspecConfig match {case Some(c) => mapSpecToList(c) case None => appSettings.netspec}
@@ -284,7 +284,7 @@ abstract class AbstractProcessor extends LineParser {
     GLPComponentSet(nn, predictor, outConstructor, fe, la, fa.getSize, npts)
   }
 
-  def getComponentsInducedAlphabet(appSettings: GLPModelSettings, lines: Iterator[String],
+  def getComponentsInducedAlphabet(appSettings: MandolinMLPSettings, lines: Iterator[String],
                                    la: Alphabet, scale: Boolean, selectedFeatures: Int, io: IOAssistant): GLPComponentSet = {
     val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
     fa.ensureFixed
@@ -292,13 +292,13 @@ abstract class AbstractProcessor extends LineParser {
     getComponentsInducedAlphabet(mspec, lines, la, scale, selectedFeatures, io, Some((fa,npts)))
   }
 
-  def getComponentsInducedAlphabet(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
+  def getComponentsInducedAlphabet(appSettings: MandolinMLPSettings, io: IOAssistant): GLPComponentSet = {
     val la = getLabelAlphabet(appSettings.labelFile, io)
     val lines = io.readLines(appSettings.trainFile.get)
     getComponentsInducedAlphabet(appSettings, lines, la, appSettings.scaleInputs, appSettings.filterFeaturesMI, io)
   }
   
-  def getComponentsViaSettings(appSettings: GLPModelSettings, io: IOAssistant): GLPComponentSet = {
+  def getComponentsViaSettings(appSettings: MandolinMLPSettings, io: IOAssistant): GLPComponentSet = {
     if (appSettings.denseVectorSize > 0) getComponentsDenseVecs(appSettings, io)
     else if (appSettings.useRandom) getComponentsHashedFeatures(appSettings, io)    
     else getComponentsInducedAlphabet(appSettings, io)

@@ -1,6 +1,6 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPFactor, GLPWeights, GLPComponentSet, GLPModelSettings,
+import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPFactor, GLPWeights, GLPComponentSet, MandolinMLPSettings,
   LType, TanHLType, ReluLType, InputLType, SparseInputLType, SoftMaxLType}
 import org.mitre.mandolin.glp.local.{LocalGLPOptimizer, LocalProcessor}
 import org.mitre.mandolin.predict.local.{LocalEvalDecoder, NonExtractingEvalDecoder, LocalTrainer}
@@ -52,14 +52,14 @@ class MandolinModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilde
        
   def build() : ModelSpace = build(0,0,false, None)  
   
-  def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[GLPModelSettings]) : ModelSpace = {    
+  def build(idim: Int, odim: Int, sparse: Boolean, appSettings: Option[MandolinMLPSettings]) : ModelSpace = {
     val appConfig = appSettings map {a => a.config.root.render()}
     val budget = appSettings match {case Some(m) => m.numEpochs case None => -1}
     new ModelSpace(reals.toVector, cats.toVector, ints.toVector, idim, odim, appConfig, budget)    
   }
 }
 
-class MandolinModelInstance(appSettings: GLPModelSettings, config: ModelConfig, nn: ANNetwork) extends LearnerInstance[GLPFactor] {
+class MandolinModelInstance(appSettings: MandolinMLPSettings, config: ModelConfig, nn: ANNetwork) extends LearnerInstance[GLPFactor] {
 
   def train(train: Vector[GLPFactor], test: Option[Vector[GLPFactor]]) : Double = {
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)
@@ -82,7 +82,7 @@ object MandolinModelInstance {
     val ints : List[(String,Any)] = config.intMetaParamSet.toList map {cm => (cm.getName, cm.getValue.v)}
     
     //val mspecValued = config.topoMPs map {ms => ms.getValue.v.s map {l => l.drawRandomValue.getValue} map {vl => getSpec(vl)}}
-    val sets = config.serializedSettings match {case Some(s) => new GLPModelSettings(s) case None => new GLPModelSettings()}
+    val sets = config.serializedSettings match {case Some(s) => new MandolinMLPSettings(s) case None => new MandolinMLPSettings()}
     
     // val fullSpec : Vector[LType] = Vector(config.inLType) ++  Vector(config.outLType)
     // val net = ANNetwork(sets.ne, config.inDim, config.outDim)

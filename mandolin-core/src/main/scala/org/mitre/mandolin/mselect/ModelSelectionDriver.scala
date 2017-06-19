@@ -3,7 +3,7 @@ package org.mitre.mandolin.mselect
 import java.util.concurrent.Executors
 
 import akka.actor.{Props, ActorSystem}
-import org.mitre.mandolin.glp.{GLPTrainerBuilder, GLPModelSettings, ANNetwork, GLPFactor}
+import org.mitre.mandolin.glp.{GLPTrainerBuilder, MandolinMLPSettings, ANNetwork, GLPFactor}
 import org.mitre.mandolin.mselect.WorkPullingPattern.RegisterWorker
 import org.mitre.mandolin.transform.FeatureExtractor
 

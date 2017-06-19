@@ -2,7 +2,7 @@ package org.mitre.mandolin.mselect
 
 import org.mitre.mandolin.xg.XGModelSettings
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.glp.{ GLPFactor, GLPModelSettings, GLPTrainerBuilder }
+import org.mitre.mandolin.glp.{ GLPFactor, MandolinMLPSettings, GLPTrainerBuilder }
 import org.mitre.mandolin.util.LocalIOAssistant
 
 class LocalXGModelSelector(val msb: XGModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
@@ -21,7 +21,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
   val fe: FeatureExtractor[String, GLPFactor] = {
-    val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
+    val settings = appSettings.getOrElse((new MandolinMLPSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
       ("mandolin.trainer.test-file", testFile)
     )))

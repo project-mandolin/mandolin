@@ -4,7 +4,7 @@ import org.mitre.mandolin.config.{ MandolinMLPSettings, BatchLearnerSettings, De
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 
 import org.mitre.mandolin.mx._
-import org.mitre.mandolin.glp.{ GLPFactor, GLPModelSettings }
+import org.mitre.mandolin.glp.{ GLPFactor, MandolinMLPSettings }
 import org.mitre.mandolin.optimize.TrainingUnitEvaluator
 
 

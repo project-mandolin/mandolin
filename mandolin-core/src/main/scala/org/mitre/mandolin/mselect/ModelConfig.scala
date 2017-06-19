@@ -1,6 +1,6 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.{GLPModelSettings,ANNetwork, TanHLType, ReluLType, LType, InputLType, SparseInputLType, SoftMaxLType}
+import org.mitre.mandolin.glp.{MandolinMLPSettings,ANNetwork, TanHLType, ReluLType, LType, InputLType, SparseInputLType, SoftMaxLType}
 
 
 abstract class AbstractModelConfig(

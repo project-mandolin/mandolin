@@ -27,7 +27,7 @@ abstract class GLPModelReader {
 
 object GLPTrainerBuilder extends AbstractProcessor {
   
-  def apply(appSettings: GLPModelSettings) : (LocalTrainer[String, GLPFactor, GLPWeights], ANNetwork) = {
+  def apply(appSettings: MandolinMLPSettings) : (LocalTrainer[String, GLPFactor, GLPWeights], ANNetwork) = {
     val io = new LocalIOAssistant
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor
@@ -39,7 +39,7 @@ object GLPTrainerBuilder extends AbstractProcessor {
     val io = new LocalIOAssistant
     val la = new StdAlphabet
     val gset = getComponentsInducedAlphabet(mspec, lines: Iterator[String], la: Alphabet, false, -1, io)
-    val optimizer = LocalGLPOptimizer.getLocalOptimizer(new GLPModelSettings ,gset.ann)
+    val optimizer = LocalGLPOptimizer.getLocalOptimizer(new MandolinMLPSettings ,gset.ann)
     (new LocalTrainer(gset.featureExtractor, optimizer), gset.ann)
   }
   
@@ -49,21 +49,21 @@ object GLPTrainerBuilder extends AbstractProcessor {
    */
   def apply(modelSpec: IndexedSeq[LType]) : (LocalTrainer[String, GLPFactor, GLPWeights], ANNetwork) = {
     val (nn, predictor, oc) = getSubComponents(modelSpec)
-    val settings = new GLPModelSettings
+    val settings = new MandolinMLPSettings
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
     (new LocalTrainer(optimizer), nn)
   }
   
   def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T,GLPFactor], idim: Int, odim: Int) : (LocalTrainer[T, GLPFactor, GLPWeights], ANNetwork) = {
     val (nn, predictor, oc) = getSubComponents(modelSpec, idim, odim)
-    val settings = new GLPModelSettings
+    val settings = new MandolinMLPSettings
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
     (new LocalTrainer(fe, optimizer), nn)
   }
   
   def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T,GLPFactor], idim: Int, odim: Int, sets: Seq[(String, Any)]) : (LocalTrainer[T, GLPFactor, GLPWeights], ANNetwork) = {
     val (nn, predictor, oc) = getSubComponents(modelSpec, idim, odim)
-    val settings = (new GLPModelSettings).withSets(sets)
+    val settings = (new MandolinMLPSettings).withSets(sets)
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
     (new LocalTrainer(fe, optimizer), nn)
   }
@@ -73,7 +73,7 @@ object GLPTrainerBuilder extends AbstractProcessor {
    */
   def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T, GLPFactor]) : (LocalTrainer[T, GLPFactor, GLPWeights], ANNetwork) = {
     val (nn, predictor, oc) = getSubComponents(modelSpec)
-    val settings = new GLPModelSettings
+    val settings = new MandolinMLPSettings
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
     (new LocalTrainer(fe, optimizer), nn)
   }
@@ -87,14 +87,14 @@ object GLPTrainerBuilder extends AbstractProcessor {
       val numInputs = modelSpec.head.dim
       new StdVectorExtractorWithAlphabet(la, fa, numInputs)
     }
-    val settings = new GLPModelSettings
+    val settings = new MandolinMLPSettings
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
     (new LocalTrainer(fe, optimizer), nn)
   }
   
   // XXX - let API here simply create the appropriate settings; seems backwards but most convenient
   def apply(modelSpec: IndexedSeq[LType], sets: Seq[(String, Any)]) : (LocalTrainer[String, GLPFactor, GLPWeights], ANNetwork) = {
-    val settings = (new GLPModelSettings).withSets(sets)
+    val settings = (new MandolinMLPSettings).withSets(sets)
     val (nn, predictor, oc) = getSubComponents(modelSpec)
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(settings, nn)
     (new LocalTrainer(optimizer), nn)

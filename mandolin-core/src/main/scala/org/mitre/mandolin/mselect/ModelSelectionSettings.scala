@@ -1,14 +1,9 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.{LType, InputLType, SoftMaxLType, SparseInputLType, LinearLType }
-import com.typesafe.config.{ConfigList, ConfigValueType}
-import org.mitre.mandolin.config.GeneralLearnerSettings
-import org.mitre.mandolin.glp.GLPModelSettings
-import net.ceedubs.ficus.Ficus._
-
+import org.mitre.mandolin.glp.MandolinMLPSettings
 import scala.collection.JavaConversions._
 
-trait ModelSelectionSettings extends GLPModelSettings {
+trait ModelSelectionSettings extends MandolinMLPSettings {
   
   private def getIntPair(li: List[Integer]) = li match {case a :: b :: Nil => (a.toInt, b.toInt) case _ => throw new RuntimeException("Invalid integer range")}
   private def getIntTriple(li: List[Integer]) = 

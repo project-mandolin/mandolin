@@ -1,6 +1,6 @@
 package org.mitre.mandolin.glp.spark
 
-import org.mitre.mandolin.glp.GLPModelSettings
+import org.mitre.mandolin.glp.MandolinMLPSettings
 
 
 /**
@@ -9,7 +9,7 @@ import org.mitre.mandolin.glp.GLPModelSettings
 object Mandolin extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]): Unit = {
-    val appSettings = new GLPModelSettings(args)
+    val appSettings = new MandolinMLPSettings(args)
     val mode = appSettings.appMode
     val numPartitions = appSettings.numPartitions
     val distProcessor = new DistributedProcessor(numPartitions)

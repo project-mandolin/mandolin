@@ -1,11 +1,11 @@
 package org.mitre.mandolin.mx.local
 
-import org.mitre.mandolin.glp.{ AbstractProcessor, GLPModelSettings }
+import org.mitre.mandolin.glp.{ AbstractProcessor, MandolinMLPSettings }
 import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant, LocalIOAssistant }
 import org.mitre.mandolin.predict.local.LocalTrainer
 import org.slf4j.LoggerFactory
 
-class LocalMxNetProcessor(appSettings: GLPModelSettings) extends AbstractProcessor {
+class LocalMxNetProcessor(appSettings: MandolinMLPSettings) extends AbstractProcessor {
   private val logger = LoggerFactory.getLogger(classOf[LocalMxNetProcessor])
   val io = new LocalIOAssistant
   def getFeatureExtractor = getComponentsViaSettings(appSettings, io).featureExtractor
@@ -26,7 +26,7 @@ class LocalMxNetProcessor(appSettings: GLPModelSettings) extends AbstractProcess
 object RunLocalMxNetProcessor {
   
   def main(args: Array[String]) : Unit = {
-    val appSettings = new GLPModelSettings(args)
+    val appSettings = new MandolinMLPSettings(args)
     (new LocalMxNetProcessor(appSettings)).processTrain()
   }
 }

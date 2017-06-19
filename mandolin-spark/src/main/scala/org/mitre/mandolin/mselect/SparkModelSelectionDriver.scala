@@ -4,20 +4,20 @@ import org.apache.spark.SparkContext
 import org.mitre.mandolin.glp.spark.AppConfig
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.glp.{ANNetwork, CategoricalGLPPredictor, GLPFactor, GLPModelSettings, GLPTrainerBuilder, GLPWeights, SparseInputLType}
+import org.mitre.mandolin.glp.{ANNetwork, CategoricalGLPPredictor, GLPFactor, MandolinMLPSettings, GLPTrainerBuilder, GLPWeights, SparseInputLType}
 
-class SparkModelSelectionDriver(val sc: SparkContext, val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: Option[String], 
-    numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
-    appSettings: Option[GLPModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false) 
+class SparkModelSelectionDriver(val sc: SparkContext, val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: Option[String],
+                                numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+                                appSettings: Option[MandolinMLPSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false)
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
   
-  def this(sc: SparkContext, _msb: MandolinModelSpaceBuilder, appSettings: GLPModelSettings with ModelSelectionSettings) = { 
+  def this(sc: SparkContext, _msb: MandolinModelSpaceBuilder, appSettings: MandolinMLPSettings with ModelSelectionSettings) = {
     this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers, 
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
   }     
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int, sparse: Boolean) = {
-    val settings = appSettings.getOrElse((new GLPModelSettings).withSets(Seq(
+    val settings = appSettings.getOrElse((new MandolinMLPSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
       ("mandolin.trainer.test-file", testFile)
     )))
@@ -45,7 +45,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
 object SparkModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
   
   def main(args: Array[String]) : Unit = {
-    val appSettings = new GLPModelSettings(args) with ModelSelectionSettings
+    val appSettings = new MandolinMLPSettings(args) with ModelSelectionSettings
     val sc = AppConfig.getSparkContext(appSettings)
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)

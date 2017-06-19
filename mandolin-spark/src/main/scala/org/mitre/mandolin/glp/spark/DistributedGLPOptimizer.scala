@@ -8,7 +8,7 @@ import org.apache.spark.AccumulatorParam
 
 object DistributedGLPOptimizer {
 
-  def getDistributedOptimizer(sc: SparkContext, appSettings: GLPModelSettings, network: ANNetwork) = {
+  def getDistributedOptimizer(sc: SparkContext, appSettings: MandolinMLPSettings, network: ANNetwork) = {
     val weights = network.generateRandomWeights
     val composeStrategy = appSettings.composeStrategy match {
       case "maximum" => Maximum

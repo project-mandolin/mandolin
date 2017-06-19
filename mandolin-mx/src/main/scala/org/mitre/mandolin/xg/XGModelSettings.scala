@@ -1,14 +1,14 @@
 package org.mitre.mandolin.xg
 
 import org.mitre.mandolin.config.{ GeneralLearnerSettings, ConfigGeneratedCommandOptions }
-import org.mitre.mandolin.glp.GLPModelSettings
+import org.mitre.mandolin.glp.MandolinMLPSettings
 import com.typesafe.config.Config
 
 /**
  * @author wellner
  */
 class XGModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
-extends GLPModelSettings(_confOptions, _conf) {
+extends MandolinMLPSettings(_confOptions, _conf) {
   import scala.collection.JavaConversions._
   
   def this(s: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(s)))

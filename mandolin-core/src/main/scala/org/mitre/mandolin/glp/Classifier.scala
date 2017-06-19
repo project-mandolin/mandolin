@@ -9,7 +9,7 @@ import org.mitre.mandolin.predict.OutputConstructor
 import com.typesafe.config.Config
 
 
-class GLPModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings(_confOptions, _conf) with Serializable {
+class MandolinMLPSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings(_confOptions, _conf) with Serializable {
 
   val decoderInputFile  = asStrOpt("mandolin.decoder.input-file")
   val outputFile        = asStrOpt("mandolin.decoder.output-file")
@@ -51,6 +51,7 @@ class GLPModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _con
   val rho              =  asFloat("mandolin.mmlp.optimizer.rho")
   val method           =     asStr("mandolin.mmlp.optimizer.method")
   val initialLearnRate =  asFloat("mandolin.mmlp.optimizer.initial-learning-rate")
+  val maxNorm          = asBoolean("mandolin.mmlp.optimizer.max-norm")
 
 
   def this(str: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(str)))
@@ -58,30 +59,30 @@ class GLPModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _con
   def this() = this(Array(): Array[String])
 
   import scala.collection.JavaConversions._
-  
+
   /**
-   * Returns a new settings object with the config name `key` set to `v` 
+   * Returns a new settings object with the config name `key` set to `v`
    */
   def set(key: String, v: Any) = {
     val curConfig = this.config
     val nConf = curConfig.withValue(key, com.typesafe.config.ConfigValueFactory.fromAnyRef(v))
-    new GLPModelSettings(None,Some(nConf)) 
+    new MandolinMLPSettings(None,Some(nConf))
   }
-  
+
   //def withComplexSets(avs: )
-  
+
   /**
    * Returns a new settings object with the sequence of tuple arguments values set accordingly
    */
-  def withSets(avs: Seq[(String, Any)]) : GLPModelSettings  = {
-    val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) => 
+  def withSets(avs: Seq[(String, Any)]) : MandolinMLPSettings  = {
+    val nc = avs.foldLeft(this.config){case (ac, (v1,v2)) =>
       v2 match {
         case v2: List[_] =>
           if (v2 != null) ac.withValue(v1,com.typesafe.config.ConfigValueFactory.fromIterable(v2)) else ac
         case v2: Any =>
           ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))}
-      }    
-    new GLPModelSettings(None,Some(nc))     
+      }
+    new MandolinMLPSettings(None,Some(nc))
   }
 
   def mapSpecToList(conf: Map[String, Map[String, String]]) = {

@@ -1,6 +1,6 @@
 package org.mitre.mandolin.glp.local
 
-import org.mitre.mandolin.glp.GLPModelSettings
+import org.mitre.mandolin.glp.MandolinMLPSettings
 
 /**
  * @author wellner
@@ -8,7 +8,7 @@ import org.mitre.mandolin.glp.GLPModelSettings
 object MandolinWithoutSpark extends org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]): Unit = {
-    val appSettings = new GLPModelSettings(args)
+    val appSettings = new MandolinMLPSettings(args)
     val mode = appSettings.appMode
     val numPartitions = appSettings.numPartitions
     val localProcessor = new LocalProcessor

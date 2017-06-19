@@ -155,7 +155,7 @@ class GlpModel extends GLPDataFrames with Serializable {
     GLPModelSpec(w, glp, components.labelAlphabet, components.featureExtractor)    
   }
   
-  def estimate(trdata: DataFrame, appSettings: GLPModelSettings) : GLPModelSpec = {
+  def estimate(trdata: DataFrame, appSettings: MandolinMLPSettings) : GLPModelSpec = {
     val dp = new DistributedProcessor(appSettings.numPartitions)
     val io = new SparkIOAssistant(trdata.sqlContext.sparkContext)
     val components = dp.getComponentsViaSettings(appSettings, io)       

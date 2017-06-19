@@ -1,14 +1,14 @@
 package org.mitre.mandolin.embed
 
-import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, LocalIOAssistant}
-import org.mitre.mandolin.optimize.{TrainingUnitEvaluator, Updater}
+import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
 import org.mitre.mandolin.predict.local.LocalTrainer
-import org.mitre.mandolin.config.{ConfigGeneratedCommandOptions, MandolinMLPSettings, DecoderSettings}
+import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
+import org.mitre.mandolin.glp.MandolinMLPSettings
 import com.typesafe.config.Config
 
 class EmbeddingModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
-extends MandolinMLPSettings(None,_conf) with DecoderSettings {
+extends MandolinMLPSettings(None,_conf) {
  
   def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)), None)
   

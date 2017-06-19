@@ -9,7 +9,7 @@ object LocalGLPOptimizer {
     
   }
   
-  def getLocalOptimizer(appSettings: GLPModelSettings, network: ANNetwork) = {
+  def getLocalOptimizer(appSettings: MandolinMLPSettings, network: ANNetwork) = {
     val weights = network.generateRandomWeights
     val sumSquared = network.generateZeroedLayout
     val composeStrategy = appSettings.composeStrategy match {

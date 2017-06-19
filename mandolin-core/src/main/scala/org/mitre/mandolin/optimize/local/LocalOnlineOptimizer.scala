@@ -3,8 +3,9 @@ package org.mitre.mandolin.optimize.local
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.optimize.{Weights, LossGradient,Updater,TrainingUnitEvaluator,ModelWriter,OptimizerWriter,EpochProcessor}
-import org.mitre.mandolin.config.{ MandolinMLPSettings }
+import org.mitre.mandolin.glp.MandolinMLPSettings
+import org.mitre.mandolin.optimize.{EpochProcessor, LossGradient, ModelWriter, OptimizerWriter, TrainingUnitEvaluator, Updater, Weights}
+
 import scala.reflect.ClassTag
 
 trait LocalOptimizerEstimator[T, W <: Weights[W]] {

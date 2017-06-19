@@ -8,7 +8,7 @@ import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.optimize.local.{VectorData}
 import org.mitre.mandolin.predict.local.{ LocalTrainer, LocalTrainTester, LocalTrainDecoder, LocalPosteriorDecoder }
-import org.mitre.mandolin.glp.{AbstractProcessor, GLPModelSettings, GLPModelWriter, CategoricalGLPPredictor, GLPModelReader,
+import org.mitre.mandolin.glp.{AbstractProcessor, MandolinMLPSettings, GLPModelWriter, CategoricalGLPPredictor, GLPModelReader,
   GLPPosteriorOutputConstructor, GLPFactor, GLPWeights, GLPInstanceEvaluator, GLPLossGradient, GLPModelSpec, ANNetwork, NullGLPUpdater }
 import org.mitre.mandolin.optimize.{BatchEvaluator, GenData, Updater}
 import com.twitter.chill.EmptyScalaKryoInstantiator
@@ -69,7 +69,7 @@ class LocalGLPModelReader {
  */
 class LocalProcessor extends AbstractProcessor {        
   
-  def processTrain(appSettings: GLPModelSettings) = {
+  def processTrain(appSettings: MandolinMLPSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in training mode")
     if (appSettings.trainFile.isEmpty) throw new RuntimeException("Training file required in training mode")
     val io = new LocalIOAssistant
@@ -85,7 +85,7 @@ class LocalProcessor extends AbstractProcessor {
     finalWeights
   }  
   
-  def processDecode(appSettings: GLPModelSettings) = {
+  def processDecode(appSettings: MandolinMLPSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in decoding mode")
     val io = new LocalIOAssistant
     val modelSpec = (new LocalGLPModelReader).readModel(appSettings.modelFile.get, io)
@@ -99,7 +99,7 @@ class LocalProcessor extends AbstractProcessor {
     os.close()
   }
   
-  def processTrainTest(appSettings: GLPModelSettings) = {
+  def processTrainTest(appSettings: MandolinMLPSettings) = {
     val trainFile = appSettings.trainFile
     if (trainFile.isEmpty) throw new RuntimeException("Training file required in train-test mode")
     val io = new LocalIOAssistant
@@ -121,7 +121,7 @@ class LocalProcessor extends AbstractProcessor {
    * A convenience method that trains and evaluates N separate models and test files
    * in a parallel directory structure.
    */
-  def processTrainTestDirectories(appSettings: GLPModelSettings) = {
+  def processTrainTestDirectories(appSettings: MandolinMLPSettings) = {
     val dir: java.io.File = new java.io.File(appSettings.trainFile.get)
     val io = new LocalIOAssistant
     val testDir: java.io.File = new java.io.File(appSettings.testFile.get)
@@ -163,7 +163,7 @@ class LocalProcessor extends AbstractProcessor {
     os.close()
   }
   
-  def processTrainDecode(appSettings: GLPModelSettings) = {
+  def processTrainDecode(appSettings: MandolinMLPSettings) = {
     val weights = processTrain(appSettings)
     val io = new LocalIOAssistant
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }

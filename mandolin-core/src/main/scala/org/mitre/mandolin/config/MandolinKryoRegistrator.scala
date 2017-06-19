@@ -18,7 +18,7 @@ trait MandolinRegistrator {
     kryo.register(classOf[org.mitre.mandolin.util.DenseTensor2])
     kryo.register(classOf[org.mitre.mandolin.glp.GLPModelSpec])
     kryo.register(classOf[org.mitre.mandolin.glp.GLPFactor])
-    kryo.register(classOf[org.mitre.mandolin.glp.GLPModelSettings])
+    kryo.register(classOf[org.mitre.mandolin.glp.MandolinMLPSettings])
     kryo.register(classOf[org.mitre.mandolin.mselect.ModelSelectionSettings])
     kryo.register(classOf[org.mitre.mandolin.mselect.ModelSpace])
     kryo.register(classOf[org.mitre.mandolin.glp.StdGLPFactor])

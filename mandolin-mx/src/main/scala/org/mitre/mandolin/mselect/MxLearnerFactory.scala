@@ -1,7 +1,7 @@
 package org.mitre.mandolin.mselect
 
 import org.mitre.mandolin.glp.GLPFactor
-import org.mitre.mandolin.glp.{GLPModelSettings, LType, SparseInputLType, InputLType, SoftMaxLType}
+import org.mitre.mandolin.glp.{MandolinMLPSettings, LType, SparseInputLType, InputLType, SoftMaxLType}
 import org.mitre.mandolin.mx.{MxModelSettings, MxNetSetup}
 
 import ml.dmlc.mxnet.{Uniform, Xavier, Context, Shape}

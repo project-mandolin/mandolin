@@ -1,11 +1,11 @@
 package org.mitre.mandolin.mx
 
 import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
-import org.mitre.mandolin.glp.GLPModelSettings
+import org.mitre.mandolin.glp.MandolinMLPSettings
 import com.typesafe.config.Config
 
 class MxModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
-extends GLPModelSettings(_confOptions, _conf) {
+extends MandolinMLPSettings(_confOptions, _conf) {
   
   def this(s: String) = this(None,Some(com.typesafe.config.ConfigFactory.parseString(s)))
   def this(args: Seq[String]) = this(Some(new ConfigGeneratedCommandOptions(args)),None)
