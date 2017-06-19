@@ -1,19 +1,21 @@
 package org.mitre.mandolin.config
+
 /*
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import scala.util.Properties
-import org.rogach.scallop.{ScallopConf, ScallopOption}
-import com.typesafe.config.{ Config, ConfigObject, ConfigValueType, ConfigList, ConfigValue, ConfigRenderOptions, ConfigFactory, ConfigValueFactory }
+import org.rogach.scallop.ScallopConf
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 
 /**
- * Takes a sequence of arguments from the command line and adds to the default configuration
- * object constructed from the src/main/resources/reference.conf and src/main/resource/application.conf
- * files.
- * @param args sequence of command line argument strings
- */
+  * Takes a sequence of arguments from the command line and adds to the default configuration
+  * object constructed from the src/main/resources/reference.conf and src/main/resource/application.conf
+  * files.
+  *
+  * @param args sequence of command line argument strings
+  */
 class ConfigGeneratedCommandOptions(args: Seq[String]) extends ScallopConf(args) {
+
   import scala.collection.JavaConverters._
 
   /** Runtime Mandolin configuration file */
@@ -22,17 +24,18 @@ class ConfigGeneratedCommandOptions(args: Seq[String]) extends ScallopConf(args)
   /** Display all configuration options */
   val displayDefaults = opt[Boolean]("X-display", default = Some(false), descr = "Display all defaults based on provided config(s); then exit program")
 
-  val overrides = trailArg[List[String]](required=false)
+  val overrides = trailArg[List[String]](required = false)
 
   def addPathWithValue(ref: Config, c: Config, p: String, v: String) = {
     //if (ref.hasPath(p)) {
+    // TODO
     if (true) {
       c.withValue(p, ConfigValueFactory.fromAnyRef(v))
     } else {
       throw new RuntimeException("Invalid config argument: " + p)
     }
   }
-  
+
   def getOverrides = overrides()
 
   def applyArgs(config: Config, commandConfig: Config) = {
@@ -53,7 +56,9 @@ class ConfigGeneratedCommandOptions(args: Seq[String]) extends ScallopConf(args)
           else throw new RuntimeException("Invalid config overrides: " + overs)
         }
       } else config
-    } catch { case _: Throwable => config }
+    } catch {
+      case _: Throwable => config
+    }
   }
 
   lazy val finalConfig = {
@@ -61,16 +66,16 @@ class ConfigGeneratedCommandOptions(args: Seq[String]) extends ScallopConf(args)
       configFile.get match {
         case Some(f) => ConfigFactory.parseFile(new java.io.File(f)).withFallback(ConfigFactory.load())
         case None => ConfigFactory.load()
-    }
-    // val conf = applyArgs(fileAugConfig, ConfigFactory.empty())
-    // val opts = com.typesafe.config.ConfigResolveOptions.defaults().setAllowUnresolved(true)
-    // val updated = fileAugConfig.resolveWith(conf, opts)
-    // applyArgs(fileAugConfig, updated.withFallback(fileAugConfig).resolve()).resolve()
+      }
     fileAugConfig
   }
 
   def getOptValAsString(s: String): Option[String] = {
-    try { Some(finalConfig.getString(s)) } catch { case _: Throwable => None }
+    try {
+      Some(finalConfig.getString(s))
+    } catch {
+      case _: Throwable => None
+    }
   }
 
 }
