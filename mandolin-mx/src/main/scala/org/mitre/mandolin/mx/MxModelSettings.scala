@@ -1,7 +1,7 @@
 package org.mitre.mandolin.mx
 
 import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
-import org.mitre.mandolin.glp.MandolinMLPSettings
+import org.mitre.mandolin.mlp.MandolinMLPSettings
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 
@@ -14,8 +14,8 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   
   import scala.collection.JavaConversions._
   
-  // input type: 1) glp, 2) ndarray, 3) recordio ... others?
-  val inputType       = asStrOpt("mandolin.mx.input-type").getOrElse("glp")
+  // input type: 1) mlp, 2) ndarray, 3) recordio ... others?
+  val inputType       = asStrOpt("mandolin.mx.input-type").getOrElse("mlp")
   val numberOfClasses = asIntOpt("mandolin.mx.num-classes").getOrElse(2)
 
   val mxSpecification = try config.getAnyRefList("mandolin.mx.specification") catch {case _: Throwable => null}

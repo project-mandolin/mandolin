@@ -1,14 +1,14 @@
 package org.mitre.mandolin.mx.local
 
-import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
+import org.mitre.mandolin.optimize.standalone.OnlineOptimizer
 import org.mitre.mandolin.mx._
-import org.mitre.mandolin.glp.GLPFactor
+import org.mitre.mandolin.mlp.MMLPFactor
 import ml.dmlc.mxnet.{Symbol, Context, Shape, NDArray, Uniform, Xavier}
 import ml.dmlc.mxnet.optimizer.SGD
 
 /**
-  * This follows the LocalGLPOptimizer but really just thinly wraps MxNet
-  * allowing for data conventions used by Mandolin and to ensure that local
+  * This follows the MMLPOptimizer but really just thinly wraps MxNet
+  * allowing for data conventions used by Mandolin and to ensure that standalone
   * and Spark-based usage is consistent.
   */
 object LocalMxNetOptimizer {
@@ -63,7 +63,7 @@ object LocalMxNetOptimizer {
     val numSubEpochs = 1
     val workersPerPartition = 1
     val optDetails: Option[String] = None
-    new LocalOnlineOptimizer[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetOptimizer](params,
+    new OnlineOptimizer[MMLPFactor, MxNetWeights, MxNetLossGradient, MxNetOptimizer](params,
       evaluator, updater, mxEpochs, numSubEpochs, workersPerPartition, optDetails)
   }
 }

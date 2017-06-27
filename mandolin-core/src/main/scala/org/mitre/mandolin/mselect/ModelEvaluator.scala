@@ -1,8 +1,8 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.{GLPComponentSet, GLPFactor}
-import org.mitre.mandolin.glp.local.{LocalProcessor, LocalGLPOptimizer}
-import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
+import org.mitre.mandolin.mlp.{MMLPComponentSet, MMLPFactor}
+import org.mitre.mandolin.mlp.standalone.{Processor, MMLPOptimizer}
+import org.mitre.mandolin.predict.standalone.{EvalDecoder, Trainer}
 import org.mitre.mandolin.util.LocalIOAssistant
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
@@ -35,7 +35,7 @@ class MockRandomModelEvaluator extends ModelEvaluator {
   def cancel(generation: Int) {}
 }
 
-class LocalModelEvaluator(trData: Vector[GLPFactor], tstData: Option[Vector[GLPFactor]]) extends ModelEvaluator with Serializable {
+class LocalModelEvaluator(trData: Vector[MMLPFactor], tstData: Option[Vector[MMLPFactor]]) extends ModelEvaluator with Serializable {
   override def evaluate(c: ModelConfig, generation: Int): (Double, Long) = {
     val config = c
     val learner = MandolinModelInstance(config)

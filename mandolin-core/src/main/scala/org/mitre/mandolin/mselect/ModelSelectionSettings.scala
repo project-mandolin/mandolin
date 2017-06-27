@@ -1,6 +1,6 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.MandolinMLPSettings
+import org.mitre.mandolin.mlp.MandolinMLPSettings
 import scala.collection.JavaConversions._
 
 trait ModelSelectionSettings extends MandolinMLPSettings {

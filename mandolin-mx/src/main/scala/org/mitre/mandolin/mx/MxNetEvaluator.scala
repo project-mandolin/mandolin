@@ -1,7 +1,7 @@
 package org.mitre.mandolin.mx
 
 import org.mitre.mandolin.optimize.{ Updater, LossGradient, TrainingUnitEvaluator }
-import org.mitre.mandolin.glp.GLPFactor
+import org.mitre.mandolin.mlp.MMLPFactor
 import ml.dmlc.mxnet.{ EpochEndCallback, Uniform, Initializer, Xavier, Model, Shape, FeedForward, 
   Symbol, Context, Optimizer, NDArray, DataIter, DataBatch, Accuracy }
 
@@ -97,17 +97,17 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
 
 
 class MxNetGlpEvaluator(val net: Symbol, val ctx: Array[Context], idim: Int)
-extends TrainingUnitEvaluator[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetOptimizer] {
+extends TrainingUnitEvaluator[MMLPFactor, MxNetWeights, MxNetLossGradient, MxNetOptimizer] {
   
   val batchSize = 64
   // indicates that only minibatch training is supported and gradient updates are handled by evaluator directly
   val isClosed = true
   
-  private def factorsToIterator(units: Iterator[GLPFactor]) : GLPFactorIter = {    
-    new GLPFactorIter(units, Shape(idim), batchSize)
+  private def factorsToIterator(units: Iterator[MMLPFactor]) : MMLPFactorIter = {
+    new MMLPFactorIter(units, Shape(idim), batchSize)
   }
   
-  def evaluateTrainingMiniBatch(units: Iterator[GLPFactor], weights: MxNetWeights, u: MxNetOptimizer, epochCnt: Int = 0) : MxNetLossGradient = {
+  def evaluateTrainingMiniBatch(units: Iterator[MMLPFactor], weights: MxNetWeights, u: MxNetOptimizer, epochCnt: Int = 0) : MxNetLossGradient = {
     // make a single epoch/pass over the data
     val args = weights.argParams.getOrElse(null) 
     val auxs = weights.auxParams.getOrElse(null)
@@ -122,7 +122,7 @@ extends TrainingUnitEvaluator[GLPFactor, MxNetWeights, MxNetLossGradient, MxNetO
     new MxNetLossGradient(metric.get._2(0).toDouble)    
   }
   
-  def evaluateTrainingUnit(unit: GLPFactor, weights: MxNetWeights, u: MxNetOptimizer) : MxNetLossGradient = 
+  def evaluateTrainingUnit(unit: MMLPFactor, weights: MxNetWeights, u: MxNetOptimizer) : MxNetLossGradient =
     throw new RuntimeException("Closed evaluator MxNetEvaluator does not implement singleton point evaluations")   
   
   def copy() = throw new RuntimeException("MxNetEvaluator should/can not be copied")

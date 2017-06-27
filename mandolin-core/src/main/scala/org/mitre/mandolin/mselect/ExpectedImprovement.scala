@@ -1,13 +1,13 @@
 package org.mitre.mandolin.mselect
 
 import scala.collection.mutable.ArrayBuffer
-import org.mitre.mandolin.glp.{ANNetwork, GLPBayesianRegressor, GLPWeights, GLPTrainerBuilder, LinearLType,
+import org.mitre.mandolin.mlp.{ANNetwork, MMLPBayesianRegressor, MMLPWeights, MMLPTrainerBuilder, LinearLType,
 LType, InputLType, TanHLType}
 import org.mitre.mandolin.util.{AlphabetWithUnitScaling, StdAlphabet, Alphabet, DenseTensor1 => DenseVec}
 import org.mitre.mandolin.transform.{FeatureExtractor}
 import org.mitre.mandolin.predict.OutputConstructor
-import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor}
-import org.mitre.mandolin.predict.local.LocalDecoder
+import org.mitre.mandolin.mlp.{MMLPFactor, StdMMLPFactor}
+import org.mitre.mandolin.predict.standalone.Decoder
 import org.slf4j.LoggerFactory
 
 import breeze.linalg.{DenseVector => BreezeVec, DenseMatrix => BreezeMat}
@@ -199,15 +199,15 @@ class AlphabetBuilder extends MetaParameterHandler {
 }
 
 class MetaParameterExtractor(fa: Alphabet, nfs: Int)
-  extends FeatureExtractor[ScoredModelConfig, GLPFactor] with MetaParameterHandler with Serializable {
+  extends FeatureExtractor[ScoredModelConfig, MMLPFactor] with MetaParameterHandler with Serializable {
 
   def getAlphabet = fa
 
-  def extractFeatures(s: ScoredModelConfig): GLPFactor = {
+  def extractFeatures(s: ScoredModelConfig): MMLPFactor = {
     val lv = s.sc.toFloat
     val targetVec = DenseVec.tabulate(1) { _ => lv }
     val features = configToFeatures(s.mc, fa, nfs)
-    new StdGLPFactor(features.get, targetVec)
+    new StdMMLPFactor(features.get, targetVec)
   }
 
   def getNumberOfFeatures = nfs
@@ -216,11 +216,11 @@ class MetaParameterExtractor(fa: Alphabet, nfs: Int)
 class TimingMetaParameterExtractor(fa: Alphabet, nfs: Int)
   extends MetaParameterExtractor(fa, nfs) {
 
-  override def extractFeatures(s: ScoredModelConfig): GLPFactor = {
+  override def extractFeatures(s: ScoredModelConfig): MMLPFactor = {
     val lv = s.t.toFloat
     val targetVec = DenseVec.tabulate(1) { _ => lv }
     val features = configToFeatures(s.mc, fa, nfs)
-    new StdGLPFactor(features.get, targetVec)
+    new StdMMLPFactor(features.get, targetVec)
   }
 
 }
@@ -238,8 +238,8 @@ class MetaParamModelOutputConstructor extends OutputConstructor[ScoredModelConfi
 }
 
 class MetaParamDecoder(
-                        val decoder: LocalDecoder[ScoredModelConfig, GLPFactor, GLPWeights, (Double, Double), (Double, Double)],
-                        val weights: GLPWeights
+                        val decoder: Decoder[ScoredModelConfig, MMLPFactor, MMLPWeights, (Double, Double), (Double, Double)],
+                        val weights: MMLPWeights
                       ) {
   def decode(c: ModelConfig) = decoder.run(Vector(ScoredModelConfig(0.0, 0, c)), weights)
 
@@ -289,8 +289,8 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
   }
 
   var curDecoder: Option[MetaParamDecoder] = None
-  var curBayesRegressor: Option[GLPBayesianRegressor] = None
-  var curWeights: Option[GLPWeights] = None
+  var curBayesRegressor: Option[MMLPBayesianRegressor] = None
+  var curWeights: Option[MMLPWeights] = None
 
   val log = LoggerFactory.getLogger(getClass)
 
@@ -408,7 +408,7 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
     }
   }
 
-  private def mapInputToBasisVec(x: GLPFactor, glp: ANNetwork, weights: GLPWeights): BreezeMat[Double] = {
+  private def mapInputToBasisVec(x: MMLPFactor, glp: ANNetwork, weights: MMLPWeights): BreezeMat[Double] = {
     val inV =
       if (linear) x.getInput
       else {
@@ -452,7 +452,7 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
         _.sc
       }.sc // current best score - LARGER! scores always better here
       val mspec = getMspec(curData.length)
-      val (trainer, glp) = GLPTrainerBuilder(mspec, fe, fa.getSize, 1,
+      val (trainer, glp) = MMLPTrainerBuilder(mspec, fe, fa.getSize, 1,
         Seq(("mandolin.trainer.optimizer.initial-learning-rate", 0.1),
           ("mandolin.trainer.optimizer.method", "adagrad")))
       log.info("Number of layers = " + glp.numLayers)
@@ -476,9 +476,9 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
       val dfArray = glpFactors.toArray
       val targetsVec = BreezeVec.tabulate(glpFactors.length) { i => dfArray(i).getOutput(0).toDouble } // the target vecto
 
-      val predictor = new GLPBayesianRegressor(glp, bMat, targetsVec, 0.0, 0.0, false)
+      val predictor = new MMLPBayesianRegressor(glp, bMat, targetsVec, 0.0, 0.0, false)
       val oc = new MetaParamModelOutputConstructor()
-      val decoder = new LocalDecoder(trainer.getFe, predictor, oc)
+      val decoder = new Decoder(trainer.getFe, predictor, oc)
       if (useCache) {
         log.info(" ++++ Setting data cache, weights and regressor for prediction")
         dataCache = bMat

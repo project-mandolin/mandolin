@@ -5,7 +5,7 @@ package org.mitre.mandolin
 
 /**
  * == Prediction Overview ==
- * The prediction package contains routines for Mandolin-driven decoding/prediction as well
+ * The prediction mlp contains routines for Mandolin-driven decoding/prediction as well
  * as model selection analytics such as cross validation.
 */
 package object predict 

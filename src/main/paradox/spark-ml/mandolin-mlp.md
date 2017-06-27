@@ -63,7 +63,7 @@ evaluation routines.
 The following example assumes Mandolin has been launched as part of the
 Spark Shell:
 
-    import org.mitre.mandolin.glp._
+    import org.mitre.mandolin.mlp._
     val glp = new GlpModel
     val df = glp.readAsDataFrame(sqlContext, sc, "mnist.10k", 784, 10)
     val data = df.randomSplit(Array(0.8,0.2))
@@ -82,7 +82,7 @@ Spark Shell:
 If we now want to train this with a hidden layer, using 300 nodes with a hyperbolic tangent
 activation function, we would adjust the model spec as in the following:
 
-    import org.mitre.mandolin.glp._
+    import org.mitre.mandolin.mlp._
     val glp = new GlpModel
     val df = glp.readAsDataFrame(sqlContext, sc, "mnist.10k", 784, 10)
     val data = df.randomSplit(Array(0.8,0.2))
@@ -112,7 +112,7 @@ in the [Configuration](configuration.html) section, including dropout, regulariz
 as different types of output layers.  For example, a deeper model that uses rectified linear
 activations in the hidden layer with dropout and L1 regularization could be specified as:
 
-    import org.mitre.mandolin.glp._
+    import org.mitre.mandolin.mlp._
     // ...
     val mspec = IndexedSeq(LType(InputLType), 
                            LType(ReluLType, 500, drO=0.5, l1=0.0001), 

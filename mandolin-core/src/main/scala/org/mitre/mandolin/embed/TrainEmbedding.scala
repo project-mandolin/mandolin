@@ -1,10 +1,10 @@
 package org.mitre.mandolin.embed
 
 import org.mitre.mandolin.util.LocalIOAssistant
-import org.mitre.mandolin.optimize.local.{LocalOnlineOptimizer}
-import org.mitre.mandolin.predict.local.LocalTrainer
+import org.mitre.mandolin.optimize.standalone.{OnlineOptimizer}
+import org.mitre.mandolin.predict.standalone.Trainer
 import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
-import org.mitre.mandolin.glp.MandolinMLPSettings
+import org.mitre.mandolin.mlp.MandolinMLPSettings
 import com.typesafe.config.Config
 
 class EmbeddingModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
@@ -48,8 +48,8 @@ object TrainEmbedding {
         new SkipGramEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
       else
         new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)      
-      val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](wts, ev, up,epochs,1,nthreads,None)
-      val trainer = new LocalTrainer(fe, optimizer)
+      val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](wts, ev, up,epochs,1,nthreads,None)
+      val trainer = new Trainer(fe, optimizer)
       val (finalWeights,_) = trainer.trainWeights(lines)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     } else {
@@ -60,8 +60,8 @@ object TrainEmbedding {
           new SkipGramEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
         else 
           new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)          
-      val optimizer = new LocalOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,epochs,1,nthreads,None)
-      val trainer = new LocalTrainer(fe, optimizer)
+      val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,epochs,1,nthreads,None)
+      val trainer = new Trainer(fe, optimizer)
       val (finalWeights,_) = trainer.trainWeights(lines)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     }

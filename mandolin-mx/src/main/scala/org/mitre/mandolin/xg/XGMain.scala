@@ -1,13 +1,13 @@
 package org.mitre.mandolin.xg
 
-import org.mitre.mandolin.glp.{ GLPFactor, GLPTrainerBuilder }
+import org.mitre.mandolin.mlp.{ MMLPFactor, MMLPTrainerBuilder }
 import org.mitre.mandolin.util.LocalIOAssistant
 
 object XGMain extends org.mitre.mandolin.config.LogInit {
   
-  def getVecIOs(appSettings: XGModelSettings) : (Vector[GLPFactor], Option[Vector[GLPFactor]], Int) = {
+  def getVecIOs(appSettings: XGModelSettings) : (Vector[MMLPFactor], Option[Vector[MMLPFactor]], Int) = {
     val io = new LocalIOAssistant
-    val components = GLPTrainerBuilder.getComponentsViaSettings(appSettings, io)
+    val components = MMLPTrainerBuilder.getComponentsViaSettings(appSettings, io)
     val featureExtractor = components.featureExtractor
     val trFile = appSettings.trainFile.get
     val tstFile = appSettings.testFile

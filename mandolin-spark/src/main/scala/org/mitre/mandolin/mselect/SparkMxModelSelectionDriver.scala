@@ -5,7 +5,7 @@ import org.apache.spark.SparkContext
 
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.glp.{ GLPTrainerBuilder, MandolinMLPSettings, CategoricalGLPPredictor, GLPFactor, GLPWeights, ANNetwork, SparseInputLType }
+import org.mitre.mandolin.mlp.{ MMLPTrainerBuilder, MandolinMLPSettings, CategoricalMMLPPredictor, MMLPFactor, MMLPWeights, ANNetwork, SparseInputLType }
 
 class SparkMxModelSelectionDriver(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], 
     numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
@@ -20,13 +20,13 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   }      
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
   
-  val (fe: FeatureExtractor[String, GLPFactor], numInputs: Int, numOutputs: Int) = {
+  val (fe: FeatureExtractor[String, MMLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new MandolinMLPSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
       ("mandolin.trainer.test-file", testFile)
     )))
     val io = new LocalIOAssistant
-    val components = GLPTrainerBuilder.getComponentsViaSettings(settings, io)
+    val components = MMLPTrainerBuilder.getComponentsViaSettings(settings, io)
     val featureExtractor = components.featureExtractor
     val numInputs = featureExtractor.getNumberOfFeatures
     val numOutputs = appSettings.get.numberOfClasses

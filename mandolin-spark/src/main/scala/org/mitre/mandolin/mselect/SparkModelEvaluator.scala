@@ -4,9 +4,9 @@ import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
-import org.mitre.mandolin.glp.{GLPComponentSet, GLPFactor}
-import org.mitre.mandolin.glp.local.{LocalProcessor, LocalGLPOptimizer}
-import org.mitre.mandolin.predict.local.{LocalEvalDecoder, LocalTrainer}
+import org.mitre.mandolin.mlp.{MMLPComponentSet, MMLPFactor}
+import org.mitre.mandolin.mlp.standalone.{Processor, MMLPOptimizer}
+import org.mitre.mandolin.predict.standalone.{EvalDecoder, Trainer}
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.slf4j.LoggerFactory
 import scala.collection.parallel.ForkJoinTaskSupport
@@ -14,7 +14,7 @@ import scala.concurrent.forkjoin.ForkJoinPool
 import scala.concurrent._
 import java.util.concurrent.Executors
 
-class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]])
+class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[MMLPFactor]], testBC: Broadcast[Vector[MMLPFactor]])
   extends ModelEvaluator with Serializable {
   val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -44,7 +44,7 @@ class SparkModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]
   }
 }
 
-class SparkMxModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[GLPFactor]], testBC: Broadcast[Vector[GLPFactor]])
+class SparkMxModelEvaluator(sc: SparkContext, trainBC: Broadcast[Vector[MMLPFactor]], testBC: Broadcast[Vector[MMLPFactor]])
   extends ModelEvaluator with Serializable {
 
   override def evaluate(c: ModelConfig, generation: Int): (Double, Long) = {

@@ -1,9 +1,9 @@
 package org.mitre.mandolin.mx.local
 
 import org.mitre.mandolin.config.LogInit
-import org.mitre.mandolin.glp.{ GLPTrainerBuilder, GLPFactor }
+import org.mitre.mandolin.mlp.{ MMLPTrainerBuilder, MMLPFactor }
 import org.mitre.mandolin.util.LocalIOAssistant
-import org.mitre.mandolin.mx.{ MxNetSetup, GLPFactorIter, MxModelSettings, SymbolBuilder, MxNetOptimizer, MxNetWeights, MxNetEvaluator }
+import org.mitre.mandolin.mx.{ MxNetSetup, MMLPFactorIter, MxModelSettings, SymbolBuilder, MxNetOptimizer, MxNetWeights, MxNetEvaluator }
 import ml.dmlc.mxnet.{ DataIter, Context, Shape, IO, FactorScheduler, Model, Uniform, Xavier }
 import ml.dmlc.mxnet.optimizer._
 
@@ -54,9 +54,9 @@ object MxMain extends LogInit with MxNetSetup {
   }
   
   
-  def getVecIOs(appSettings: MxModelSettings) : (Vector[GLPFactor], Vector[GLPFactor], Int) = {
+  def getVecIOs(appSettings: MxModelSettings) : (Vector[MMLPFactor], Vector[MMLPFactor], Int) = {
     val io = new LocalIOAssistant
-    val components = GLPTrainerBuilder.getComponentsViaSettings(appSettings, io)
+    val components = MMLPTrainerBuilder.getComponentsViaSettings(appSettings, io)
     val featureExtractor = components.featureExtractor
     val trFile = appSettings.trainFile.get
     val tstFile = appSettings.testFile.getOrElse(trFile)
@@ -70,8 +70,8 @@ object MxMain extends LogInit with MxNetSetup {
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)        
     val (trVecs, tstVecs, nfs) = getVecIOs(appSettings)
     val shape = Shape(nfs)
-    val trIter = new GLPFactorIter(trVecs.toIterator, shape, appSettings.miniBatchSize)
-    val tstIter = new GLPFactorIter(tstVecs.toIterator, shape, appSettings.miniBatchSize)
+    val trIter = new MMLPFactorIter(trVecs.toIterator, shape, appSettings.miniBatchSize)
+    val tstIter = new MMLPFactorIter(tstVecs.toIterator, shape, appSettings.miniBatchSize)
     val lr = appSettings.initialLearnRate
     val opt = getOptimizer(appSettings)
     val updater = new MxNetOptimizer(opt)

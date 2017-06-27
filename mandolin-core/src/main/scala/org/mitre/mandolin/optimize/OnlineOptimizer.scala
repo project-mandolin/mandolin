@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 /**
  * Handles the processing of a single partition within a single <i>epoch</i>. The partition is processed by spawning separate
  * within-process worker threads (using Scala's parallel collections).  Each thread processes a portion of the training data
- * within the partition and updates the model parameters local to this worker/partition, possibly asynchronously.
+ * within the partition and updates the model parameters standalone to this worker/partition, possibly asynchronously.
  * @param evaluator Evaluator that evaluates loss and gradient for a single datapoint or mini-batch
  * @param workersPerPartition Number of threads on each node to compute gradient-based updates
  * @param synchronous Set to true to prevent asynchronous "Hogwild" updates
@@ -65,7 +65,7 @@ abstract class AbstractThreadProcessor[T] {
 }
 
 /**
- * Implements "Hogwild" asynchronous updates of the local copy of the weights.
+ * Implements "Hogwild" asynchronous updates of the standalone copy of the weights.
  */
 class AsynchronousThreadProcessor[T, W <: Weights[W], LG <: LossGradient[LG], U <: Updater[W, LG, U]](
   val data: Vector[T],

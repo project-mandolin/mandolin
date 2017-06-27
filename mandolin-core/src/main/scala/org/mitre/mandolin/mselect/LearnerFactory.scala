@@ -1,9 +1,9 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPFactor, GLPWeights, GLPComponentSet, MandolinMLPSettings,
+import org.mitre.mandolin.mlp.{CategoricalMMLPPredictor, ANNetwork, MMLPFactor, MMLPWeights, MMLPComponentSet, MandolinMLPSettings,
   LType, TanHLType, ReluLType, InputLType, SparseInputLType, SoftMaxLType}
-import org.mitre.mandolin.glp.local.{LocalGLPOptimizer, LocalProcessor}
-import org.mitre.mandolin.predict.local.{LocalEvalDecoder, NonExtractingEvalDecoder, LocalTrainer}
+import org.mitre.mandolin.mlp.standalone.{MMLPOptimizer, Processor}
+import org.mitre.mandolin.predict.standalone.{EvalDecoder, NonExtractingEvalDecoder, Trainer}
 import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.util.LocalIOAssistant
 
@@ -11,7 +11,7 @@ import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 
 
-trait LearnerInstance[T] extends LocalProcessor {
+trait LearnerInstance[T] extends Processor {
   def train(train: Vector[T], test: Option[Vector[T]]): Double
 }
 
@@ -59,13 +59,13 @@ class MandolinModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilde
   }
 }
 
-class MandolinModelInstance(appSettings: MandolinMLPSettings, config: ModelConfig, nn: ANNetwork) extends LearnerInstance[GLPFactor] {
+class MandolinModelInstance(appSettings: MandolinMLPSettings, config: ModelConfig, nn: ANNetwork) extends LearnerInstance[MMLPFactor] {
 
-  def train(train: Vector[GLPFactor], test: Option[Vector[GLPFactor]]) : Double = {
-    val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, nn)
-    val predictor = new CategoricalGLPPredictor(nn, true)
-    val trainer = new LocalTrainer(optimizer)
-    val evPr = new NonExtractingEvalDecoder[GLPFactor,GLPWeights,Int,DiscreteConfusion](predictor)
+  def train(train: Vector[MMLPFactor], test: Option[Vector[MMLPFactor]]) : Double = {
+    val optimizer = MMLPOptimizer.getOptimizer(appSettings, nn)
+    val predictor = new CategoricalMMLPPredictor(nn, true)
+    val trainer = new Trainer(optimizer)
+    val evPr = new NonExtractingEvalDecoder[MMLPFactor,MMLPWeights,Int,DiscreteConfusion](predictor)
     val (weights, trainLoss) = trainer.retrainWeights(train, appSettings.numEpochs)    
     val confusion = evPr.evalWithoutExtraction(test.getOrElse(train), weights)    
     val acc = confusion.getAccuracy
@@ -86,7 +86,7 @@ object MandolinModelInstance {
     
     // val fullSpec : Vector[LType] = Vector(config.inLType) ++  Vector(config.outLType)
     // val net = ANNetwork(sets.ne, config.inDim, config.outDim)
-    val fullSpec = org.mitre.mandolin.glp.ANNBuilder.getGLPSpec(sets.netspec, config.inDim, config.outDim)
+    val fullSpec = org.mitre.mandolin.mlp.ANNBuilder.getMMLPSpec(sets.netspec, config.inDim, config.outDim)
     val net = ANNetwork(fullSpec, config.inDim, config.outDim)
     val allParams : Seq[(String,Any)] = (cats ++ reals ++ ints) toSeq   
     

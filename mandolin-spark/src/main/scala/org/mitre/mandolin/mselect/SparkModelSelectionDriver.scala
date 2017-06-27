@@ -1,10 +1,10 @@
 package org.mitre.mandolin.mselect
 
 import org.apache.spark.SparkContext
-import org.mitre.mandolin.glp.spark.AppConfig
+import org.mitre.mandolin.mlp.spark.AppConfig
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.glp.{ANNetwork, CategoricalGLPPredictor, GLPFactor, MandolinMLPSettings, GLPTrainerBuilder, GLPWeights, SparseInputLType}
+import org.mitre.mandolin.mlp.{ANNetwork, CategoricalMMLPPredictor, MMLPFactor, MandolinMLPSettings, MMLPTrainerBuilder, MMLPWeights, SparseInputLType}
 
 class SparkModelSelectionDriver(val sc: SparkContext, val msb: MandolinModelSpaceBuilder, trainFile: String, testFile: Option[String],
                                 numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
@@ -16,13 +16,13 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
   }     
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
-  val (fe: FeatureExtractor[String, GLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int, sparse: Boolean) = {
+  val (fe: FeatureExtractor[String, MMLPFactor], nnet: ANNetwork, numInputs: Int, numOutputs: Int, sparse: Boolean) = {
     val settings = appSettings.getOrElse((new MandolinMLPSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
       ("mandolin.trainer.test-file", testFile)
     )))
 
-    val (trainer, nn) = GLPTrainerBuilder(settings)
+    val (trainer, nn) = MMLPTrainerBuilder(settings)
     val featureExtractor = trainer.getFe
     featureExtractor.getAlphabet.ensureFixed // fix the alphabet
     val numInputs = nn.inLayer.getNumberOfOutputs // these will then be gathered dynamically from the trainFile

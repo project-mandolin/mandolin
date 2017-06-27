@@ -6,7 +6,7 @@ import org.mitre.mandolin.util.spark.{SparkIOAssistant}
 import org.mitre.mandolin.util.{Alphabet, StdAlphabet}
 import org.mitre.mandolin.optimize.spark.DistributedOnlineOptimizer
 import org.mitre.mandolin.predict.spark.Trainer
-import org.mitre.mandolin.glp.spark.AppConfig
+import org.mitre.mandolin.mlp.spark.AppConfig
 
 
 import org.apache.spark.{SparkContext, AccumulatorParam}

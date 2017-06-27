@@ -2,26 +2,26 @@ package org.mitre.mandolin.gm
 
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.util.{ StdAlphabet, IdentityAlphabet, Alphabet, DenseTensor1 => DenseVec }
-import org.mitre.mandolin.glp.{ StdGLPFactor, ANNetwork, ANNBuilder, LType, InputLType, SoftMaxLType, GLPFactor, GLPWeights, GLPLossGradient, 
-  CategoricalGLPPredictor, GLPAdaGradUpdater, GLPInstanceEvaluator }
-import org.mitre.mandolin.glp.local.LocalGLPOptimizer
-import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
-import org.mitre.mandolin.predict.local.LocalTrainer
+import org.mitre.mandolin.mlp.{ StdMMLPFactor, ANNetwork, ANNBuilder, LType, InputLType, SoftMaxLType, MMLPFactor, MMLPWeights, MMLPLossGradient,
+  CategoricalMMLPPredictor, MMLPAdaGradUpdater, MMLPInstanceEvaluator }
+import org.mitre.mandolin.mlp.standalone.MMLPOptimizer
+import org.mitre.mandolin.optimize.standalone.OnlineOptimizer
+import org.mitre.mandolin.predict.standalone.Trainer
 
 case class AlphabetSet(sa: Alphabet, fa: Alphabet, sla: Alphabet, fla: Alphabet)
 
 class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGraph) {
   val (singletonNN, factorNN) = getComponents(fgSettings, factorGraph.alphabets)
-  val sOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, singletonNN)
-  val fOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, factorNN)
+  val sOpt = MMLPOptimizer.getOptimizer(fgSettings, singletonNN)
+  val fOpt = MMLPOptimizer.getOptimizer(fgSettings, factorNN)
   val ie = new IdentityExtractor(new IdentityAlphabet(1))
-  val sTrainer = new LocalTrainer(ie, sOpt)
-  val fTrainer = new LocalTrainer(ie, fOpt)
+  val sTrainer = new Trainer(ie, sOpt)
+  val fTrainer = new Trainer(ie, fOpt)
   
   def getComponents(fgSettings: FactorGraphSettings, as: AlphabetSet) = {
     val fgProcessor = new FactorGraphProcessor
-    val singletonSp = ANNBuilder.getGLPSpec(fgSettings.netspec, as.sa.getSize, as.sla.getSize)
-    val factorSp   = ANNBuilder.getGLPSpec(fgSettings.netspec, as.fa.getSize, as.fla.getSize)
+    val singletonSp = ANNBuilder.getMMLPSpec(fgSettings.netspec, as.sa.getSize, as.sla.getSize)
+    val factorSp   = ANNBuilder.getMMLPSpec(fgSettings.netspec, as.fa.getSize, as.fla.getSize)
     //val singletonAnn = ANNetwork(IndexedSeq(LType(InputLType, as.sa.getSize), LType(SoftMaxLType,as.sla.getSize)))
     //val factorAnn    = ANNetwork(IndexedSeq(LType(InputLType, as.fa.getSize), LType(SoftMaxLType,as.fla.getSize)))
     (ANNetwork(singletonSp), ANNetwork(factorSp))    
@@ -30,8 +30,8 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
   def trainModels() = {    
     val (sWeights,_) = sTrainer.trainWeights(factorGraph.singletons)
     val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
-    val sm = new FactorModel(new CategoricalGLPPredictor(singletonNN, true), sWeights)
-    val fm = new FactorModel(new CategoricalGLPPredictor(factorNN, true), fWeights)
+    val sm = new FactorModel(new CategoricalMMLPPredictor(singletonNN, true), sWeights)
+    val fm = new FactorModel(new CategoricalMMLPPredictor(factorNN, true), fWeights)
     new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
   }
   
@@ -161,10 +161,10 @@ object FactorGraph {
   }
 }
 
-class IdentityExtractor(alphabet: Alphabet) extends FeatureExtractor[GMFactor, GLPFactor] {
+class IdentityExtractor(alphabet: Alphabet) extends FeatureExtractor[GMFactor, MMLPFactor] {
   def getAlphabet = alphabet
   def getNumberOfFeatures = alphabet.getSize
-  def extractFeatures(fm: GMFactor) : GLPFactor = fm.getInput
+  def extractFeatures(fm: GMFactor) : MMLPFactor = fm.getInput
 }
 
 class GMFactorExtractor(factorAlphabet: Alphabet, factorLa: Alphabet, varOrder: Int, varToSingles: Map[String, SingletonFactor]) 
@@ -260,7 +260,7 @@ class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet) e
         val l_ind = singletonLa.ofString(label)
         val lv = DenseVec.zeros(singletonLa.getSize)
         lv.update(l_ind,1.0f) // one-hot encoding
-        val sgf = new StdGLPFactor(-1, dVec, lv, Some(uniqueId))
+        val sgf = new StdMMLPFactor(-1, dVec, lv, Some(uniqueId))
         val factor = new SingletonFactor(sgf, l_ind)
         variableToSingletonFactors += (v1 -> factor)
         factor

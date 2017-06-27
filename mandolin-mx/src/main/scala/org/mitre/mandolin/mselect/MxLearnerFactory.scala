@@ -1,12 +1,12 @@
 package org.mitre.mandolin.mselect
 
-import org.mitre.mandolin.glp.GLPFactor
-import org.mitre.mandolin.glp.{MandolinMLPSettings, LType, SparseInputLType, InputLType, SoftMaxLType}
+import org.mitre.mandolin.mlp.MMLPFactor
+import org.mitre.mandolin.mlp.{MandolinMLPSettings, LType, SparseInputLType, InputLType, SoftMaxLType}
 import org.mitre.mandolin.mx.{MxModelSettings, MxNetSetup}
 
 import ml.dmlc.mxnet.{Uniform, Xavier, Context, Shape}
 import ml.dmlc.mxnet.optimizer._
-import org.mitre.mandolin.mx.{MxNetOptimizer, MxNetWeights, MxNetEvaluator, SymbolBuilder, GLPFactorIter}
+import org.mitre.mandolin.mx.{MxNetOptimizer, MxNetWeights, MxNetEvaluator, SymbolBuilder, MMLPFactorIter}
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
@@ -54,15 +54,15 @@ trait MxLearnerBuilderHelper {
 }
 
 class MxModelInstance(appSettings: MxModelSettings, nfs: Int, modelId: Int, startFrom: Int)
-extends LearnerInstance[GLPFactor] with MxNetSetup {
+extends LearnerInstance[MMLPFactor] with MxNetSetup {
     
-  def train(trVecs: Vector[GLPFactor], tstVecs: Option[Vector[GLPFactor]]) : Double = {
+  def train(trVecs: Vector[MMLPFactor], tstVecs: Option[Vector[MMLPFactor]]) : Double = {
     val devices = getDeviceArray(appSettings)
     val sym = (new SymbolBuilder).symbolFromSpec(appSettings.config)
     val shape = Shape(nfs)
-    val trIter = new GLPFactorIter(trVecs.toIterator, shape, appSettings.miniBatchSize)
+    val trIter = new MMLPFactorIter(trVecs.toIterator, shape, appSettings.miniBatchSize)
     val tstIter = tstVecs match {
-      case Some(tst) => new GLPFactorIter(tst.toIterator, shape, appSettings.miniBatchSize)
+      case Some(tst) => new MMLPFactorIter(tst.toIterator, shape, appSettings.miniBatchSize)
       case None => trIter
     }
     val lr = appSettings.initialLearnRate
@@ -153,7 +153,7 @@ class FileSystemMxModelEvaluator(trData: java.io.File, tstData: java.io.File) ex
 }
 
 
-class LocalMxModelEvaluator(trData: Vector[GLPFactor], tstData: Option[Vector[GLPFactor]]) extends ModelEvaluator with Serializable {
+class LocalMxModelEvaluator(trData: Vector[MMLPFactor], tstData: Option[Vector[MMLPFactor]]) extends ModelEvaluator with Serializable {
 
   def evaluate(c: ModelConfig, generation: Int): (Double, Long) = {
     val learner = MxModelInstance(c)

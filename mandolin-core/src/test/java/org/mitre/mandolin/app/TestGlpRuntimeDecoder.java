@@ -9,7 +9,7 @@ class TestGlpRuntimeDecoder {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		GlpRuntimeDecoder dec = new GlpRuntimeDecoder(args[0]);
+		MMLPRuntimeDecoder dec = new MMLPRuntimeDecoder(args[0]);
 		
 		List<StringDoublePair> li = new ArrayList<StringDoublePair>();
 		li.add(new StringDoublePair("153",3.0));

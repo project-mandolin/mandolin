@@ -2,7 +2,7 @@ package org.mitre.mandolin.mselect
 
 
 import org.mitre.mandolin.xg.{XGBoostEvaluator, XGModelSettings}
-import org.mitre.mandolin.glp.{LType, InputLType, SparseInputLType, SoftMaxLType, GLPFactor}
+import org.mitre.mandolin.mlp.{LType, InputLType, SparseInputLType, SoftMaxLType, MMLPFactor}
 
 class XGModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilder {
 
@@ -32,9 +32,9 @@ class XGModelSpaceBuilder(ms: Option[ModelSpace]) extends ModelSpaceBuilder {
 
 
 class XGModelInstance(appSettings: XGModelSettings, nfs: Int, modelId: Int, startFrom: Int)
-  extends LearnerInstance[GLPFactor] {
+  extends LearnerInstance[MMLPFactor] {
 
-  def train(trVecs: Vector[GLPFactor], tstVecs: Option[Vector[GLPFactor]]): Double = {
+  def train(trVecs: Vector[MMLPFactor], tstVecs: Option[Vector[MMLPFactor]]): Double = {
     tstVecs match {
       case Some(tstVecs) =>
         val evaluator = new XGBoostEvaluator(appSettings)
@@ -74,7 +74,7 @@ object XGModelInstance extends XGLearnerBuilderHelper {
 }
 
 
-class XGModelEvaluator(trData: Vector[GLPFactor], tstData: Option[Vector[GLPFactor]]) extends ModelEvaluator with Serializable {
+class XGModelEvaluator(trData: Vector[MMLPFactor], tstData: Option[Vector[MMLPFactor]]) extends ModelEvaluator with Serializable {
 
   def evaluate(c: ModelConfig, generation: Int): (Double, Long) = {
     val learner = XGModelInstance(c)

@@ -115,7 +115,7 @@ class StarCoordinatedBlockMinimizationInference(val fm: FactorModel, val sm: Fac
           margSums += math.log(u_i)
           margSums /= (1.0 + parents.length)
           val mSum = margSums.toFloat / tau.toFloat
-          // once fixed margSums computed, perform local closed-form update to deltas
+          // once fixed margSums computed, perform standalone closed-form update to deltas
           parents foreach {case (c,vInd) =>
             // update deltas -- STAR update --
             c.deltas(vInd)(iVal) += ((math.log(c.fixedVarMarginals(vInd)(iVal)).toFloat / tau.toFloat) - mSum)

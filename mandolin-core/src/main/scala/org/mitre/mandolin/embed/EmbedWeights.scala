@@ -4,7 +4,7 @@ import org.mitre.mandolin.optimize.{Weights, LossGradient, Updater}
 import org.mitre.mandolin.util.{Alphabet, Tensor1 => Vec, Tensor2 => Mat, DenseTensor2 => DenseMat, DenseTensor1 => DenseVec}
 
 /*
- * Note that these weights are represented using the transpose of GLP weights.
+ * Note that these weights are represented using the transpose of MMLP weights.
  * That is, dim(W) = (l-1, l) has dim(l-1) rows and dim(l) columns where dim(l-1) is the number of inputs and dim(l)
  * is the number of outputs/dimensions of current layer
  */

@@ -61,7 +61,7 @@ object MandolinBuild extends Build {
        if (isSnapshot.value)
          Some("snapshots" at nexus + "content/repositories/snapshots")
        else
-         Some("releases" at nexus + "service/local/staging/deploy/maven2")
+         Some("releases" at nexus + "service/standalone/staging/deploy/maven2")
     },
     publishMavenStyle := true,    
     publishArtifact in Test := false,

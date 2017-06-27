@@ -9,7 +9,7 @@ that can be used to process new data instances and produce a prediction and/or g
 distribution.  Mandolin provides a simple mechanism to do this allowing a model to be called easily from
 Scala or Java.  From Scala, a simple case might be:
 
-    import org.mitre.mandolin.app.GlpRuntimeDecoder
+    import org.mitre.mandolin.app.MMLPRuntimeDecoder
     import org.mitre.mandolin.app.StringDoublePair
 
     val modelFile = new java.io.File(modelFilePath)
@@ -25,7 +25,7 @@ Scala or Java.  From Scala, a simple case might be:
 
 The same functionality is realized in Java with:
 
-    import org.mitre.mandolin.app.GlpRuntimeDecoder;
+    import org.mitre.mandolin.app.MMLPRuntimeDecoder;
     import org.mitre.mandolin.app.StringDoublePair;
     import java.util.List;
     import java.util.ArrayList;

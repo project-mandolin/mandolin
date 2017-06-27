@@ -1,6 +1,6 @@
 package org.mitre.mandolin.gm
 
-import org.mitre.mandolin.glp.MandolinMLPSettings
+import org.mitre.mandolin.mlp.MandolinMLPSettings
 
 class FactorGraphSettings(args: Array[String]) extends MandolinMLPSettings(args) {
 

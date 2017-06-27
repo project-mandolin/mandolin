@@ -4,7 +4,7 @@ import scala.reflect.ClassTag
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.Partitioner
-import org.mitre.mandolin.glp.MandolinMLPSettings
+import org.mitre.mandolin.mlp.MandolinMLPSettings
 import org.mitre.mandolin.optimize._
 
 /**
@@ -41,7 +41,7 @@ class RandomPartitioner(partitions: Int) extends Partitioner {
  * @param evaluator Evaluate loss function with current weights
  * @param initialUpdater Weight updater (e.g. sgd, adagrad, ..), initialized as appropriate
  * @param maxEpochs maximum number of map-reduce epochs to perform
- * @param numSubEpochs number of passes over local data per map-reduce iteration
+ * @param numSubEpochs number of passes over standalone data per map-reduce iteration
  * @param workersPerPartition number of threads operating over data per partition (usually 1 partition per node)
  * @param optimizationDetails output file where progress of optimizer is written to
  * @param synchronous force synchronous parameter updates on each node (i.e. do NOT use "Hogwild" training)

@@ -1,6 +1,6 @@
 package org.mitre.mandolin.xg
 
-import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor, SparseGLPFactor}
+import org.mitre.mandolin.mlp.{MMLPFactor, StdMMLPFactor, SparseMMLPFactor}
 import ml.dmlc.xgboost4j.LabeledPoint
 import ml.dmlc.xgboost4j.scala.{DMatrix, XGBoost, Booster}
 
@@ -13,31 +13,31 @@ class XGBoostEvaluator(settings: XGModelSettings) {
   paramMap.put("scale_pos_weight", settings.scalePosWeight)
   paramMap.put("silent", settings.silent)
 
-  def mapGLPFactorToLabeledPoint(gf: GLPFactor) : LabeledPoint = {
+  def mapMMLPFactorToLabeledPoint(gf: MMLPFactor) : LabeledPoint = {
     gf match {
-      case x: SparseGLPFactor =>
+      case x: SparseMMLPFactor =>
         val spv = x.getInput
         val out = x.getOutput
         val outVal = out.argmax.toFloat
         LabeledPoint.fromSparseVector(outVal, spv.indArray, spv.valArray)
-      case x: StdGLPFactor =>
+      case x: StdMMLPFactor =>
         val dv = x.getInput
         val out = x.getOutput
         val outVal = out.argmax.toFloat
         LabeledPoint.fromDenseVector(outVal, dv.asArray)
     }
   }
-  
+
   def gatherTestAUC(s: String) = {
     s.split('\t').toList match {
       case rnd :: tst :: _ => tst.split(':')(1).toFloat
       case _ => throw new RuntimeException("Unable to parse cross validation metric: " + s)
     }
   }
-  
-  def evaluateTrainingSet(train: Iterator[GLPFactor], test: Option[Iterator[GLPFactor]]) : (Float, Option[Booster]) = {
-    val trIter = train map mapGLPFactorToLabeledPoint
-    val tstIter = test map {iter => iter map mapGLPFactorToLabeledPoint }
+
+  def evaluateTrainingSet(train: Iterator[MMLPFactor], test: Option[Iterator[MMLPFactor]]) : (Float, Option[Booster]) = {
+    val trIter = train map mapMMLPFactorToLabeledPoint
+    val tstIter = test map {iter => iter map mapMMLPFactorToLabeledPoint }
     val trainDm = new DMatrix(trIter)
     tstIter match {
       case Some(tst) =>

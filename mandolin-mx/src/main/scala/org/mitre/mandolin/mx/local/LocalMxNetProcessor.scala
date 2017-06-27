@@ -1,8 +1,8 @@
 package org.mitre.mandolin.mx.local
 
-import org.mitre.mandolin.glp.{ AbstractProcessor, MandolinMLPSettings }
+import org.mitre.mandolin.mlp.{ AbstractProcessor, MandolinMLPSettings }
 import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant, LocalIOAssistant }
-import org.mitre.mandolin.predict.local.LocalTrainer
+import org.mitre.mandolin.predict.standalone.Trainer
 import org.slf4j.LoggerFactory
 
 class LocalMxNetProcessor(appSettings: MandolinMLPSettings) extends AbstractProcessor {
@@ -17,7 +17,7 @@ class LocalMxNetProcessor(appSettings: MandolinMLPSettings) extends AbstractProc
     val optimizer = LocalMxNetOptimizer.getLocalOptimizer()
     logger.info(".. reading data ..")
     val lines = io.readLines(trainFile.get)
-    val trainer = new LocalTrainer(fe, optimizer)
+    val trainer = new Trainer(fe, optimizer)
     val (finalWeights,_) = trainer.trainWeights(lines.toVector)    
     finalWeights
   }
