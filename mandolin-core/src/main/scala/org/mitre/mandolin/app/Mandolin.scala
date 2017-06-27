@@ -8,7 +8,7 @@ import scala.reflect.runtime.universe
 class TmpAppSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings[TmpAppSettings](_confOptions, _conf) {
   override def withSets(avs: Seq[(String, Any)]): TmpAppSettings = this
 
-  val appDriverClass = asStrOpt("mandolin.driverClass")
+  val appDriverClass = asStrOpt("mandolin.driver-class")
 }
 
 trait AppMain extends LogInit {

@@ -2,10 +2,10 @@ package org.mitre.mandolin.mselect
 
 import org.mitre.mandolin.mx.MxModelSettings
 import org.apache.spark.SparkContext
-
+import org.mitre.mandolin.app.AppMain
 import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.mlp.{ MMLPTrainerBuilder, MandolinMLPSettings, CategoricalMMLPPredictor, MMLPFactor, MMLPWeights, ANNetwork, SparseInputLType }
+import org.mitre.mandolin.mlp.{ANNetwork, CategoricalMMLPPredictor, MMLPFactor, MMLPTrainerBuilder, MMLPWeights, MandolinMLPSettings, SparseInputLType}
 
 class SparkMxModelSelectionDriver(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], 
     numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
@@ -62,7 +62,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   }
 }
 
-object SparkMxModelSelectionDriver extends org.mitre.mandolin.config.LogInit {
+object SparkMxModelSelectionDriver extends AppMain {
 
   def main(args: Array[String]) : Unit = {
     val a1 = new MxModelSettings(args)
