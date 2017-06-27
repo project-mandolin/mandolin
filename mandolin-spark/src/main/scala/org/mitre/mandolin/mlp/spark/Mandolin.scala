@@ -1,12 +1,13 @@
 package org.mitre.mandolin.mlp.spark
 
+import org.mitre.mandolin.app.AppMain
 import org.mitre.mandolin.mlp.MandolinMLPSettings
 
 
 /**
  * @author wellner
  */
-object Mandolin extends org.mitre.mandolin.config.LogInit {
+object Mandolin extends AppMain {
 
   def main(args: Array[String]): Unit = {
     val appSettings = new MandolinMLPSettings(args)
