@@ -14,27 +14,30 @@ class SubgradientInference(val fm: FactorModel, val sm: FactorModel, init: Doubl
   var alpha = init.toFloat
   
   def mapInfer(f: Vector[MultiFactor], s: Vector[SingletonFactor], maxN: Int) = {
+    logger.info("Inference using simple sub-gradient method")
     var i = 0; while (i < maxN) {
       alpha /= (1.0f + i)
       f foreach {factor => factor.setModeHard(fm, true)}
       s foreach {single => single.setModeHard(sm, true)}
+      var adjustments = 0
       f foreach {factor =>
         val fAssignment = factor.varAssignment
-        logger.info("Factor mode assignment: ")
-        val sb = new StringBuilder
-        fAssignment foreach {v => sb append (" " + v)}
-        logger.info(sb.toString)
+        // val sb = new StringBuilder
+        // fAssignment foreach {v => sb append (" " + v)}
+        // logger.info(sb.toString)
         var j = 0; while (j < factor.numVars) {
           val fjAssign = fAssignment(j)
           val sjAssign = factor.singletons(j).currentAssignment
           if (fjAssign != sjAssign) { // disagreement in variable assignment
-            logger.info("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
+            adjustments += 1
+            // logger.debug("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
             factor.deltas(j)(fjAssign) += alpha
             factor.deltas(j)(sjAssign) -= alpha
           }
           j += 1
         }
       }
+      logger.info("Made " + adjustments + " adjustments on inference epoch " + i)
       i += 1
     }
     // simple MAP primal solution:
@@ -73,16 +76,10 @@ class SmoothedGradientInference(val fm: FactorModel, val sm: FactorModel, init: 
       //alpha /= (1.0f + i)
       singletons foreach {s =>
         s.getMode(sm, true, 10.0f)
-        val reparams = s.reparameterizedMarginals
-        print("Reparameterized marginal distribution (singleton): ")
-        reparams foreach {v => print(" " + v)}
-        println
         var iVal = 0; while (iVal < s.varOrder) {
           val mu_i = s.reparameterizedMarginals(iVal)
           s.parentFactors foreach { case (c, vInd) =>
             c.getMode(fm, true, 10.0f)
-            val diff = mu_i - c.fixedVarMarginals(vInd)(iVal).toFloat
-            println("diff => " + diff)
             c.deltas(vInd)(iVal) -= (alpha * (mu_i - c.fixedVarMarginals(vInd)(iVal))).toFloat 
           }
           iVal += 1

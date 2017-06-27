@@ -7,10 +7,14 @@ import org.mitre.mandolin.glp.{ StdGLPFactor, ANNetwork, ANNBuilder, LType, Inpu
 import org.mitre.mandolin.glp.local.LocalGLPOptimizer
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
 import org.mitre.mandolin.predict.local.LocalTrainer
+import org.slf4j.LoggerFactory
 
 case class AlphabetSet(sa: Alphabet, fa: Alphabet, sla: Alphabet, fla: Alphabet)
 
 class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGraph) {
+  
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   val (singletonNN, factorNN) = getComponents(fgSettings, factorGraph.alphabets)
   val sOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, singletonNN)
   val fOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, factorNN)
@@ -27,25 +31,36 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
     (ANNetwork(singletonSp), ANNetwork(factorSp))    
   }
   
-  def trainModels() = {    
+  def trainModels() = {
+    val t = System.nanoTime
+    logger.info("Estimating singleton parameters ...")
     val (sWeights,_) = sTrainer.trainWeights(factorGraph.singletons)
+    logger.info("Estimation finished in " + ((System.nanoTime - t) / 1E9) + " seconds ")
+    logger.info("Estimating non-singular factor parameters ...")
+    val t1 = System.nanoTime
     val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
+    logger.info("Estimation finished in " + ((System.nanoTime - t1) / 1E9) + " seconds ")
     val sm = new FactorModel(new CategoricalGLPPredictor(singletonNN, true), sWeights)
     val fm = new FactorModel(new CategoricalGLPPredictor(factorNN, true), fWeights)
     new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
-  }
-  
+  }  
 }
 
 class FactorGraph(val factors: Vector[MultiFactor], val singletons: Vector[SingletonFactor], val alphabets: AlphabetSet)
 
 class TrainedFactorGraph(val factorModel: FactorModel, val singletonModel: FactorModel, 
-    _fs: Vector[MultiFactor], _ss: Vector[SingletonFactor], _a: AlphabetSet, init: Double = 0.1) 
+    _fs: Vector[MultiFactor], _ss: Vector[SingletonFactor], _a: AlphabetSet, init: Double = 0.1, 
+    inferType: String = "star") 
 extends FactorGraph(_fs, _ss, _a) {
   def this(fm: FactorModel, sm: FactorModel, fg: FactorGraph, lr: Double) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr)
+  def this(fm: FactorModel, sm: FactorModel, fg: FactorGraph, lr: Double, inferType: String) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr, inferType)
   
   //val inference = new SubgradientInference(factorModel, singletonModel, init)
-  val inference = new StarCoordinatedBlockMinimizationInference(factorModel, singletonModel, init)
+  val inference = inferType match {
+    case "subgrad" => new SubgradientInference(factorModel, singletonModel, init)
+    case "smoothgrad" => new SmoothedGradientInference(factorModel, singletonModel, init)
+    case _ => new StarCoordinatedBlockMinimizationInference(factorModel, singletonModel, init)
+  }
   //val inference = new SmoothedGradientInference(factorModel, singletonModel, init)
   
   def mapInfer(n: Int) = {
@@ -151,8 +166,8 @@ object FactorGraph {
     val sa = alphabets.sa
     val fla = alphabets.fla
     val fa = alphabets.fa
-    val singletonStr = fgSettings.singletonTestFile
-    val factorStr    = fgSettings.factorTestFile
+    val singletonStr = fgSettings.singletonTestFile.get
+    val factorStr    = fgSettings.factorTestFile.get
     val singletonExtractor = new GMSingletonExtractor(sa, sla)
     val singletons = scala.io.Source.fromFile(new java.io.File(singletonStr)).getLines.toList map singletonExtractor.extractFeatures
     val factorExtractor = new GMFactorExtractor(fa, fla, sla.getSize,singletonExtractor.variableToSingletonFactors)
@@ -257,7 +272,7 @@ class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet) e
             dVec.update(f.fid, fv)
           }
         }       
-        val l_ind = singletonLa.ofString(label)
+        val l_ind = math.max(singletonLa.ofString(label), 0)
         val lv = DenseVec.zeros(singletonLa.getSize)
         lv.update(l_ind,1.0f) // one-hot encoding
         val sgf = new StdGLPFactor(-1, dVec, lv, Some(uniqueId))

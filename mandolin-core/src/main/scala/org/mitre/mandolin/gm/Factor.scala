@@ -232,16 +232,16 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     fmarg foreach {case (v,ind) =>
       val assignment = indexAssignmentMap(ind)
       var av = v
-      print("Factor pre-marginal: ")
-      assignment foreach {v => print(" " + v)}
-      println(" ==> " + v)
+      // print("Factor pre-marginal: ")
+      // assignment foreach {v => print(" " + v)}
+      // println(" ==> " + v)
       var i = 0; while (i < numVars) {
         av -= deltas(i)(assignment(i))
         i += 1
       }
-      print("Factor post/dual-marginal: ")
-      assignment foreach {v => print(" " + v)}
-      println(" ==> " + av)
+      // print("Factor post/dual-marginal: ")
+      // assignment foreach {v => print(" " + v)}
+      // println(" ==> " + av)
       if (av > bestSc) {
         bestSc = av
         best = ind

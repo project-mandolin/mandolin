@@ -69,7 +69,8 @@ class FGProcessor {
     val trainer = new FactorGraphTrainer(fgSettings, fg)
     val trFg = trainer.trainModels()    
     val testFg = FactorGraph.gatherFactorGraph(fgSettings, fg.alphabets)
-    val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, testFg, fgSettings.sgAlpha)
+    val infer = fgSettings.inferAlgorithm.getOrElse("star")
+    val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, testFg, fgSettings.sgAlpha, infer)
     runtimeFg.mapInfer(fgSettings.subGradEpochs)
     logger.info("Test Accuracy: " + runtimeFg.getAccuracy)    
   }  
@@ -82,7 +83,8 @@ class FGProcessor {
     val singleModel = new FactorModel(new CategoricalGLPPredictor(testFgModel.snet), testFgModel.swts)
     val alphabetset = AlphabetSet(testFgModel.sfa, testFgModel.ffa, testFgModel.sla, testFgModel.fla)
     val decodeFg = FactorGraph.gatherFactorGraph(fgSettings, alphabetset)
-    val runtime = new TrainedFactorGraph(factorModel, singleModel, decodeFg, fgSettings.sgAlpha)
+    val infer = fgSettings.inferAlgorithm.getOrElse("star")
+    val runtime = new TrainedFactorGraph(factorModel, singleModel, decodeFg, fgSettings.sgAlpha, infer)
     runtime.mapInfer(fgSettings.subGradEpochs)
     val outFile = fgSettings.outputFile
     runtime.renderMapOutput(outFile.get, testFgModel.sla)
