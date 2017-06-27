@@ -1,5 +1,6 @@
 package org.mitre.mandolin.mselect.standalone
 
+import org.mitre.mandolin.app.AppMain
 import org.mitre.mandolin.mlp._
 import org.mitre.mandolin.mselect._
 import org.mitre.mandolin.transform.FeatureExtractor
@@ -51,7 +52,7 @@ class ModelSelector(val msb: MandolinModelSpaceBuilder, trainFile: String, testF
   }
 }
 
-object ModelSelector extends org.mitre.mandolin.config.LogInit {
+object ModelSelector extends AppMain {
 
   def main(args: Array[String]): Unit = {
     val appSettings = new MandolinMLPSettings(args) with ModelSelectionSettings
