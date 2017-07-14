@@ -107,7 +107,7 @@ class StarCoordinatedBlockMinimizationInference(val fm: FactorModel, val sm: Fac
           val u_i = s.reparameterizedMarginals(iVal)
           var margSums = 0.0
           parents foreach {case (c,vInd) =>
-            c.getMode(fm, true, tau)
+            c.getMode(fm, true, tau)     // this will get re-computed a lot, can we cache?
             margSums += math.log(c.fixedVarMarginals(vInd)(iVal)) }
           margSums += math.log(u_i)
           margSums /= (1.0 + parents.length)

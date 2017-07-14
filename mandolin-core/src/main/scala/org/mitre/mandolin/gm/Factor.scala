@@ -1,7 +1,7 @@
 package org.mitre.mandolin.gm
 
-import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPWeights, GLPFactor, StdGLPFactor}
-import org.mitre.mandolin.util.{DenseTensor1 => DenseVec}
+import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPWeights, GLPFactor, StdGLPFactor, SparseGLPFactor}
+import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, Tensor1 => Vec, SparseTensor1 => SparseVec}
 
 abstract class GMFactor {
   var currentAssignment : Int = 0
@@ -94,7 +94,8 @@ class SingletonFactor(input: GLPFactor, val label: Int) extends GMFactor {
 }
 
 class MultiFactor(val indexAssignmentMap: Array[Array[Int]], 
-    val variableOrder: Int, val singletons: Array[SingletonFactor], dvec: DenseVec, val name: String) extends GMFactor {
+    val variableOrder: Int, val singletons: Array[SingletonFactor], 
+    dvec: Vec, val name: String) extends GMFactor {
   
   val numVars = singletons.length
   /*
@@ -130,7 +131,11 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     val assignment = singletons map {s => s.label}    
     val l_ind = assignmentToIndex(assignment)
     lv.update(l_ind,1.0f) // one-hot encoding
-    new StdGLPFactor(-1, dvec, lv, None)     
+    dvec match {
+      case vec: DenseVec => new StdGLPFactor(-1, vec, lv, None)
+      case vec: SparseVec => new SparseGLPFactor(-1, vec, lv, None)
+    }
+         
   }
   
   def getInput = input

@@ -1,8 +1,8 @@
 package org.mitre.mandolin.gm
 
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.util.{ StdAlphabet, IdentityAlphabet, Alphabet, DenseTensor1 => DenseVec }
-import org.mitre.mandolin.glp.{ StdGLPFactor, ANNetwork, ANNBuilder, LType, InputLType, SoftMaxLType, GLPFactor, GLPWeights, GLPLossGradient, 
+import org.mitre.mandolin.util.{ StdAlphabet, IdentityAlphabet, Alphabet, DenseTensor1 => DenseVec, Tensor1 => Vec, SparseTensor1 => SparseVec }
+import org.mitre.mandolin.glp.{ SparseGLPFactor, StdGLPFactor, ANNetwork, ANNBuilder, LType, InputLType, SoftMaxLType, GLPLayout, GLPFactor, GLPWeights, GLPLossGradient, 
   CategoricalGLPPredictor, GLPAdaGradUpdater, GLPInstanceEvaluator }
 import org.mitre.mandolin.glp.local.LocalGLPOptimizer
 import org.mitre.mandolin.optimize.local.LocalOnlineOptimizer
@@ -23,9 +23,8 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
   val fTrainer = new LocalTrainer(ie, fOpt)
   
   def getComponents(fgSettings: FactorGraphSettings, as: AlphabetSet) = {
-    val fgProcessor = new FactorGraphProcessor
     val singletonSp = ANNBuilder.getGLPSpec(fgSettings.netspec, as.sa.getSize, as.sla.getSize)
-    val factorSp   = ANNBuilder.getGLPSpec(fgSettings.netspec, as.fa.getSize, as.fla.getSize)
+    val factorSp   = ANNBuilder.getGLPSpec(fgSettings.factorSpec, as.fa.getSize, as.fla.getSize)
     //val singletonAnn = ANNetwork(IndexedSeq(LType(InputLType, as.sa.getSize), LType(SoftMaxLType,as.sla.getSize)))
     //val factorAnn    = ANNetwork(IndexedSeq(LType(InputLType, as.fa.getSize), LType(SoftMaxLType,as.fla.getSize)))
     (ANNetwork(singletonSp), ANNetwork(factorSp))    
@@ -36,12 +35,14 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
     logger.info("Estimating singleton parameters ...")
     val (sWeights,_) = sTrainer.trainWeights(factorGraph.singletons)
     logger.info("Estimation finished in " + ((System.nanoTime - t) / 1E9) + " seconds ")
-    logger.info("Estimating non-singular factor parameters ...")
-    val t1 = System.nanoTime
-    val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
-    logger.info("Estimation finished in " + ((System.nanoTime - t1) / 1E9) + " seconds ")
+    val fm = if (factorGraph.factors.length > 0) {
+      logger.info("Estimating non-singular factor parameters ...")
+      val t1 = System.nanoTime
+      val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
+      logger.info("Estimation finished in " + ((System.nanoTime - t1) / 1E9) + " seconds ")
+      new FactorModel(new CategoricalGLPPredictor(factorNN, true), fWeights)
+    } else new FactorModel(new CategoricalGLPPredictor(factorNN, true), new GLPWeights(new GLPLayout(IndexedSeq())))
     val sm = new FactorModel(new CategoricalGLPPredictor(singletonNN, true), sWeights)
-    val fm = new FactorModel(new CategoricalGLPPredictor(factorNN, true), fWeights)
     new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
   }  
 }
@@ -90,6 +91,8 @@ extends FactorGraph(_fs, _ss, _a) {
 }
 
 object FactorGraph {
+  
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   
   def getLineInfo(rest: List[String], alphabet: Alphabet, buildVecs: Boolean) = {
       val fvbuf = new collection.mutable.ArrayBuffer[Feature]
@@ -142,37 +145,50 @@ object FactorGraph {
     fa
   }
 
-  def gatherFactorGraph(fgSettings: FactorGraphSettings) : FactorGraph = {
-    val singletonStr = fgSettings.singletonFile
+  def gatherFactorGraph(fgSettings: FactorGraphSettings) : FactorGraph = {    
+    val singletonStr = fgSettings.singletonFile    
     val factorStr    = fgSettings.factorFile
     val (sa,sla) = getFeatureAlphabetSingleton(singletonStr)
-    val fa = getFeatureAlphabetFactor(factorStr)
-    val cardinality = sla.getSize // # of labels
-    val fla = new IdentityAlphabet(cardinality*cardinality, false, true)
     sa.ensureFixed
-    fa.ensureFixed
     sla.ensureFixed
-    fla.ensureFixed
-    val singletonExtractor = new GMSingletonExtractor(sa, sla)
+    val singletonExtractor = new GMSingletonExtractor(sa, sla, fgSettings.isSparse)
     val singletons = scala.io.Source.fromFile(new java.io.File(singletonStr)).getLines.toList map singletonExtractor.extractFeatures
-    val factorExtractor = new GMFactorExtractor(fa, fla, cardinality,singletonExtractor.variableToSingletonFactors)
-    val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
-    
-    new FactorGraph(factors.toVector, singletons.toVector, AlphabetSet(sa, fa, sla, fla))
+    logger.info("Factor graph constructed with " + sa.getSize + " features for singleton factors")
+    val cardinality = sla.getSize // # of labels
+    factorStr match {
+      case Some(factorStr) =>
+        val fa = getFeatureAlphabetFactor(factorStr)
+        val fla = new IdentityAlphabet(cardinality*cardinality, false, true)
+        fa.ensureFixed
+        fla.ensureFixed
+        val factorExtractor = new GMFactorExtractor(fa, fla, cardinality,singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse)
+        logger.info("Factor graph constructed with " + fa.getSize + " features for pair-wise factors")
+        val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
+        new FactorGraph(factors.toVector, singletons.toVector, AlphabetSet(sa, fa, sla, fla))
+      case None => 
+        new FactorGraph(Vector(), singletons.toVector, AlphabetSet(sa,new IdentityAlphabet, sla, new IdentityAlphabet))
+    }        
   }
-  
+
   def gatherFactorGraph(fgSettings: FactorGraphSettings, alphabets: AlphabetSet) = {
     val sla = alphabets.sla
     val sa = alphabets.sa
     val fla = alphabets.fla
     val fa = alphabets.fa
     val singletonStr = fgSettings.singletonTestFile.get
-    val factorStr    = fgSettings.factorTestFile.get
-    val singletonExtractor = new GMSingletonExtractor(sa, sla)
+    
+    val singletonExtractor = new GMSingletonExtractor(sa, sla, fgSettings.isSparse)
     val singletons = scala.io.Source.fromFile(new java.io.File(singletonStr)).getLines.toList map singletonExtractor.extractFeatures
-    val factorExtractor = new GMFactorExtractor(fa, fla, sla.getSize,singletonExtractor.variableToSingletonFactors)
-    val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
-    new FactorGraph(factors.toVector, singletons.toVector, alphabets)
+    logger.info("Factor graph constructed with " + sa.getSize + " features for singleton factors")
+    fgSettings.factorTestFile match {
+      case Some(factorStr) =>       
+        val factorExtractor = new GMFactorExtractor(fa, fla, sla.getSize,singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse)
+        val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
+        logger.info("Factor graph constructed with " + fa.getSize + " features for pair-wise factors")
+        new FactorGraph(factors.toVector, singletons.toVector, alphabets)
+      case None => 
+        new FactorGraph(Vector(), singletons.toVector, alphabets)
+    }
   }
 }
 
@@ -182,7 +198,8 @@ class IdentityExtractor(alphabet: Alphabet) extends FeatureExtractor[GMFactor, G
   def extractFeatures(fm: GMFactor) : GLPFactor = fm.getInput
 }
 
-class GMFactorExtractor(factorAlphabet: Alphabet, factorLa: Alphabet, varOrder: Int, varToSingles: Map[String, SingletonFactor]) 
+class GMFactorExtractor(factorAlphabet: Alphabet, factorLa: Alphabet, varOrder: Int, varToSingles: Map[String, SingletonFactor],
+    sparse: Boolean = false) 
 extends FeatureExtractor[String, MultiFactor] {
   
   val sep = ' '
@@ -222,17 +239,17 @@ extends FeatureExtractor[String, MultiFactor] {
     lb match {
       case v1 :: v2 :: Nil => 
         val fv = FactorGraph.getLineInfo(rest, factorAlphabet,true)        
-        val dVec : DenseVec = DenseVec.zeros(factorAlphabet.getSize)    
+        val vec : Vec = if (sparse) SparseVec(factorAlphabet.getSize) else DenseVec.zeros(factorAlphabet.getSize)    
         fv foreach { f =>
           if (f.fid >= 0) {
             val fv = factorAlphabet.getValue(f.fid, f.value).toFloat
-            dVec.update(f.fid, fv)
+            vec.update(f.fid, fv)
           }
         }
         val s1 = varToSingles(v1)
         val s2 = varToSingles(v2)        
         val sgs = Array(s1, s2)
-        val mf = new MultiFactor(indexAssignmentMap, varOrder, sgs, dVec, (v1+v2))
+        val mf = new MultiFactor(indexAssignmentMap, varOrder, sgs, vec, (v1+v2))
         s1.addParent(mf, 0)
         s2.addParent(mf, 1)
         mf
@@ -241,7 +258,7 @@ extends FeatureExtractor[String, MultiFactor] {
   }
 }
 
-class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet) extends FeatureExtractor[String, SingletonFactor] {
+class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet, sparse: Boolean = false) extends FeatureExtractor[String, SingletonFactor] {
   
   val sep = ' '
   val buildVecs = true
@@ -265,17 +282,20 @@ class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet) e
         val label = rest.head
         val fstrs = rest.tail
         val fv = FactorGraph.getLineInfo(fstrs, singletonAlphabet,true)
-        val dVec : DenseVec = DenseVec.zeros(singletonAlphabet.getSize)    
+        val vec : Vec = if (sparse) SparseVec(singletonAlphabet.getSize) else DenseVec.zeros(singletonAlphabet.getSize)    
         fv foreach { f =>
           if (f.fid >= 0) {
             val fv = singletonAlphabet.getValue(f.fid, f.value).toFloat
-            dVec.update(f.fid, fv)
+            vec.update(f.fid, fv)
           }
         }       
         val l_ind = math.max(singletonLa.ofString(label), 0)
         val lv = DenseVec.zeros(singletonLa.getSize)
         lv.update(l_ind,1.0f) // one-hot encoding
-        val sgf = new StdGLPFactor(-1, dVec, lv, Some(uniqueId))
+        val sgf = vec match {
+          case v: DenseVec => new StdGLPFactor(-1, v, lv, Some(uniqueId))
+          case v: SparseVec => new SparseGLPFactor(-1, v, lv, Some(uniqueId))
+        }
         val factor = new SingletonFactor(sgf, l_ind)
         variableToSingletonFactors += (v1 -> factor)
         factor
