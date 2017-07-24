@@ -5,7 +5,7 @@ package org.mitre.mandolin.optimize.local
 
 import org.mitre.mandolin.glp.MandolinMLPSettings
 import org.mitre.mandolin.optimize.{EpochProcessor, LossGradient, ModelWriter, OptimizerWriter, TrainingUnitEvaluator, Updater, Weights}
-
+import org.slf4j.LoggerFactory
 import scala.reflect.ClassTag
 
 trait LocalOptimizerEstimator[T, W <: Weights[W]] {
@@ -40,6 +40,7 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
           miniBatchSize = _as.miniBatchSize, shuffle = true)
   }
   
+  val logger = LoggerFactory.getLogger(this.getClass)
   var numEpochs = 0
 
   val optOut = new OptimizerWriter(optimizationDetails)
@@ -52,14 +53,18 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
     val t0 = System.nanoTime()
     val mx = mxEpochs.getOrElse(maxEpochs)
     var finalLoss = 0.0
+    var lastTime = 0L
     for (i <- 1 to mx) {
       val shdata = if (shuffle) util.Random.shuffle(data) else data
       val (loss, time, newWeights, newUpdater) = processEpoch(shdata, numPartitions, i, weights, updater)
-      val ct = (System.nanoTime() - t0) / 1.0E9
+      val curTime = System.nanoTime()
+      val ct = ( curTime - t0) / 1.0E9
       optOut.writeln(i.toString() + "\t" + loss + "\t" + ct)
       weights = newWeights
       updater = newUpdater
       finalLoss = loss
+      logger.info("Training epoch " + i + " completed. Time = " + ((curTime - lastTime) / 1.0E9))
+      lastTime = curTime
       modelWriterOpt foreach { w => w.writeModel(weights) }
     }
     (weights, finalLoss)

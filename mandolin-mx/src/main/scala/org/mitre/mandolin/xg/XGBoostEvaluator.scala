@@ -4,7 +4,7 @@ import org.mitre.mandolin.glp.{GLPFactor, StdGLPFactor, SparseGLPFactor}
 import ml.dmlc.xgboost4j.LabeledPoint
 import ml.dmlc.xgboost4j.scala.{DMatrix, XGBoost, Booster}
 
-class XGBoostEvaluator(settings: XGModelSettings) {
+class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
   
   val paramMap = new scala.collection.mutable.HashMap[String, Any]
   paramMap.put("gamma", settings.gamma)
@@ -12,6 +12,9 @@ class XGBoostEvaluator(settings: XGModelSettings) {
   paramMap.put("objective", settings.objective)
   paramMap.put("scale_pos_weight", settings.scalePosWeight)
   paramMap.put("silent", settings.silent)
+  paramMap.put("eval_metric", settings.evalMethod)
+  paramMap.put("nthread", settings.numThreads)
+  if (numLabels > 2) paramMap.put("num_class", numLabels)  
 
   def mapGLPFactorToLabeledPoint(gf: GLPFactor) : LabeledPoint = {
     gf match {

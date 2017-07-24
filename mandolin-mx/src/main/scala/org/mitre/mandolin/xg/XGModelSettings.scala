@@ -15,12 +15,24 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   def this(args: Seq[String]) = this(Some(new ConfigGeneratedCommandOptions(args)),None)
   def this() = this(Seq())
   
+  override val trainFile = asStrOpt("mandolin.xg.train-file")
+  override val testFile = asStrOpt("mandolin.xg.test-file")
+  override val labelFile = asStrOpt("mandolin.xg.label-file")
+  override val modelFile = asStrOpt("mandolin.xg.model-file")
+  override val numThreads = asIntOpt("mandolin.xg.threads").getOrElse(1)
+  override val denseVectorSize = asIntOpt("mandolin.xg.dense-vector-size").getOrElse(0)
+
   val maxDepth = asIntOpt("mandolin.xg.max-depth").getOrElse(5)
   val rounds   = asIntOpt("mandolin.xg.rounds").getOrElse(20)
   val objective = asStrOpt("mandolin.xg.objective").getOrElse("binary:logistic")
   val scalePosWeight = asFloatOpt("mandolin.xg.scale-pos-weight").getOrElse(1.0f)
   val gamma = asFloatOpt("mandolin.xg.gamma").getOrElse(5.0f)
   val silent = !(this.asBoolean("mandolin.xg.verbose"))
+  val evalMethod = asStrOpt("mandolin.xg.eval-method") match {
+    case Some(m) => m
+    case None => if (objective.equals("binary:logistic")) "error" else "merror"
+  }
+  
 
   /**
    * Returns a new settings object with the sequence of tuple arguments values set accordingly

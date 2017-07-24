@@ -7,7 +7,7 @@ import org.mitre.mandolin.mx.{ MxNetSetup, GLPFactorIter, MxModelSettings, Symbo
 import ml.dmlc.mxnet.{ DataIter, Context, Shape, IO, FactorScheduler, Model, Uniform, Xavier }
 import ml.dmlc.mxnet.optimizer._
 
-object MxMain extends LogInit with MxNetSetup {  
+object MxMain extends LogInit with MxNetSetup with org.mitre.mandolin.app.AppMain {  
   
   def trainImageModel(appSettings: MxModelSettings) = {
     val devices = getDeviceArray(appSettings)

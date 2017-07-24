@@ -221,7 +221,7 @@ object CNNTextClassification {
 
             model.cnnExec.forward(isTrain = false)
             // this sub-binding works!
-	    executor.forward()
+	          executor.forward()
             val output = executor.outputs(0)
             // output.toArray foreach {e => print(" " + e)}
             // println

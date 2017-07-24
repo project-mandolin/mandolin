@@ -103,8 +103,7 @@ class LocalProcessor extends AbstractProcessor {
     val trainFile = appSettings.trainFile
     if (trainFile.isEmpty) throw new RuntimeException("Training file required in train-test mode")
     val io = new LocalIOAssistant
-    val components = getComponentsViaSettings(appSettings, io)
-    println("Received components")
+    val components = getComponentsViaSettings(appSettings, io) 
     val fe = components.featureExtractor
     val pr = components.predictor
     val optimizer = LocalGLPOptimizer.getLocalOptimizer(appSettings, components.ann)

@@ -5,7 +5,7 @@ import org.mitre.mandolin.glp.MandolinMLPSettings
 /**
  * @author wellner
  */
-object MandolinWithoutSpark extends org.mitre.mandolin.config.LogInit {
+object MandolinWithoutSpark extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.app.AppMain {
 
   def main(args: Array[String]): Unit = {
     val appSettings = new MandolinMLPSettings(args)
