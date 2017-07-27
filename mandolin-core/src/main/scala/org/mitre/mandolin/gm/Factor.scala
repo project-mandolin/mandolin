@@ -3,31 +3,31 @@ package org.mitre.mandolin.gm
 import org.mitre.mandolin.glp.{CategoricalGLPPredictor, ANNetwork, GLPWeights, GLPFactor, StdGLPFactor, SparseGLPFactor}
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, Tensor1 => Vec, SparseTensor1 => SparseVec}
 
-abstract class GMFactor {
+abstract class GMFactor[F <: GMFactor[F]] {
   var currentAssignment : Int = 0
-  def getMode(fm: FactorModel, dual: Boolean) : Int
-  def getMode(fm: FactorModel, dual: Boolean, tau: Double) : Int
-  def getModeHard(fm: FactorModel, dual: Boolean) : Int
+  def getMode(fm: FactorModel[F], dual: Boolean) : Int
+  def getMode(fm: FactorModel[F], dual: Boolean, tau: Double) : Int
+  def getModeHard(fm: FactorModel[F], dual: Boolean) : Int
    
   def getInput : GLPFactor
   def indexToAssignment(i: Int) : Array[Int]
   def assignmentToIndex(ar: Array[Int]) : Int
   
-  def setMode(fm: FactorModel, dual: Boolean) : Unit = {
+  def setMode(fm: FactorModel[F], dual: Boolean) : Unit = {
     currentAssignment = getMode(fm, dual)
   }
   
-  def setMode(fm: FactorModel, dual: Boolean, tau: Double) : Unit = {
+  def setMode(fm: FactorModel[F], dual: Boolean, tau: Double) : Unit = {
     currentAssignment = getMode(fm, dual, tau)
   }
   
-  def setModeHard(fm: FactorModel, dual: Boolean) : Unit = {
+  def setModeHard(fm: FactorModel[F], dual: Boolean) : Unit = {
     currentAssignment = getModeHard(fm, dual)
   }
 }
 
 
-class SingletonFactor(input: GLPFactor, val label: Int) extends GMFactor {
+class SingletonFactor(input: GLPFactor, val label: Int) extends GMFactor[SingletonFactor] {
   
   // keeps a list of parent factors and the local index of THIS singleton factor
   // in the parent factors set of singletons
@@ -44,12 +44,12 @@ class SingletonFactor(input: GLPFactor, val label: Int) extends GMFactor {
   
   def addParent(mf: MultiFactor, i: Int) = parentFactors = (mf,i) :: parentFactors 
   
-  def getMode(fm: FactorModel, dual: Boolean) = getMode(fm, dual, 10.0)
+  def getMode(fm: FactorModel[SingletonFactor], dual: Boolean) : Int = getMode(fm, dual, 10.0)
   
-  def getMode(fm: FactorModel, dual: Boolean, tau: Double) : Int = {
-    if (!dual) fm.getMode(input)
+  def getMode(fm: FactorModel[SingletonFactor], dual: Boolean, tau: Double) : Int = {
+    if (!dual) fm.getMode(this)
     else {
-      val fmarg = fm.getFullMarginal(input)
+      val fmarg = fm.getFullMarginal(this)
       
       var bestSc = -Double.MaxValue
       var best = 0 // index into best assignment
@@ -76,8 +76,8 @@ class SingletonFactor(input: GLPFactor, val label: Int) extends GMFactor {
     }
   }
   
-  def getModeHard(fm: FactorModel, dual: Boolean) : Int = {
-    val fmarg = fm.getFullMarginal(input)
+  def getModeHard(fm: FactorModel[SingletonFactor], dual: Boolean) : Int = {
+    val fmarg = fm.getFullMarginal(this)
     var bestSc = -Double.MaxValue
     var best = 0 // index into best assignment
     fmarg foreach {case (v,ind) =>
@@ -95,7 +95,7 @@ class SingletonFactor(input: GLPFactor, val label: Int) extends GMFactor {
 
 class MultiFactor(val indexAssignmentMap: Array[Array[Int]], 
     val variableOrder: Int, val singletons: Array[SingletonFactor], 
-    dvec: Vec, val name: String) extends GMFactor {
+    dvec: Vec, val name: String) extends GMFactor[MultiFactor] {
   
   val numVars = singletons.length
   /*
@@ -138,6 +138,86 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
          
   }
   
+  def marginalInference(singleGlp: ANNetwork, pairGlp: ANNetwork, weights: MultiFactorWeights) : (Array[Float], Array[Float], Array[Float]) = {
+    val pairUnit = getInput
+    val singleUnit1 = singletons(0).getInput
+    val singleUnit2 = singletons(1).getInput
+    singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
+    val f1Output = singleGlp.outLayer.getOutput(true)
+    singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
+    val f2Output = singleGlp.outLayer.getOutput(true)
+    pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
+    val pairOutput = pairGlp.outLayer.getOutput(true)
+    val a1 = f1Output.asArray
+    val a2 = f2Output.asArray
+    val dim = a1.length
+    var sum = 0.0
+    var maxScore = -Float.MaxValue
+    val potentials = 
+    Array.tabulate(dim){i =>
+      Array.tabulate(dim){ j =>        
+        val sc = a1(i) + a2(j) + assignmentToIndex(Array(i,j))
+        maxScore = math.max(maxScore, sc)
+        sc
+        }
+      }    
+    var i = 0; while (i < dim) {
+      var j = 0; while (j < dim) {
+        val potential = math.exp(potentials(i)(j) - maxScore)
+        sum += potential
+        potentials(i)(j) = potential.toFloat 
+        j += 1
+      }
+      i += 1
+    }
+    i = 0; while (i < dim) {
+      var j = 0; while (j < dim) {
+        potentials(i)(j) /= sum.toFloat 
+        j += 1
+      }
+      i += 1
+    }
+    val vec1 = Array.tabulate(dim){i =>
+      var s = 0.0f
+      val pi = potentials(i)
+      var j = 0; while (j < dim) {
+        s += pi(j)
+        j += 1
+      }
+      s
+    }
+    // Re-run forward pass    
+    singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
+    singleGlp.outLayer.setOutput(new DenseVec(vec1)) // set this to the vec1
+    val gr1 = singleGlp.backpropGradients(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)    
+    val vec2 = Array.tabulate(dim){j =>
+      var s = 0.0f
+      val pj = potentials(j)
+      var i = 0; while (i < dim) {
+        s += pj(i)
+        i += 1
+      }
+      s
+    }
+    singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
+    singleGlp.outLayer.setOutput(new DenseVec(vec2)) // set this to the vec2
+    val gr2 = singleGlp.backpropGradients(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
+    
+    pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
+    
+    // flatten the potentials back to a single vector
+    val pairVec = Array.tabulate(numConfigs){cInd =>
+      val assignment = indexToAssignment(cInd)
+      potentials(assignment(0))(assignment(1))
+    }
+    
+    pairGlp.outLayer.setOutput(new DenseVec(pairVec))
+    val grPair = pairGlp.backpropGradients(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
+    gr1.addEquals(gr2, 1.0f)
+    // joint probability and marginals for variable 1 (vec1) and variable 2 (vec2)
+    (pairVec, vec1, vec2)
+  }
+  
   def getInput = input
 
   /*
@@ -152,16 +232,15 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     s
   }
   
-    
   def indexToAssignment(i: Int) = indexAssignmentMap(i)
   
-  def getMode(fm: FactorModel, dual: Boolean) = getMode(fm, dual, 10.0)
+  def getMode(fm: FactorModel[MultiFactor], dual: Boolean) : Int = getMode(fm, dual, 10.0)
   
-  def getMode(fm: FactorModel, dual: Boolean, tau: Double) = {
+  def getMode(fm: FactorModel[MultiFactor], dual: Boolean, tau: Double) : Int = {
     if (!dual) {
-      fm.getMode(input)
+      fm.getMode(this)
     } else {
-      val fmarg = fm.getFullMarginal(input)
+      val fmarg = fm.getFullMarginal(this)
       var bestSc = -Double.MaxValue
       var best = 0 // index into best assignment
       var zSum = 0.0
@@ -230,8 +309,8 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     }
   }  
   
-  def getModeHard(fm: FactorModel, dual: Boolean) = {
-    val fmarg = fm.getFullMarginal(input)
+  def getModeHard(fm: FactorModel[MultiFactor], dual: Boolean) = {
+    val fmarg = fm.getFullMarginal(this)
     var bestSc = -Double.MaxValue
     var best = 0 // index into best assignment
     fmarg foreach {case (v,ind) =>
@@ -258,14 +337,36 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
 }
 
 
+abstract class FactorModel[F <: GMFactor[F]] {
+  def getFullMarginal(input: F) : Seq[(Float, Int)]
+  def getMode(input: F) : Int
+}
+
 /*
  * This is the parametric model that produces distributions over variable
  * configurations for a factor
  */
-class FactorModel(glp: CategoricalGLPPredictor, val wts: GLPWeights) {
-  
-  def getFullMarginal(input: GLPFactor) = glp.getScoredPredictions(input, wts)
+class SingletonFactorModel(glp: CategoricalGLPPredictor, val wts: GLPWeights) extends FactorModel[SingletonFactor] {
     
-  def getMode(input: GLPFactor) = glp.getPrediction(input, wts)
+  def getFullMarginal(input: SingletonFactor) = glp.getScoredPredictions(input.getInput, wts)
+    
+  def getMode(input: SingletonFactor) = glp.getPrediction(input.getInput, wts)
+  
+}
+
+class PairFactorModel(pairGlp: ANNetwork, singleGlp: ANNetwork, val fullWts: MultiFactorWeights) extends FactorModel[MultiFactor] {
+  
+  def getFullMarginal(input: MultiFactor) : Seq[(Float, Int)] = {
+    val (pair, v1, v2) = input.marginalInference(singleGlp, pairGlp, fullWts)
+    IndexedSeq.tabulate(pair.length){i => (pair(i), i)}
+  }
+  
+  def getMode(input: MultiFactor) = {
+    val marg = getFullMarginal(input)
+    var best = 0
+    var bestSc = 0.0
+    marg foreach {case (sc,i) => if (sc > bestSc) {best = i; bestSc = sc}}
+    best
+  }
   
 }

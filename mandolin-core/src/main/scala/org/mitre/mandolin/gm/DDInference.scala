@@ -8,7 +8,7 @@ abstract class DDInference {
 /**
  * Follows simple subgradient approach outlined in Sontag et al. 2011
  */
-class SubgradientInference(val fm: FactorModel, val sm: FactorModel, init: Double) extends DDInference {
+class SubgradientInference(val fm: PairFactorModel, val sm: SingletonFactorModel, init: Double) extends DDInference {
   
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   var alpha = init.toFloat
@@ -67,7 +67,7 @@ trait ComputeFullGradient {
  * Uses approach in Meshi et al. "Convergence Rate Analysis of MAP Coordinate Minimization Algorithms"
  * Smoothed dual MAP problem using soft-max 
  */
-class SmoothedGradientInference(val fm: FactorModel, val sm: FactorModel, init: Double) extends DDInference with ComputeFullGradient {
+class SmoothedGradientInference(val fm: PairFactorModel, val sm: SingletonFactorModel, init: Double) extends DDInference with ComputeFullGradient {
   
   var alpha = init.toFloat
   
@@ -93,7 +93,7 @@ class SmoothedGradientInference(val fm: FactorModel, val sm: FactorModel, init: 
   }
 }
 
-class StarCoordinatedBlockMinimizationInference(val fm: FactorModel, val sm: FactorModel, tau: Double) extends DDInference with ComputeFullGradient {
+class StarCoordinatedBlockMinimizationInference(val fm: PairFactorModel, val sm: SingletonFactorModel, tau: Double) extends DDInference with ComputeFullGradient {
   
   
   def mapInfer(factors: Vector[MultiFactor], singletons: Vector[SingletonFactor], maxN: Int) = {

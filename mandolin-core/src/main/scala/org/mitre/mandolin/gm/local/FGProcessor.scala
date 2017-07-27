@@ -34,7 +34,7 @@ class LocalFactorGraphModelWriter extends FactorGraphModelWriter with KryoSetup 
   
   def writeModel(io: IOAssistant, filePath: String, 
       sw: GLPWeights, sa: Alphabet, sla: Alphabet, sann: ANNetwork,
-      fw: GLPWeights, fa: Alphabet, fla: Alphabet, fann: ANNetwork) : Unit = {
+      fw: MultiFactorWeights, fa: Alphabet, fla: Alphabet, fann: ANNetwork) : Unit = {
     io.writeSerializedObject(kryo, filePath, FactorGraphModelSpec(sw, fw, sann, fann, sla, fla, sa, fa))
   }
 }
@@ -59,7 +59,7 @@ class FGProcessor {
     val trFg = trainer.trainModels()    
     val mWriter = new LocalFactorGraphModelWriter
     mWriter.writeModel(io, fgSettings.modelFile.get, trFg.singletonModel.wts, fg.alphabets.sa, fg.alphabets.sla, trainer.singletonNN, 
-        trFg.factorModel.wts, fg.alphabets.fa, fg.alphabets.fla, trainer.factorNN)
+        trFg.factorModel.fullWts, fg.alphabets.fa, fg.alphabets.fla, trainer.factorNN)
     
   }
   
@@ -79,8 +79,8 @@ class FGProcessor {
     val io = new LocalIOAssistant
     val mReader = new LocalFactorGraphModelReader
     val testFgModel = mReader.readModel(io, fgSettings.modelFile.get)
-    val factorModel = new FactorModel(new CategoricalGLPPredictor(testFgModel.fnet), testFgModel.fwts)
-    val singleModel = new FactorModel(new CategoricalGLPPredictor(testFgModel.snet), testFgModel.swts)
+    val factorModel = new PairFactorModel(testFgModel.snet, testFgModel.fnet, testFgModel.fwts)
+    val singleModel = new SingletonFactorModel(new CategoricalGLPPredictor(testFgModel.snet), testFgModel.swts)
     val alphabetset = AlphabetSet(testFgModel.sfa, testFgModel.ffa, testFgModel.sla, testFgModel.fla)
     val decodeFg = FactorGraph.gatherFactorGraph(fgSettings, alphabetset)
     val infer = fgSettings.inferAlgorithm.getOrElse("star")

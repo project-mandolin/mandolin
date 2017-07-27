@@ -11,16 +11,37 @@ import org.slf4j.LoggerFactory
 
 case class AlphabetSet(sa: Alphabet, fa: Alphabet, sla: Alphabet, fla: Alphabet)
 
+object PairWiseOptimizer {
+  
+  def getOptimizer(fgSettings: FactorGraphSettings, singleNN: ANNetwork, pairNN: ANNetwork) = {
+    val weightsSingle = singleNN.generateRandomWeights
+    val sumSquaredSingle = singleNN.generateZeroedLayout
+    val weightsPair = pairNN.generateRandomWeights
+    val sumSquaredPair = pairNN.generateZeroedLayout
+    
+    sumSquaredPair set fgSettings.initialLearnRate // set to the initial learning rate
+    sumSquaredSingle set fgSettings.initialLearnRate // set to the initial learning rate
+    val uSingle = new GLPAdaGradUpdater(sumSquaredSingle, fgSettings.initialLearnRate)
+    val uPair   = new GLPAdaGradUpdater(sumSquaredPair, fgSettings.initialLearnRate)
+    val updater = new MultiFactorAdaGradUpdater(uSingle, uPair, fgSettings.initialLearnRate)
+    val evaluator = new PairwiseFactorEvaluator[MultiFactorAdaGradUpdater](singleNN, pairNN)
+    val weights = new MultiFactorWeights(weightsSingle, weightsPair, 1.0f)
+    new LocalOnlineOptimizer[MultiFactor, MultiFactorWeights, MultiFactorLossGradient, MultiFactorAdaGradUpdater](weights, evaluator, updater, fgSettings)
+  }
+}
+
 class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGraph) {
   
   val logger = LoggerFactory.getLogger(this.getClass)
   
   val (singletonNN, factorNN) = getComponents(fgSettings, factorGraph.alphabets)
   val sOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, singletonNN)
-  val fOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, factorNN)
+  // val fOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, factorNN)
+  val fOpt = PairWiseOptimizer.getOptimizer(fgSettings, singletonNN, factorNN)
   val ie = new IdentityExtractor(new IdentityAlphabet(1))
-  val sTrainer = new LocalTrainer(ie, sOpt)
-  val fTrainer = new LocalTrainer(ie, fOpt)
+
+  val sTrainer = new LocalTrainer[SingletonFactor, GLPFactor, GLPWeights](ie, sOpt)
+  val fTrainer = new LocalTrainer[MultiFactor, MultiFactor, MultiFactorWeights](fOpt)
   
   def getComponents(fgSettings: FactorGraphSettings, as: AlphabetSet) = {
     val singletonSp = ANNBuilder.getGLPSpec(fgSettings.netspec, as.sa.getSize, as.sla.getSize)
@@ -40,21 +61,24 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
       val t1 = System.nanoTime
       val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
       logger.info("Estimation finished in " + ((System.nanoTime - t1) / 1E9) + " seconds ")
-      new FactorModel(new CategoricalGLPPredictor(factorNN, true), fWeights)
-    } else new FactorModel(new CategoricalGLPPredictor(factorNN, true), new GLPWeights(new GLPLayout(IndexedSeq())))
-    val sm = new FactorModel(new CategoricalGLPPredictor(singletonNN, true), sWeights)
+      new PairFactorModel(singletonNN, factorNN, fWeights)
+    } else {
+      val emptyWeights = new MultiFactorWeights(new GLPWeights(new GLPLayout(IndexedSeq())), new GLPWeights(new GLPLayout(IndexedSeq())), 1.0f)
+      new PairFactorModel(singletonNN, factorNN, emptyWeights) 
+    }
+    val sm = new SingletonFactorModel(new CategoricalGLPPredictor(singletonNN, true), sWeights)
     new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
   }  
 }
 
 class FactorGraph(val factors: Vector[MultiFactor], val singletons: Vector[SingletonFactor], val alphabets: AlphabetSet)
 
-class TrainedFactorGraph(val factorModel: FactorModel, val singletonModel: FactorModel, 
+class TrainedFactorGraph(val factorModel: PairFactorModel, val singletonModel: SingletonFactorModel, 
     _fs: Vector[MultiFactor], _ss: Vector[SingletonFactor], _a: AlphabetSet, init: Double = 0.1, 
     inferType: String = "star") 
 extends FactorGraph(_fs, _ss, _a) {
-  def this(fm: FactorModel, sm: FactorModel, fg: FactorGraph, lr: Double) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr)
-  def this(fm: FactorModel, sm: FactorModel, fg: FactorGraph, lr: Double, inferType: String) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr, inferType)
+  def this(fm: PairFactorModel, sm: SingletonFactorModel, fg: FactorGraph, lr: Double) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr)
+  def this(fm: PairFactorModel, sm: SingletonFactorModel, fg: FactorGraph, lr: Double, inferType: String) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr, inferType)
   
   //val inference = new SubgradientInference(factorModel, singletonModel, init)
   val inference = inferType match {
@@ -192,10 +216,10 @@ object FactorGraph {
   }
 }
 
-class IdentityExtractor(alphabet: Alphabet) extends FeatureExtractor[GMFactor, GLPFactor] {
+class IdentityExtractor(alphabet: Alphabet) extends FeatureExtractor[SingletonFactor, GLPFactor] {
   def getAlphabet = alphabet
   def getNumberOfFeatures = alphabet.getSize
-  def extractFeatures(fm: GMFactor) : GLPFactor = fm.getInput
+  def extractFeatures(fm: SingletonFactor) : GLPFactor = fm.getInput
 }
 
 class GMFactorExtractor(factorAlphabet: Alphabet, factorLa: Alphabet, varOrder: Int, varToSingles: Map[String, SingletonFactor],

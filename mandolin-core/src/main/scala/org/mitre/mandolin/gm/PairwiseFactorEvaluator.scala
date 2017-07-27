@@ -78,78 +78,21 @@ class PairwiseFactorEvaluator[U <: Updater[MultiFactorWeights, MultiFactorLossGr
 extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossGradient, U] with Serializable { 
 
   def evaluateTrainingUnit(unit: MultiFactor, weights: MultiFactorWeights, u: U) : MultiFactorLossGradient = {
-    val pairUnit = unit.getInput
+    
+    val (pairVec, vec1, vec2) = unit.marginalInference(singleGlp, pairGlp, weights)  // this does the heavy lift of full pair-wise inference
     val singleUnit1 = unit.singletons(0).getInput
     val singleUnit2 = unit.singletons(1).getInput
-    singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
-    val f1Output = singleGlp.outLayer.getOutput(true)
-    singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
-    val f2Output = singleGlp.outLayer.getOutput(true)
-    pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
-    val pairOutput = pairGlp.outLayer.getOutput(true)
-    val a1 = f1Output.asArray
-    val a2 = f2Output.asArray
-    val dim = a1.length
-    var sum = 0.0
-    var maxScore = -Float.MaxValue
-    val potentials = 
-    Array.tabulate(dim){i =>
-      Array.tabulate(dim){ j =>        
-        val sc = a1(i) + a2(j) + unit.assignmentToIndex(Array(i,j))
-        maxScore = math.max(maxScore, sc)
-        sc
-        }
-      }    
-    var i = 0; while (i < dim) {
-      var j = 0; while (j < dim) {
-        val potential = math.exp(potentials(i)(j) - maxScore)
-        sum += potential
-        potentials(i)(j) = potential.toFloat 
-        j += 1
-      }
-      i += 1
-    }
-    i = 0; while (i < dim) {
-      var j = 0; while (j < dim) {
-        potentials(i)(j) /= sum.toFloat 
-        j += 1
-      }
-      i += 1
-    }
-    val vec1 = Array.tabulate(dim){i =>
-      var s = 0.0f
-      val pi = potentials(i)
-      var j = 0; while (j < dim) {
-        s += pi(j)
-        j += 1
-      }
-      s
-    }
+    val pairUnit = unit.getInput
+    
     // Re-run forward pass    
     singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
     singleGlp.outLayer.setOutput(new DenseTensor1(vec1)) // set this to the vec1
     val gr1 = singleGlp.backpropGradients(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)    
-    val vec2 = Array.tabulate(dim){j =>
-      var s = 0.0f
-      val pj = potentials(j)
-      var i = 0; while (i < dim) {
-        s += pj(i)
-        i += 1
-      }
-      s
-    }
     singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
     singleGlp.outLayer.setOutput(new DenseTensor1(vec2)) // set this to the vec2
     val gr2 = singleGlp.backpropGradients(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
     
-    pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
-    
-    // flatten the potentials back to a single vector
-    val pairVec = Array.tabulate(unit.numConfigs){cInd =>
-      val assignment = unit.indexToAssignment(cInd)
-      potentials(assignment(0))(assignment(1))
-    }
-    
+    pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)    
     pairGlp.outLayer.setOutput(new DenseTensor1(pairVec))
     val grPair = pairGlp.backpropGradients(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
     gr1.addEquals(gr2, 1.0f)
@@ -166,11 +109,7 @@ class MultiFactorAdaGradUpdater(val singles: GLPAdaGradUpdater, val pairs: GLPAd
 
   singles.resetLearningRates(initialLearningRate)
   pairs.resetLearningRates(initialLearningRate)
-  // sumSquaredSingles set initialLearningRate // set sum squared to initial learning rate
-  // sumSquaredPairs set initialLearningRate
 
-  // val nLayers = sumSquaredSingles.length 
-  
   def asArray : Array[Float] = throw new RuntimeException("As array not available for complex updater")
   def updateFromArray(ar: Array[Float]) = throw new RuntimeException("From array not available for complex updater")
   def compress() = this
@@ -191,17 +130,7 @@ class MultiFactorAdaGradUpdater(val singles: GLPAdaGradUpdater, val pairs: GLPAd
     val c2 = pairs.compose(u.pairs)
     new MultiFactorAdaGradUpdater(c1,c2, initialLearningRate, maxNormArray, l1Array, l2Array)
   }
-    
 
-  @inline
-  final private def fastSqrt(x: Double) =
-    java.lang.Double.longBitsToDouble(((java.lang.Double.doubleToLongBits(x) >> 32) + 1072632448) << 31)
-
-    
-  @inline
-  final private def fastSqrt(x: Float) : Float = 
-    java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
-      
   def updateWeights(lossGrad: MultiFactorLossGradient, weights: MultiFactorWeights): Unit = {
     singles.updateWeights(new GLPLossGradient(0.0,lossGrad.singles), weights.singleWeights)
     pairs.updateWeights(new GLPLossGradient(0.0,lossGrad.pairs), weights.pairWeights)
