@@ -26,7 +26,7 @@ class MandolinMLPSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _
   val detailsFile = asStrOpt("mandolin.mmlp.detail-file")
   val progressFile = asStrOpt("mandolin.mmlp.progress-file")
   val labelFile = asStrOpt("mandolin.mmlp.label-file")
-  val ensureSparse = asBoolean("mandolin.mmlp.ensure-sparse")
+  // val ensureSparse = asBoolean("mandolin.mmlp.ensure-sparse")
   val useRandom = asBoolean("mandolin.mmlp.use-random-features")
   val printFeatureFile = asStrOpt("mandolin.mmlp.print-feature-file")
   val filterFeaturesMI = asInt("mandolin.mmlp.max-features-mi")

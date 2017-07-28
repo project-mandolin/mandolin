@@ -5,7 +5,9 @@ Mandolin is written in Scala and grouped into three sub-projects: `mandolin-core
 * `mandolin-core`: This artifact contains Mandolin's core functionality
 
 * `mandolin-mx`: This artifact contains wrappers around MXNet (for deep learning) and XGBoost (for gradient
-boosted trees). It relies on pre-built shared objects in the case of MXNet. It depends on `mandolin-core`.
+boosted trees). Both of these libraries use native code. Currently, Mandolin builds artifacts without any
+bundled native code and assumes the user will provide the appropriate shared libraries at runtime.
+This artifact depends on `mandolin-core`. 
 
 * `mandolin-spark`: This artfact includes functionality leveraging Apache Spark to speed
 up training and/or to provide concurrent model selection using a compute cluster. It depends on
@@ -13,7 +15,7 @@ up training and/or to provide concurrent model selection using a compute cluster
 
 All three artifacts can be built from source by downloading [SBT](http://www.scala-sbt.org/download.html).
 
-@@snip [linux-install.txt](install/linux.txt) 
+@@snip [install.txt](install/build_all.txt) 
 
 This will build three assembly artifacts (i.e. "fat" jar files) :
 `mandolin-core-0.3.5.jar`, `mandolin-mx-0.3.5.jar` and `mandolin-spark-0.3.5.jar`.
@@ -23,7 +25,7 @@ If **only** the the `mandolin-core` artifact is required, it can be compiled by 
 
     > sbt "project mandolin-core" assembly
 
-This is helpful one is training only "native" Mandolin multi-layer perceptron or linear models and
+This is helpful one is training only Mandolin's built-in  multi-layer perceptron or linear models and
 Apache Spark nor XGBoost or MXNet are not needed.  
 
 ## Building with MXNet and XGBoost
@@ -34,6 +36,16 @@ code for both MXNet and XGBoost is ***not*** included in this artifact, however.
 libraries for XGBoost are provided in `mandolin-mx/pre-compiled/xgboost` for both `linux` and `osx`.
 A pre-compiled shared library for MXNet on `osx` is available. A pre-built library for MXNet on `linux`
 is not provided due to the variety of the builds, e.g. different BLAS implementations, optional GPU support.
+
+### Rebuilding MXNet and/or XGBoost from scratcth
+
+To use Mandolin with new versions of XGBoost or MXNet, follow the steps below:
+
+  1) Build XGBoost and/or MXNet shared libraries *and* the Scala bindings.  For MXNet, only build the *core*
+     bindings that do not include any native code embedded in the resulting `.jar` file.
+  2) Remove any existing .jar files in the directory `mandolin/mandolin-mx/lib` and place the newly built .jar files in their place.
+  3) Build Mandolin using the steps outlined above (i.e. `sbt assembly` from the top-level directory).
+     
 
 ## Mandolin with Spark
 

@@ -184,7 +184,7 @@ abstract class AbstractProcessor extends LineParser {
       }
       wr.close()
     }
-    println("Feature symbol table extracted ... " + finalAlphabet.getSize + " features identified")
+    // println("Feature symbol table extracted ... " + finalAlphabet.getSize + " features identified")
     if (selectFeatures > 0) {
       println((alphabet.getSize - finalAlphabet.getSize).toString + " features removed based on mutual information selection..\n")
     }
@@ -194,7 +194,7 @@ abstract class AbstractProcessor extends LineParser {
   def getAlphabet(appSettings: MandolinMLPSettings, la: Alphabet, io: IOAssistant): (Alphabet, Int) = {
     if (appSettings.useRandom) (new RandomAlphabet(appSettings.numFeatures), 1000)
     else {
-      println("Building alphabet with training input data")
+      // println("Building alphabet with training input data")
       getAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.scaleInputs,
         appSettings.filterFeaturesMI, appSettings.printFeatureFile, io)
     }
@@ -230,7 +230,7 @@ abstract class AbstractProcessor extends LineParser {
       else if (isSparse) new SparseVecFeatureExtractor(fa, labelAlphabet) else new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
     val laSize = if (regression) 1 else labelAlphabet.getSize
     val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, laSize)
-    MMLPComponentSet(nn, predictor, outConstructor, fe, new IdentityAlphabet(1), dim, 1000)
+    MMLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
   }
 
   def getComponentsDenseVecs(appSettings: MandolinMLPSettings, io: IOAssistant): MMLPComponentSet = {
@@ -296,8 +296,10 @@ abstract class AbstractProcessor extends LineParser {
 
   def getComponentsViaSettings(appSettings: MandolinMLPSettings, io: IOAssistant): MMLPComponentSet = {
     if (appSettings.denseVectorSize > 0) getComponentsDenseVecs(appSettings, io)
-    else if (appSettings.useRandom) getComponentsHashedFeatures(appSettings, io)    
-    else getComponentsInducedAlphabet(appSettings, io)
+    else if (appSettings.useRandom) getComponentsHashedFeatures(appSettings, io)
+    else {
+     getComponentsInducedAlphabet(appSettings, io) 
+    }
   }    
 
   def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, MMLPFactor)], laOpt: Option[Alphabet]): Unit = {

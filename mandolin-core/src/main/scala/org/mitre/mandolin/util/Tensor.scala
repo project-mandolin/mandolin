@@ -678,7 +678,7 @@ object SparseTensor1 {
   def apply(dim: Int, dr: Float) = new DynamicSparseTensor1(dim, dr, new OpenIntDoubleHashMap)
   def apply(dim: Int, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, 0.1f, um)
   def apply(dim: Int, dr: Float, um: OpenIntDoubleHashMap) = new DynamicSparseTensor1(dim, dr, um)
-  
+    
   def getOneHot(dim: Int, v: Int) = new StaticSparseTensor1(dim, 0.1f, Array(v), Array(1.0f))
   def getOnes(dim: Int, inds: Array[Int]) = new StaticSparseTensor1(dim, 0.1f, inds, Array.fill(inds.length)(1.0f))
   def getStaticSparseTensor1(dim: Int, inds: Array[Int], vls: Array[Float]) = new StaticSparseTensor1(dim, 0.1f, inds, vls)

@@ -111,6 +111,10 @@ class ANNetwork(val inLayer: InputLayer, val layers: IndexedSeq[NonInputLayer], 
    */
   def getGradient(inputVec: Vec, targetVec: Vec, glpW: MMLPWeights) = {
     forwardPass(inputVec, targetVec, glpW, true)
+    backpropGradients(inputVec, targetVec, glpW)
+  }
+  
+  def backpropGradients(inputVec: Vec, targetVec: Vec, glpW: MMLPWeights) = {
     if ((numLayers > 1) || !sparseInput) {
       val revGrads = for (i <- (numLayers - 1) to 0 by -1) yield {
         val (w, b) = glpW.wts.get(i)

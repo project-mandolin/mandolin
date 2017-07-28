@@ -8,33 +8,36 @@ abstract class DDInference {
 /**
  * Follows simple subgradient approach outlined in Sontag et al. 2011
  */
-class SubgradientInference(val fm: FactorModel, val sm: FactorModel, init: Double) extends DDInference {
+class SubgradientInference(val fm: PairFactorModel, val sm: SingletonFactorModel, init: Double) extends DDInference {
   
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   var alpha = init.toFloat
   
   def mapInfer(f: Vector[MultiFactor], s: Vector[SingletonFactor], maxN: Int) = {
+    logger.info("Inference using simple sub-gradient method")
     var i = 0; while (i < maxN) {
       alpha /= (1.0f + i)
       f foreach {factor => factor.setModeHard(fm, true)}
       s foreach {single => single.setModeHard(sm, true)}
+      var adjustments = 0
       f foreach {factor =>
         val fAssignment = factor.varAssignment
-        logger.info("Factor mode assignment: ")
-        val sb = new StringBuilder
-        fAssignment foreach {v => sb append (" " + v)}
-        logger.info(sb.toString)
+        // val sb = new StringBuilder
+        // fAssignment foreach {v => sb append (" " + v)}
+        // logger.info(sb.toString)
         var j = 0; while (j < factor.numVars) {
           val fjAssign = fAssignment(j)
           val sjAssign = factor.singletons(j).currentAssignment
           if (fjAssign != sjAssign) { // disagreement in variable assignment
-            logger.info("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
+            adjustments += 1
+            // logger.debug("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
             factor.deltas(j)(fjAssign) += alpha
             factor.deltas(j)(sjAssign) -= alpha
           }
           j += 1
         }
       }
+      logger.info("Made " + adjustments + " adjustments on inference epoch " + i)
       i += 1
     }
     // simple MAP primal solution:
@@ -64,7 +67,7 @@ trait ComputeFullGradient {
  * Uses approach in Meshi et al. "Convergence Rate Analysis of MAP Coordinate Minimization Algorithms"
  * Smoothed dual MAP problem using soft-max 
  */
-class SmoothedGradientInference(val fm: FactorModel, val sm: FactorModel, init: Double) extends DDInference with ComputeFullGradient {
+class SmoothedGradientInference(val fm: PairFactorModel, val sm: SingletonFactorModel, init: Double) extends DDInference with ComputeFullGradient {
   
   var alpha = init.toFloat
   
@@ -73,16 +76,10 @@ class SmoothedGradientInference(val fm: FactorModel, val sm: FactorModel, init: 
       //alpha /= (1.0f + i)
       singletons foreach {s =>
         s.getMode(sm, true, 10.0f)
-        val reparams = s.reparameterizedMarginals
-        print("Reparameterized marginal distribution (singleton): ")
-        reparams foreach {v => print(" " + v)}
-        println
         var iVal = 0; while (iVal < s.varOrder) {
           val mu_i = s.reparameterizedMarginals(iVal)
           s.parentFactors foreach { case (c, vInd) =>
             c.getMode(fm, true, 10.0f)
-            val diff = mu_i - c.fixedVarMarginals(vInd)(iVal).toFloat
-            println("diff => " + diff)
             c.deltas(vInd)(iVal) -= (alpha * (mu_i - c.fixedVarMarginals(vInd)(iVal))).toFloat 
           }
           iVal += 1
@@ -96,7 +93,7 @@ class SmoothedGradientInference(val fm: FactorModel, val sm: FactorModel, init: 
   }
 }
 
-class StarCoordinatedBlockMinimizationInference(val fm: FactorModel, val sm: FactorModel, tau: Double) extends DDInference with ComputeFullGradient {
+class StarCoordinatedBlockMinimizationInference(val fm: PairFactorModel, val sm: SingletonFactorModel, tau: Double) extends DDInference with ComputeFullGradient {
   
   
   def mapInfer(factors: Vector[MultiFactor], singletons: Vector[SingletonFactor], maxN: Int) = {
@@ -110,7 +107,7 @@ class StarCoordinatedBlockMinimizationInference(val fm: FactorModel, val sm: Fac
           val u_i = s.reparameterizedMarginals(iVal)
           var margSums = 0.0
           parents foreach {case (c,vInd) =>
-            c.getMode(fm, true, tau)
+            c.getMode(fm, true, tau)     // this will get re-computed a lot, can we cache?
             margSums += math.log(c.fixedVarMarginals(vInd)(iVal)) }
           margSums += math.log(u_i)
           margSums /= (1.0 + parents.length)

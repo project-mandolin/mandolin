@@ -133,6 +133,29 @@ abstract class AppSettings[S <: AppSettings[S]](_confOptions: Option[ConfigGener
   /** Mode for application (train|predict|model-selection) */
   val appMode          = asStr("mandolin.mode")
   val storage          = asStr("mandolin.spark.storage")
-
+  val driverBlock      = asStrOpt("mandolin.driver").getOrElse("mmlp")
   def withSets(avs: Seq[(String, Any)]) : S
+}
+
+class InitializeSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings[InitializeSettings](_confOptions, _conf) with Serializable {
+
+  import scala.collection.JavaConversions._
+  
+  def this(str: String) = this(None, Some(com.typesafe.config.ConfigFactory.parseString(str)))
+  def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)), None)
+  
+  /**
+    * Returns a new settings object with the sequence of tuple arguments values set accordingly
+    */
+  override def withSets(avs: Seq[(String, Any)]): InitializeSettings = {
+    val nc = avs.foldLeft(this.config) { case (ac, (v1, v2)) =>
+      v2 match {
+        case v2: List[_] =>
+          if (v2 != null) ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromIterable(v2)) else ac
+        case v2: Any =>
+          ac.withValue(v1, com.typesafe.config.ConfigValueFactory.fromAnyRef(v2))
+      }
+    }
+    new InitializeSettings(None, Some(nc))
+  }
 }

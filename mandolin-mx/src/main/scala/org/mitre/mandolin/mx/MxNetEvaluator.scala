@@ -77,7 +77,6 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
       ff.fit(trainData = tr, evalData = tst, evalMetric = metric, kvStoreType = "local_update_cpu", epochEndCallback = checkPointer, 
           batchEndCallback = new Speedometer(batchSz, 50))
       checkPointPrefix foreach {p => Model.saveCheckpoint(p, epochCnt, sym, ff.getArgParams, ff.getAuxParams)}
-      sym.dispose()
     } else {
 
       val ff = new FeedForward(net, ctx, optimizer = u.optimizer, 
@@ -87,7 +86,6 @@ extends TrainingUnitEvaluator[DataBatch, MxNetWeights, MxNetLossGradient, MxNetO
       weights.setArgParams(ff.getArgParams)
       weights.setAuxParams(ff.getAuxParams)
       checkPointPrefix foreach {p => Model.saveCheckpoint(p, epochCnt, net, ff.getArgParams, ff.getAuxParams)}
-      net.dispose()
     }        
                
     new MxNetLossGradient(metric.get._2(0).toDouble)

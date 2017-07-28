@@ -30,10 +30,9 @@ trait KryoSetup {
 class StandaloneFactorGraphModelWriter extends FactorGraphModelWriter with KryoSetup {
 
   val kryo = setupKryo()
-
   def writeModel(io: IOAssistant, filePath: String,
-                 sw: MMLPWeights, sa: Alphabet, sla: Alphabet, sann: ANNetwork,
-                 fw: MMLPWeights, fa: Alphabet, fla: Alphabet, fann: ANNetwork): Unit = {
+      sw: MMLPWeights, sa: Alphabet, sla: Alphabet, sann: ANNetwork,
+      fw: MultiFactorWeights, fa: Alphabet, fla: Alphabet, fann: ANNetwork) : Unit = {
     io.writeSerializedObject(kryo, filePath, FactorGraphModelSpec(sw, fw, sann, fann, sla, fla, sa, fa))
   }
 }
@@ -58,9 +57,8 @@ class FGProcessor {
     val trainer = new FactorGraphTrainer(fgSettings, fg)
     val trFg = trainer.trainModels()
     val mWriter = new StandaloneFactorGraphModelWriter
-    mWriter.writeModel(io, fgSettings.modelFile.get, trFg.singletonModel.wts, fg.alphabets.sa, fg.alphabets.sla, trainer.singletonNN,
-      trFg.factorModel.wts, fg.alphabets.fa, fg.alphabets.fla, trainer.factorNN)
-
+    mWriter.writeModel(io, fgSettings.modelFile.get, trFg.singletonModel.wts, fg.alphabets.sa, fg.alphabets.sla, trainer.singletonNN, 
+        trFg.factorModel.fullWts, fg.alphabets.fa, fg.alphabets.fla, trainer.factorNN)
   }
 
   def processTrainTest(fgSettings: FactorGraphSettings) = {
@@ -69,7 +67,8 @@ class FGProcessor {
     val trainer = new FactorGraphTrainer(fgSettings, fg)
     val trFg = trainer.trainModels()
     val testFg = FactorGraph.gatherFactorGraph(fgSettings, fg.alphabets)
-    val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, testFg, fgSettings.sgAlpha)
+    val infer = fgSettings.inferAlgorithm.getOrElse("star")
+    val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, testFg, fgSettings.sgAlpha, infer)
     runtimeFg.mapInfer(fgSettings.subGradEpochs)
     logger.info("Test Accuracy: " + runtimeFg.getAccuracy)
   }
@@ -78,11 +77,12 @@ class FGProcessor {
     val io = new LocalIOAssistant
     val mReader = new StandaloneFactorGraphModelReader
     val testFgModel = mReader.readModel(io, fgSettings.modelFile.get)
-    val factorModel = new FactorModel(new CategoricalMMLPPredictor(testFgModel.fnet), testFgModel.fwts)
-    val singleModel = new FactorModel(new CategoricalMMLPPredictor(testFgModel.snet), testFgModel.swts)
+    val factorModel = new PairFactorModel(testFgModel.snet, testFgModel.fnet, testFgModel.fwts)
+    val singleModel = new SingletonFactorModel(new CategoricalMMLPPredictor(testFgModel.snet), testFgModel.swts)
     val alphabetset = AlphabetSet(testFgModel.sfa, testFgModel.ffa, testFgModel.sla, testFgModel.fla)
     val decodeFg = FactorGraph.gatherFactorGraph(fgSettings, alphabetset)
-    val runtime = new TrainedFactorGraph(factorModel, singleModel, decodeFg, fgSettings.sgAlpha)
+    val infer = fgSettings.inferAlgorithm.getOrElse("star")
+    val runtime = new TrainedFactorGraph(factorModel, singleModel, decodeFg, fgSettings.sgAlpha, infer)
     runtime.mapInfer(fgSettings.subGradEpochs)
     val outFile = fgSettings.outputFile
     runtime.renderMapOutput(outFile.get, testFgModel.sla)
