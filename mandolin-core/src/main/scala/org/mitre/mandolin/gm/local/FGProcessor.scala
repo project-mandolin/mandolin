@@ -79,7 +79,7 @@ class FGProcessor {
     val io = new LocalIOAssistant
     val mReader = new LocalFactorGraphModelReader
     val testFgModel = mReader.readModel(io, fgSettings.modelFile.get)
-    val factorModel = new PairFactorModel(testFgModel.snet, testFgModel.fnet, testFgModel.fwts)
+    val factorModel = new PairFactorModel(testFgModel.fnet, testFgModel.snet, testFgModel.fwts)
     val singleModel = new SingletonFactorModel(new CategoricalGLPPredictor(testFgModel.snet), testFgModel.swts)
     val alphabetset = AlphabetSet(testFgModel.sfa, testFgModel.ffa, testFgModel.sla, testFgModel.fla)
     val decodeFg = FactorGraph.gatherFactorGraph(fgSettings, alphabetset)

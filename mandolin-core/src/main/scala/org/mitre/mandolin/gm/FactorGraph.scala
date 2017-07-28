@@ -53,13 +53,13 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
   
   def trainModels() = {
     val t = System.nanoTime
-    logger.info("Estimating singleton parameters ...")
+    logger.info("Estimating singleton parameters ... with " + fgSettings.numEpochs + " epochs")
     val (sWeights,_) = sTrainer.trainWeights(factorGraph.singletons)
     logger.info("Estimation finished in " + ((System.nanoTime - t) / 1E9) + " seconds ")
     val fm = if (factorGraph.factors.length > 0) {
-      logger.info("Estimating non-singular factor parameters ...")
+      logger.info("Estimating non-singular factor parameters ... with " + fgSettings.numEpochs + " epochs" )
       val t1 = System.nanoTime
-      val (fWeights,_) = fTrainer.trainWeights(factorGraph.factors)
+      val (fWeights,_) = fTrainer.retrainWeights(factorGraph.factors, fgSettings.numEpochs)
       logger.info("Estimation finished in " + ((System.nanoTime - t1) / 1E9) + " seconds ")
       new PairFactorModel(singletonNN, factorNN, fWeights)
     } else {
