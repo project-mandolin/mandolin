@@ -25,7 +25,7 @@ object Mandolin extends AppMain with org.mitre.mandolin.config.LogInit {
       tmpSettings.driverBlock match {
         case "mx" => "org.mitre.mandolin.mx.local.MxMain"
         case "xg" => "org.mitre.mandolin.xg.XGMain"
-        case _ => "org.mitre.mandolin.glp.local.MandolinWithoutSpark"
+        case _ => "org.mitre.mandolin.mlp.standalone.MandolinMain"
       }
     try {
       val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader())
