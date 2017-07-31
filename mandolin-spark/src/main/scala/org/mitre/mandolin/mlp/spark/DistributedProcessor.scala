@@ -83,7 +83,7 @@ object AppConfig {
 
   /**
     * Creates a Spark Configuration object and adds application-specific Spark settings
-    * to the configuration. This allows Mandolin application settings and Spark settings
+    * to the configuration. This allows MandolinMain application settings and Spark settings
     * to be specified in a unified way via the Typesafe configuration framework.
     *
     * @param appSettings Application settings object

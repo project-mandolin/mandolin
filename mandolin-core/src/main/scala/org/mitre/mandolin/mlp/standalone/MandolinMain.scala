@@ -12,14 +12,13 @@ object MandolinMain extends LogInit with AppMain {
   def main(args: Array[String]): Unit = {
     val appSettings = new MandolinMLPSettings(args)
     val mode = appSettings.appMode
-    val numPartitions = appSettings.numPartitions
     val localProcessor = new Processor
     mode match {
       case "train"             => localProcessor.processTrain(appSettings)
-      case "decode"            => localProcessor.processDecode(appSettings)
+      case "predict"            => localProcessor.processPredict(appSettings)
       case "train-test"        => localProcessor.processTrainTest(appSettings)
       case "train-decode"      => localProcessor.processTrainDecode(appSettings)
-      case "train-decode-dirs" => localProcessor.processTrainTestDirectories(appSettings)
+
     }
     System.exit(0)
   }

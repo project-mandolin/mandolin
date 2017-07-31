@@ -7,7 +7,7 @@ import org.mitre.mandolin.mlp.MandolinMLPSettings
 /**
  * @author wellner
  */
-object Mandolin extends AppMain {
+object MandolinMain extends AppMain {
 
   def main(args: Array[String]): Unit = {
     val appSettings = new MandolinMLPSettings(args)
@@ -16,7 +16,7 @@ object Mandolin extends AppMain {
     val distProcessor = new DistributedProcessor(numPartitions)
       mode match {
         case "train" => distProcessor.processTrain(appSettings)
-        case "decode" => distProcessor.processDecode(appSettings)
+        case "predict" => distProcessor.processDecode(appSettings)
         case "train-test" => distProcessor.processTrainTest(appSettings)
         case "train-decode" => distProcessor.processTrainDecode(appSettings)
     }

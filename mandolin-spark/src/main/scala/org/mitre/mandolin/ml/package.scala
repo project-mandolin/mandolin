@@ -4,7 +4,7 @@ package org.mitre.mandolin
  */
 
 /**
- * This package includes an API for Mandolin that conforms and extends
+ * This package includes an API for MandolinMain that conforms and extends
  * to the API used by **spark.ml**.
  */ 
 package object ml {

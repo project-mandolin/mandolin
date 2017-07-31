@@ -84,7 +84,7 @@ class Processor extends AbstractProcessor {
     finalWeights
   }
 
-  def processDecode(appSettings: MandolinMLPSettings) = {
+  def processPredict(appSettings: MandolinMLPSettings) = {
     if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in decoding mode")
     val io = new LocalIOAssistant
     val modelSpec = (new StandaloneMMLPModelReader).readModel(appSettings.modelFile.get, io)

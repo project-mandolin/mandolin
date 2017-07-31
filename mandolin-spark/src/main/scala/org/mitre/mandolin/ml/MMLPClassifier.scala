@@ -39,7 +39,7 @@ trait MMLPParams extends Params {
  * Classification model based on a general multi-layered perceptron. Includes fast online (asynchronous)
  * parameter estimation on each worker node with periodic (per epoch) model/weight averaging. Often much
  * faster than batch or mini-batch gradient descent with computation of gradient spread across the cluster.
- * Mandolin implementation here includes a general way to specify multi-layer perceptrons with many different
+ * MandolinMain implementation here includes a general way to specify multi-layer perceptrons with many different
  * possible activation functions, network topologies, loss functions and forms of regularization.
  * @param uid Unique id for this object (randomly generated if not provided)
  * @param mmlp A MMLP model instance

@@ -7,19 +7,19 @@ import org.mitre.mandolin.util.LocalIOAssistant
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.mlp.{ANNetwork, CategoricalMMLPPredictor, MMLPFactor, MMLPTrainerBuilder, MMLPWeights, MandolinMLPSettings, SparseInputLType}
 
-class SparkMxModelSelectionDriver(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], 
+class SparkMxModelSelectionDriver(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String],
     numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
-    hyperMax: Int = 81) 
+    hyperMax: Int = 81)
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix,hyperMax) {
-  
-  def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
-    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers,  
+
+  def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = {
+    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers,
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband,
     appSettings.hyperbandMixParam, appSettings.numEpochs)
-  }      
+  }
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
-  
+
   val (fe: FeatureExtractor[String, MMLPFactor], numInputs: Int, numOutputs: Int) = {
     val settings = appSettings.getOrElse((new MandolinMLPSettings).withSets(Seq(
       ("mandolin.trainer.train-file", trainFile),
@@ -42,20 +42,20 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
 }
 
 class SparkLocalFileSystemImgMxModelSelector(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
-    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f, 
-    hyperMax: Int = 81) 
+    appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
+    hyperMax: Int = 81)
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
-  
-  
-  // allow for Mandolin to use the appSettings here while programmatic/external setup can be done directly by passing
+
+
+  // allow for MandolinMain to use the appSettings here while programmatic/external setup can be done directly by passing
   // in various parameters
-  def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = { 
-    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers, 
+  def this(sc: SparkContext, _msb: MxModelSpaceBuilder, appSettings: MxModelSettings with ModelSelectionSettings) = {
+    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers,
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband,
     appSettings.hyperbandMixParam, appSettings.numEpochs)
   }
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }
-  
+
   val ms: ModelSpace = msb.build(0, 0, false, appSettings)
   override val ev = {
     new SparkMxFileSystemModelEvaluator(sc, trainFile, testFile.getOrElse(trainFile))
@@ -74,9 +74,9 @@ object SparkMxModelSelectionDriver extends AppMain {
     val sc = new SparkContext
     val trainFile = appSettings.trainFile.get
     val testFile = appSettings.testFile.getOrElse(trainFile)
-    val builder = new MxModelSpaceBuilder(appSettings.modelSpace)    
-    val selector = 
-      if ((appSettings.inputType equals "recordio") || (appSettings.inputType equals "mnist")) 
+    val builder = new MxModelSpaceBuilder(appSettings.modelSpace)
+    val selector =
+      if ((appSettings.inputType equals "recordio") || (appSettings.inputType equals "mnist"))
         new SparkLocalFileSystemImgMxModelSelector(sc, builder, appSettings)
       else new SparkMxModelSelectionDriver(sc, builder, appSettings)
     selector.search()

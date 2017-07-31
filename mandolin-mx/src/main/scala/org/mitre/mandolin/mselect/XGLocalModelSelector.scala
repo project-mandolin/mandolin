@@ -1,8 +1,9 @@
 package org.mitre.mandolin.mselect
 
+import org.mitre.mandolin.app.AppMain
 import org.mitre.mandolin.xg.XGModelSettings
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.mlp.{ MMLPFactor, MandolinMLPSettings, MMLPTrainerBuilder }
+import org.mitre.mandolin.mlp.{MMLPFactor, MMLPTrainerBuilder, MandolinMLPSettings}
 import org.mitre.mandolin.util.LocalIOAssistant
 
 class LocalXGModelSelector(val msb: XGModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
@@ -42,7 +43,7 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
 /**
  * @author wellner
  */
-object XGLocalModelSelector extends org.mitre.mandolin.config.LogInit {
+object XGLocalModelSelector extends org.mitre.mandolin.config.LogInit with AppMain {
 
    def main(args: Array[String]): Unit = {
     val appSettings1 = new XGModelSettings(args) with ModelSelectionSettings
