@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory
 import scala.reflect.ClassTag
 
 trait LocalOptimizerEstimator[T, W <: Weights[W]] {
+
+  def copy() : LocalOptimizerEstimator[T, W]
   def estimate(data: Vector[T], mxEpochs: Option[Int] = None): (W, Double)
 }
 
@@ -47,13 +49,18 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
 
   protected var weights = initialWeights
   protected var updater = initialUpdater
-
+  
+  def copy() : LocalOptimizerEstimator[T, W] = {
+    new LocalOnlineOptimizer(initialWeights.copy(), evaluator.copy(), initialUpdater.copy(), 
+        maxEpochs, numSubEpochs, workersPerPartition, optimizationDetails, modelWriterOpt, synchronous, skipProb, miniBatchSize, shuffle)
+  }
+  
   def estimate(data: Vector[T], mxEpochs: Option[Int] = None): (W, Double) = {
     val numPartitions = 1
     val t0 = System.nanoTime()
     val mx = mxEpochs.getOrElse(maxEpochs)
     var finalLoss = 0.0
-    var lastTime = 0L
+    var lastTime = System.nanoTime
     for (i <- 1 to mx) {
       val shdata = if (shuffle) util.Random.shuffle(data) else data
       val (loss, time, newWeights, newUpdater) = processEpoch(shdata, numPartitions, i, weights, updater)
@@ -63,7 +70,7 @@ class LocalOnlineOptimizer[T, W <: Weights[W]: ClassTag, LG <: LossGradient[LG],
       weights = newWeights
       updater = newUpdater
       finalLoss = loss
-      logger.info("Training epoch " + i + " completed. Time = " + ((curTime - lastTime) / 1.0E9))
+      // logger.info("Training epoch " + i + " completed. Time = " + ((curTime - lastTime) / 1.0E9))
       lastTime = curTime
       modelWriterOpt foreach { w => w.writeModel(weights) }
     }

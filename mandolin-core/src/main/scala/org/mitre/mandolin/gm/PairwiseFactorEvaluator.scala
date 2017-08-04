@@ -86,6 +86,14 @@ extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossG
     pairVec foreach {v => vstr append v; vstr append ' '}
     logger.info("Pair vec: " + vstr.toString)
     
+    val vstr1 = new StringBuilder
+    vec1 foreach {v => vstr1 append v; vstr1 append ' '}
+    logger.info("Vec1: " + vstr1.toString)
+    
+    val vstr2 = new StringBuilder
+    vec2 foreach {v => vstr2 append v; vstr2 append ' '}
+    logger.info("Vec2: " + vstr2.toString)
+    
     val singleUnit1 = unit.singletons(0).getInput
     val singleUnit2 = unit.singletons(1).getInput
     val pairUnit = unit.getInput

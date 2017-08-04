@@ -113,7 +113,12 @@ class LocalProcessor extends AbstractProcessor {
     val trainTester =
           new LocalTrainTester[String, GLPFactor, GLPWeights, Int, DiscreteConfusion](trainer,
             pr, appSettings.numEpochs, appSettings.testFreq, appSettings.progressFile)
-    trainTester.trainAndTest(lines, testLines.get)
+    testLines match {
+      case Some(m) => trainTester.trainAndTest(lines, m) 
+      case None =>
+        val vecs = lines map { fe.extractFeatures }
+        trainTester.crossValidate(vecs, 5)
+        }            
   }
   
   /**

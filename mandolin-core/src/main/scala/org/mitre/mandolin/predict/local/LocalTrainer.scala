@@ -28,6 +28,8 @@ class LocalTrainer[IType, Un : ClassTag, W <: Weights[W]](
   
   def getFe = fe.get
   
+  def copy() : LocalTrainer[IType, Un, W] = new LocalTrainer(fe, opt.copy())
+  
   /**
    * Extracts features and then trains a model with provided distributed optimizer
    * 
