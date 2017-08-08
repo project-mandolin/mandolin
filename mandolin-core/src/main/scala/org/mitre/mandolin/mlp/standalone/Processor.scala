@@ -113,7 +113,13 @@ class Processor extends AbstractProcessor {
     val trainTester =
       new TrainTester[String, MMLPFactor, MMLPWeights, Int, DiscreteConfusion](trainer,
         pr, appSettings.numEpochs, appSettings.testFreq, appSettings.progressFile)
-    trainTester.trainAndTest(lines, testLines.get)
+    testLines match {
+      case Some(tl) => trainTester.trainAndTest(lines, tl)
+      case None =>
+        val allVecs = lines map { fe.extractFeatures }
+        trainTester.crossValidate(allVecs, 5)
+    }
+    
   }
 
   /**

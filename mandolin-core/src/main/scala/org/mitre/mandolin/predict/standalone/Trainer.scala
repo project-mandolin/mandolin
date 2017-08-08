@@ -28,6 +28,8 @@ class Trainer[IType, Un : ClassTag, W <: Weights[W]](
   
   def getFe = fe.get
   
+  def copy() : Trainer[IType, Un, W] = new Trainer(fe, opt.copy())
+  
   /**
    * Extracts features and then trains a model with provided distributed optimizer
    * 

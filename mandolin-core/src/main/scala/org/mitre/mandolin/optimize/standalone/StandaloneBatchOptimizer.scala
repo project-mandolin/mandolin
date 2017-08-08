@@ -11,6 +11,8 @@ class VectorData[T](val vec: Vector[T]) extends GenData[T]
 class StandaloneBatchOptimizer[T, W <: Weights[W], G <: LossGradient[G]](_dim: Int, _weights: W, _batchEvaluator: BatchEvaluator[T, W, G],
                                                                          _params: Params) extends BatchOptimizer[T, W, G](_dim, _weights, _batchEvaluator, _params) with OptimizerEstimator[T, W] {
 
+  def copy() = new StandaloneBatchOptimizer(_dim, _weights.copy(), _batchEvaluator, _params)
+
   def estimate(data: Vector[T], mxEpochs: Option[Int] = None): (W, Double) = {
     estimate(new VectorData(data), mxEpochs)
   }

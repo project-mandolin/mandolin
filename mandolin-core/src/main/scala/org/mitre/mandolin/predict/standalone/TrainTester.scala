@@ -7,7 +7,7 @@ package org.mitre.mandolin.predict.standalone
 import scala.reflect.ClassTag
 
 import org.mitre.mandolin.optimize.Weights
-import org.mitre.mandolin.predict.{Confusion, EvalPredictor, Predictor, OutputConstructor}
+import org.mitre.mandolin.predict.{Confusion, EvalPredictor, Predictor, OutputConstructor, ConfusionMatrix}
 
 class TrainDecoder[IType, U: ClassTag, W <: Weights[W] : ClassTag, R: ClassTag](
                                                                                       val trainer: Trainer[IType, U, W],
@@ -32,8 +32,8 @@ class TrainTester[IType, U: ClassTag, W <: Weights[W] : ClassTag, R: ClassTag, C
                                                                                                                    val totalEpochs: Int,
                                                                                                                    val evalFrequency: Int,
                                                                                                                    detailFile: Option[String] = None) {
-
-  val evPr = new EvalDecoder(trainer.getFe, predictor)
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+  
   var elapsedTrainingTime = 0.0
   var append = false
 
@@ -54,6 +54,7 @@ class TrainTester[IType, U: ClassTag, W <: Weights[W] : ClassTag, R: ClassTag, C
     * Trains a model and evaluates/tests it on test data periodically. Evaluations are logged.
     */
   def trainAndTest(train: Vector[IType], test: Vector[IType]) = {
+    val evPr = new EvalDecoder(trainer.getFe, predictor)
     val trainVectors = trainer.extractFeatures(train)
     val testVectors = evPr.extractFeatures(test)
     val totalNumTraining = trainVectors.length // trigger rdd collection/storage to get better timing information
@@ -73,17 +74,47 @@ class TrainTester[IType, U: ClassTag, W <: Weights[W] : ClassTag, R: ClassTag, C
     trainer.retrainWeights(trainVectors, 1)
   }
 
+  def crossValidate(train: Vector[U], folds: Int = 5) : ConfusionMatrix = {
+    logger.info("Initiating cross validation using " + folds + " folds")
+    val numPoints = train.length
+    val subparts = train.grouped(numPoints / folds).toVector
+    // train and evaluate on each fold
+    val t0 = System.nanoTime
+    val evPr = new NonExtractingEvalDecoder(predictor)    
+    val ss = for (i <- 0 until folds) yield {
+      val foldTrainer = trainer.copy() // copy the entire trainer to ensure weights aren't shared across folds
+      val tstSet = subparts(i)
+      val trSet = (subparts.zipWithIndex).foldLeft(Vector(): Vector[U]){case (ac, (v,k)) => if (k == i) ac else ac ++ v}
+      val (weights,_) = foldTrainer.retrainWeights(trSet, totalEpochs)
+      val r = evPr.evalUnits(tstSet, weights)
+      logger.info("Finished training for fold " + i + " with accuracy: " + r.getMatrix.getAccuracy)
+      // make sure to reset weights so we don't train next fold starting from current one
+      // other model types should probably re-instantiate a trainer object for each fold      
+      r
+    }
+    val finalConf = ss.reduce {_ compose _}
+    val m = finalConf.getMatrix
+    val acc = m.getAccuracy
+    val auRoc = if (m.dim == 2) finalConf.getAreaUnderROC(1) else finalConf.getTotalAreaUnderROC()
+    val accAt50 = finalConf.getAccuracyAtThroughPut(0.5)
+    val accAt30 = finalConf.getAccuracyAtThroughPut(0.3)
+    logDetails(0.0, acc, auRoc, accAt50, accAt30, ((System.nanoTime - t0) / 1E9), 1)    
+    m
+  }
+
   /**
     * Takes a train/test split, builds a model on the train set and evaluates on the test
     * set. By default the score is 1 - auROC.
     */
   def extractTrainAndScore(train: Vector[IType], test: Vector[IType]): Double = {
+    val evPr = new EvalDecoder(trainer.getFe, predictor)
     val trVecs = trainer.extractFeatures(train)
     val testVecs = evPr.extractFeatures(test)
     trainAndScore(trVecs, testVecs)
   }
 
   def trainAndScore(train: Vector[U], test: Vector[U]): Double = {
+    val evPr = new EvalDecoder(trainer.getFe, predictor)
     val (weights, trainLoss) = trainer.retrainWeights(train, totalEpochs)
     val confusion = evPr.evalUnits(test, weights)
     val confMat = confusion.getMatrix

@@ -75,11 +75,25 @@ class MultiFactorLossGradient(l: Double, val singles: MMLPLayout, val pairs: MML
 }
 
 class PairwiseFactorEvaluator[U <: Updater[MultiFactorWeights, MultiFactorLossGradient, U]](val singleGlp: ANNetwork, val pairGlp: ANNetwork)
-extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossGradient, U] with Serializable { 
+extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossGradient, U] with Serializable {
+  
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
   def evaluateTrainingUnit(unit: MultiFactor, weights: MultiFactorWeights, u: U) : MultiFactorLossGradient = {
     
     val (pairVec, vec1, vec2) = unit.marginalInference(singleGlp, pairGlp, weights)  // this does the heavy lift of full pair-wise inference
+    val vstr = new StringBuilder
+    pairVec foreach {v => vstr append v; vstr append ' '}
+    logger.info("Pair vec: " + vstr.toString)
+    
+    val vstr1 = new StringBuilder
+    vec1 foreach {v => vstr1 append v; vstr1 append ' '}
+    logger.info("Vec1: " + vstr1.toString)
+    
+    val vstr2 = new StringBuilder
+    vec2 foreach {v => vstr2 append v; vstr2 append ' '}
+    logger.info("Vec2: " + vstr2.toString)
+    
     val singleUnit1 = unit.singletons(0).getInput
     val singleUnit2 = unit.singletons(1).getInput
     val pairUnit = unit.getInput
@@ -96,6 +110,7 @@ extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossG
     pairGlp.outLayer.setOutput(new DenseTensor1(pairVec))
     val grPair = pairGlp.backpropGradients(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
     gr1.addEquals(gr2, 1.0f)
+    
     new MultiFactorLossGradient(0.0,gr1,grPair)
   }  
   

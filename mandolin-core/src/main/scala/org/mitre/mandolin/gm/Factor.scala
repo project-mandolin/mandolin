@@ -96,6 +96,8 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     val variableOrder: Int, val singletons: Array[SingletonFactor], 
     dvec: Vec, val name: String) extends GMFactor[MultiFactor] {
   
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+  
   val numVars = singletons.length
   /*
    * Number of possible configurations of variable assignments for this factor
@@ -141,21 +143,25 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     val pairUnit = getInput
     val singleUnit1 = singletons(0).getInput
     val singleUnit2 = singletons(1).getInput
+    logger.info("Pair unit FV instance = " + pairUnit)
+    logger.info("Singleton 1 = " + singleUnit1)
+    logger.info("Singleton 2 = " + singleUnit2)
+    
     singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
     val f1Output = singleGlp.outLayer.getOutput(true)
     singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
     val f2Output = singleGlp.outLayer.getOutput(true)
     pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
-    val pairOutput = pairGlp.outLayer.getOutput(true)
+    val pairOutput = pairGlp.outLayer.getOutput(true).asArray
     val a1 = f1Output.asArray
-    val a2 = f2Output.asArray
+    val a2 = f2Output.asArray    
     val dim = a1.length
     var sum = 0.0
     var maxScore = -Float.MaxValue
     val potentials = 
     Array.tabulate(dim){i =>
       Array.tabulate(dim){ j =>        
-        val sc = a1(i) + a2(j) + assignmentToIndex(Array(i,j))
+        val sc = a1(i) + a2(j) + pairOutput(assignmentToIndex(Array(i,j)))
         maxScore = math.max(maxScore, sc)
         sc
         }

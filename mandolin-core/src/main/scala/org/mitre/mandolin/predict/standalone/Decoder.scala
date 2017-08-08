@@ -85,8 +85,6 @@ class NonExtractingEvalDecoder[U : ClassTag, W <: Weights[W], R : ClassTag, C <:
 }
 
 
-
-
 /**
  * A decoder the takes and eval predictor to generate results/scores for predictions on a test set
  * @param fe feature extractor
@@ -102,8 +100,7 @@ class EvalDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, C <: Confu
     pr: EvalPredictor[U, W, R, C]
     ) {
 
-
-
+  
   def extractFeatures(inputs: Vector[IType]) : Vector[U] = {
     inputs map fe.extractFeatures
   }

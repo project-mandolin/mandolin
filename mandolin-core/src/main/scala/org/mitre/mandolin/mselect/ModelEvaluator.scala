@@ -36,11 +36,16 @@ class MockRandomModelEvaluator extends ModelEvaluator {
 }
 
 class LocalModelEvaluator(trData: Vector[MMLPFactor], tstData: Option[Vector[MMLPFactor]]) extends ModelEvaluator with Serializable {
+
+val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+  
   override def evaluate(c: ModelConfig, generation: Int): (Double, Long) = {
-    val config = c
-    val learner = MandolinModelInstance(config)
+    logger.info("Evaluating model configuration locally ...")
+    val learner = MandolinModelInstance(c)
+    logger.info("Acquired model evaluator instance ...")
     val startTime = System.currentTimeMillis()
     val acc = learner.train(trData, tstData)
+    logger.info("Model evaluation complete (accuracy/result = " + acc + ")")
     val endTime = System.currentTimeMillis()
     (acc, endTime - startTime)
   }
