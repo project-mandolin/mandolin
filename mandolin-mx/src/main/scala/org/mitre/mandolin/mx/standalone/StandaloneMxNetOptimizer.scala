@@ -1,4 +1,4 @@
-package org.mitre.mandolin.mx.local
+package org.mitre.mandolin.mx.standalone
 
 import org.mitre.mandolin.optimize.standalone.OnlineOptimizer
 import org.mitre.mandolin.mx._
@@ -11,7 +11,7 @@ import ml.dmlc.mxnet.optimizer.SGD
   * allowing for data conventions used by Mandolin and to ensure that standalone
   * and Spark-based usage is consistent.
   */
-object LocalMxNetOptimizer {
+object StandaloneMxNetOptimizer {
 
   val batchSize = 64
 
@@ -51,7 +51,7 @@ object LocalMxNetOptimizer {
     new MxNetWeights(argParams, auxParams, 1.0f)
   }
 
-  def getLocalOptimizer() = {
+  def getStandaloneOptimizer() = {
     val sgd = new SGD(learningRate = 0.1f)
     val updater = new MxNetOptimizer(sgd)
     val inDim = 784

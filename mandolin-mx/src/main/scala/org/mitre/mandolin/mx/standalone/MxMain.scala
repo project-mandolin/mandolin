@@ -1,4 +1,4 @@
-package org.mitre.mandolin.mx.local
+package org.mitre.mandolin.mx.standalone
 
 import org.mitre.mandolin.config.LogInit
 import org.mitre.mandolin.mlp.{ MMLPTrainerBuilder, MMLPFactor }

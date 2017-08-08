@@ -1,12 +1,12 @@
-package org.mitre.mandolin.mx.local
+package org.mitre.mandolin.mx.standalone
 
 import org.mitre.mandolin.mlp.{ AbstractProcessor, MandolinMLPSettings }
 import org.mitre.mandolin.util.{ StdAlphabet, RandomAlphabet, Alphabet, IOAssistant, LocalIOAssistant }
 import org.mitre.mandolin.predict.standalone.Trainer
 import org.slf4j.LoggerFactory
 
-class LocalMxNetProcessor(appSettings: MandolinMLPSettings) extends AbstractProcessor {
-  private val logger = LoggerFactory.getLogger(classOf[LocalMxNetProcessor])
+class StandaloneMxNetProcessor(appSettings: MandolinMLPSettings) extends AbstractProcessor {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   val io = new LocalIOAssistant
   def getFeatureExtractor = getComponentsViaSettings(appSettings, io).featureExtractor
   
@@ -14,7 +14,7 @@ class LocalMxNetProcessor(appSettings: MandolinMLPSettings) extends AbstractProc
     val components = getComponentsViaSettings(appSettings, io)       
     val trainFile = appSettings.trainFile
     val fe = getFeatureExtractor
-    val optimizer = LocalMxNetOptimizer.getLocalOptimizer()
+    val optimizer = StandaloneMxNetOptimizer.getStandaloneOptimizer()
     logger.info(".. reading data ..")
     val lines = io.readLines(trainFile.get)
     val trainer = new Trainer(fe, optimizer)
@@ -23,10 +23,10 @@ class LocalMxNetProcessor(appSettings: MandolinMLPSettings) extends AbstractProc
   }
 }
 
-object RunLocalMxNetProcessor {
+object RunStandaloneMxNetProcessor {
   
   def main(args: Array[String]) : Unit = {
     val appSettings = new MandolinMLPSettings(args)
-    (new LocalMxNetProcessor(appSettings)).processTrain()
+    (new StandaloneMxNetProcessor(appSettings)).processTrain()
   }
 }

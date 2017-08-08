@@ -52,7 +52,7 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
       case None => 
         val xv = XGBoost.crossValidation(trainDm, paramMap.toMap, settings.rounds, 5, Array("auc"), null, null)
         val finalTestMetric = gatherTestAUC(xv.last)
-        (finalTestMetric, None)
+        (1.0f - finalTestMetric, None)
     }
   }
   
