@@ -394,6 +394,7 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
           _._1
         }.reverse match {
           case h :: t => (h, t)
+          case Nil => throw new RuntimeException("No model configurations available for scoring")
         }
         // add inbest to set to evaluate
         buf append ((inbest._1, inbest._3))

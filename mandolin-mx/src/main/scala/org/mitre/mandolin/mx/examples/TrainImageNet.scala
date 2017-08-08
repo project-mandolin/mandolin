@@ -223,7 +223,10 @@ object TrainImageNet {
     val tstPath = args(3)
     val deviceType = args(4)
     val idRange = args(5)
-    val (st, en) = idRange.split('-').toList match {case s :: e :: _ => (s.toInt,e.toInt) case s :: _ => (s.toInt, s.toInt)}
+    val (st, en) = idRange.split('-').toList match {
+      case s :: e :: _ => (s.toInt,e.toInt) 
+      case s :: _ => (s.toInt, s.toInt)
+      case Nil => throw new RuntimeException("Invalid GPU processor range/specification")}
     val ctxL = deviceType match {
       case "gpu" => for (i <- st to en) yield Context.gpu(i)
       case "cpu" => for (i <- st to en) yield Context.cpu(i)
