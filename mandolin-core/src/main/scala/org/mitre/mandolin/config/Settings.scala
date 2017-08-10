@@ -134,6 +134,8 @@ abstract class AppSettings[S <: AppSettings[S]](_confOptions: Option[ConfigGener
   val appMode          = asStr("mandolin.mode")
   val storage          = asStr("mandolin.spark.storage")
   val driverBlock      = asStrOpt("mandolin.driver").getOrElse("mmlp")
+  val distributed      = asStrOpt("mandolin.with-spark").getOrElse("false")
+
   def withSets(avs: Seq[(String, Any)]) : S
 }
 
