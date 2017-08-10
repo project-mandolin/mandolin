@@ -42,7 +42,7 @@ trait MxLearnerBuilderHelper {
     val cats: List[(String, Any)] = config.categoricalMetaParamSet.toList map { cm => (cm.getName, cm.getValue.s) }
     val reals: List[(String, Any)] = config.realMetaParamSet.toList map { cm => (cm.getName, cm.getValue.v) }
     val ints: List[(String, Any)] = config.intMetaParamSet.toList map { cm => (cm.getName, cm.getValue.v) }
-    val setBudget: List[(String, Any)] = if (budget > 0) List(("mandolin.trainer.num-epochs", budget)) else Nil
+    val setBudget: List[(String, Any)] = if (budget > 0) List(("mandolin.mmlp.num-epochs", budget), ("mandolin.mx.num-epochs", budget)) else Nil
     val allParams: Seq[(String, Any)] = (cats ++ reals ++ ints ++ setBudget) toSeq
     val completeParams = allParams
     val mxsets = config.serializedSettings match {

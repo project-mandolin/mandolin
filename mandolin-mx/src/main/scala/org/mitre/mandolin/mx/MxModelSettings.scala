@@ -17,6 +17,7 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   // input type: 1) mlp, 2) ndarray, 3) recordio ... others?
   val inputType       = asStrOpt("mandolin.mx.input-type").getOrElse("mlp")
   val numberOfClasses = asIntOpt("mandolin.mx.num-classes").getOrElse(2)
+  override val numEpochs = asIntOpt("mandolin.mx.num-epochs").getOrElse(21)
 
   val mxSpecification = try config.getAnyRefList("mandolin.mx.specification") catch {case _: Throwable => null}
   val gpus = try config.getAnyRefList("mandolin.mx.gpus") catch {case _: Throwable => null}

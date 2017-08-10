@@ -11,7 +11,7 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
 
   import WorkPullingPattern._
   
-  
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   
   lazy val eta = 3.0
   def logEta(x: Double) = {    
@@ -45,14 +45,15 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
       val r = maxIters * math.pow(eta, -s)
       for (i <- 0 to s) {
         val ni = (math.floor(n * math.pow(eta, -i))).toInt
-        val ri = (r * math.pow(eta, i)).toInt
+        val ri = (r * math.pow(eta, i)).round.toInt
         val ri1 = if (i > 0) (r * math.pow(eta, i-1)).toInt else 0
         val curCnt = ratioCnt.get((ri,ri1)).getOrElse(0)
         total += ni
         ratioCnt += ((ri,ri1) -> (curCnt + ni)) // this updates        
       }
     }
-    ratioCnt foreach {case (k,v) =>       
+    ratioCnt foreach {case (k,v) =>
+      logger.info("K => " + k)
       currentCounts += (k -> 0); 
       targetRatiosTable += (k -> (v.toDouble / total.toDouble))
     }
@@ -101,7 +102,7 @@ extends ModelScorer(modelConfigSpace, acqFn, evalMaster, sampleSize, acqFnThresh
         toEvalMc.withBudgetAndSource(curEvalLevel,prevEvalLevel)
       } else { // fall back to drawing uniformly if we don't have enough
         val (k,_) = config.get
-        val cc = currentCounts((k,0))
+        val cc = currentCounts.get((k,0)).getOrElse(0)
         currentCounts += (config.get -> (cc + 1))
         val configs = getScoredConfigs(sampleSize, curEvalLevel, kMat)
         configs(0)._2.withBudgetAndSource(curEvalLevel, 0)
