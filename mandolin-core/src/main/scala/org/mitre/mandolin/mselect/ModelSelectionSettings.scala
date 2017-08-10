@@ -52,13 +52,12 @@ trait ModelSelectionSettings extends MandolinMLPSettings {
   val useCheckpointing = asBoolean("mandolin.model-selection.use-checkpoints")
   val hyperbandMixParam = asFloatOpt("mandolin.model-selection.hyper-acq-mix").getOrElse(1.0f) // coefficient to mix in Bayesian optimization
   val numWorkers = asInt("mandolin.model-selection.concurrent-evaluations")
-  val threadsPerWorker = asInt("mandolin.model-selection.threads-per-worker")
-  val workerBatchSize = asInt("mandolin.model-selection.worker-batch-size")
   val scoreSampleSize = asInt("mandolin.model-selection.score-sample-size")
   val updateFrequency = asInt("mandolin.model-selection.update-frequency")
   val totalEvals      = asInt("mandolin.model-selection.total-evals")  
   val acquisitionFunction = asStrOpt("mandolin.model-selection.acquisition-function") match {
     case Some("random") => new RandomAcquisition
+    case Some("ucb-parallel") => new UcbParallel
     case Some("ucb-3") => new UpperConfidenceBound(0.3)
     case Some("ucb-7") => new UpperConfidenceBound(0.7)
     case Some("ucb") => new UpperConfidenceBound(0.3)

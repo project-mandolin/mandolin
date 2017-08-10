@@ -41,7 +41,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   }
 }
 
-class SparkLocalFileSystemImgMxModelSelector(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+class SparkLocalFileSystemImgMxModelSelector(val sc: SparkContext, val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], 
+    numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
     hyperMax: Int = 81)
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {

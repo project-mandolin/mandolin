@@ -6,7 +6,8 @@ import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.mlp.{MMLPFactor, MMLPTrainerBuilder, MandolinMLPSettings}
 import org.mitre.mandolin.util.LocalIOAssistant
 
-class LocalXGModelSelector(val msb: XGModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+class LocalXGModelSelector(val msb: XGModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, 
+    scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[XGModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
     hyperMax: Int = 81) 
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {

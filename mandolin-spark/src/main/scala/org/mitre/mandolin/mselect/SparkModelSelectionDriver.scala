@@ -13,7 +13,7 @@ class SparkModelSelectionDriver(val sc: SparkContext, val msb: MandolinModelSpac
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband) {
   
   def this(sc: SparkContext, _msb: MandolinModelSpaceBuilder, appSettings: MandolinMLPSettings with ModelSelectionSettings) = {
-    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers, 
+    this(sc, _msb, appSettings.trainFile.get, appSettings.testFile, appSettings.numWorkers,
     appSettings.scoreSampleSize, appSettings.updateFrequency, appSettings.totalEvals, Some(appSettings), appSettings.useHyperband)
   }     
   val acqFun = appSettings match {case Some(s) => s.acquisitionFunction case None => new RandomAcquisition }

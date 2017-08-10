@@ -23,6 +23,8 @@ abstract class ScoringFunction {
   def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]): Double
 
   def getUpdatedK(bm: Vector[ModelConfig]): Option[BreezeMat[Double]]
+  
+  def getAcqFun : AcquisitionFunction
 }
 
 
@@ -98,6 +100,9 @@ class UpperConfidenceBound(k: Double) extends AcquisitionFunction {
   }
 }
 
+class UcbParallel extends AcquisitionFunction {
+  def score(optimum: Double, mu: Double, variance: Double): Double = 0.0
+}
 
 
 class MockScoringFunction extends ScoringFunction {
@@ -113,6 +118,8 @@ class MockScoringFunction extends ScoringFunction {
 
   def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]) : Double = throw new RuntimeException("Unimplemented")
   def getUpdatedK(bm: Vector[ModelConfig]) : Option[BreezeMat[Double]] = None
+  
+  def getAcqFun : AcquisitionFunction = throw new RuntimeException("No Acquisition function for Mock Scoring Function")
 }
 
 class RandomScoringFunction extends ScoringFunction {
@@ -122,6 +129,7 @@ class RandomScoringFunction extends ScoringFunction {
   def train(evalResults: Seq[ScoredModelConfig]) : Unit = {}
   def scoreWithNewK(config: ModelConfig, K: BreezeMat[Double]) : Double = throw new RuntimeException("Unimplemented")
   def getUpdatedK(bm: Vector[ModelConfig]) : Option[BreezeMat[Double]] = None
+  def getAcqFun = throw new RuntimeException("Random acquisition function for random scoring function")
 }
 
 trait MetaParameterHandler {
@@ -265,6 +273,8 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
 
   private val linear = false
   private val useCache = numConcurrent > 1
+  
+  def getAcqFun : AcquisitionFunction = acqFunc
 
   val maxIterations = 100
 

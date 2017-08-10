@@ -15,7 +15,7 @@ case class ScoredModelConfig(sc: Double, t: Long, mc: ModelConfig, src: Int = 0)
   * of the model on a given dataset.
   */
 class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMaster: ActorRef,
-                  sampleSize: Int, acqFnThreshold: Int, totalEvals: Int, concurrentEvals: Int) extends Actor {
+                  sampleSize: Int, acqFnThreshold: Int, totalEvals: Int, concurrentScores: Int) extends Actor {
 
   import WorkPullingPattern._
 
@@ -80,10 +80,11 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
 
   def getScoredConfigs(size: Int) = {
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom
-    if (concurrentEvals > 1) {
+    val computeScoresConcurrently = acqFn.getAcqFun.isInstanceOf[UcbParallel]
+    if (concurrentScores > 1 && computeScoresConcurrently) {
       // actually do a full concurrent scoring of the number of concurrent evaluations + number of evals needed to rebuild the acquisition
       // function
-      val numToScoreConcurrent = concurrentEvals + acqFnThreshold * 2
+      val numToScoreConcurrent = concurrentScores + acqFnThreshold * 2
       acqFn.scoreConcurrent(unscoredConfigs.toVector, numToScoreConcurrent)
     } else {      
       (unscoredConfigs map { s => (acqFn.score(s), s) }).toVector.sortWith((a, b) => a._1 > b._1)

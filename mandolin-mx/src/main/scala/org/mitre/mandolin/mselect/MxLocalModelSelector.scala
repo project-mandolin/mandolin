@@ -7,7 +7,8 @@ import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.mlp.{MMLPFactor, MMLPTrainerBuilder, MandolinMLPSettings}
 
 
-class MxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+class MxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, 
+    scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
                       appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband: Boolean = false, hyperMix: Float = 1.0f,
                       hyperMax: Int = 81)
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
@@ -44,7 +45,8 @@ extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, a
   }
 }
 
-class LocalFileSystemImgMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
+class LocalFileSystemImgMxModelSelector(val msb: MxModelSpaceBuilder, trainFile: String, testFile: Option[String], numWorkers: Int, 
+    scoreSampleSize: Int, acqFunRelearnSize: Int, totalEvals: Int,
     appSettings: Option[MxModelSettings with ModelSelectionSettings] = None, useHyperband : Boolean = false, hyperMix: Float = 1.0f,
     hyperMax: Int = 81)
 extends ModelSelectionDriver(trainFile, testFile, numWorkers, scoreSampleSize, acqFunRelearnSize, totalEvals, useHyperband, hyperMix, hyperMax) {
