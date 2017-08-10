@@ -20,9 +20,7 @@ object Mandolin extends AppMain with org.mitre.mandolin.config.LogInit {
 
   def main(args: Array[String]): Unit = {
     val tmpSettings = new InitializeSettings(args) // create settings from specified configuration file to find main class to load
-    // Spark 2.1 sets at least these 8 environment variables:
-    // SPARK_SCALA_VERSION, SPARK_HOME, SPARK_ENV_LOADED, SPARK_LOCAL_DIRS, SPARK_MASTER_WEBUI_PORT, SPARK_WORKER_MEMORY, SPARK_SUBMIT_OPTS, SPARK_MASTER_IP
-    val isDistributed = System.getenv().asScala.keys.filter(_.startsWith("SPARK")).size >= 8
+    val isDistributed = if (tmpSettings.distributed == "true") true else false
 
     val driverClassName =
       if (tmpSettings.appMode != "model-selection") {
