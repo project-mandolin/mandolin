@@ -15,7 +15,7 @@ up training and/or to provide concurrent model selection using a compute cluster
 
 All three artifacts can be built from source by downloading [SBT](http://www.scala-sbt.org/download.html).
 
-@@snip [install.txt](install/build_all.txt) 
+    > sbt assembly
 
 This will build three assembly artifacts (i.e. "fat" jar files) :
 `mandolin-core-0.3.5.jar`, `mandolin-mx-0.3.5.jar` and `mandolin-spark-0.3.5.jar`.
@@ -25,7 +25,7 @@ If **only** the the `mandolin-core` artifact is required, it can be compiled by 
 
     > sbt "project mandolin-core" assembly
 
-This is helpful one is training only Mandolin's built-in  multi-layer perceptron or linear models and
+This is helpful if one is using only Mandolin's built-in  multi-layer perceptron or linear models and
 Apache Spark nor XGBoost or MXNet are not needed.  
 
 ## Building with MXNet and XGBoost

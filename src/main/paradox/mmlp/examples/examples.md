@@ -1,6 +1,6 @@
+# Examples
 
-MNIST Example
--------------
+## MNIST Example
 
 While Mandolin is intended to be used with Apache Spark, all algorithms can be run within
 a single JVM process using a separate non-Spark backend. To run a simple example using a linear (logistic
@@ -39,24 +39,4 @@ Examination of the output file `mnist.train.1hl.progress` makes
 apparent the advantage of using a more complex, non-linear model on this dataset. The test accuracies are 
 much improved over the linear model.
 
-
-MNIST Example Using Spark
-------------------------
-
-Training can be very CPU-intensive with neural networks. Mandolin supports distributed
-parameter estimation via Apache Spark which can provide faster training for certain
-datasets, and model topologies. On each iteration separate models are trained on different compute nodes
-over different (possibly overlapping) subsets of the training data. After each epoch (or after
-every N epochs) the model parameters (weights) are averaged.  
-
-To run Mandolin on a Spark cluster, ensure that the setting 
-`mandolin.without-spark` is set to `false` by either modifying the configuration file or
-providing the argument `mandolin.without-spark=false` on the command line.  Then execute
-
-    $SPARK_HOME/bin/spark-submit --class org.mitre.mandolin.app.Driver \
-      --master spark://master.url:7077 \
-          ../../mandolin-spark/target/scala-2.11/mandolin-spark-assembly-0.3_2.11.7.jar \
-      --conf mnist.1h.conf mandolin.without-spark=false
-
-
-    
+## Web URL

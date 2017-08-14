@@ -23,11 +23,13 @@ other datastructures, tools, and MLLib's rich ML Pipeline framework.
 
 @@@ index
 
-* [User Guide](user-guide/index.md)
+* [Installation](installation/installation.md)
+* [Essentials](essentials/index.md)
 * [MMLPs](mmlp/mmlp.md)
-* [Quick Start](quick-start/linear-classifier.md)
-* [Spark ML](spark-ml/index.md)
+* [XGBoost](xgboost/xgboost.md)
+* [MXNET](mxnet/mxnet.md)
 * [Model Selection](model-selection/mselect.md)
-* [Examples](examples/index.md)
+* [Spark ML](spark/spark.md)
+* [Programmatic Use](api-use/api.md)
 
 @@@
