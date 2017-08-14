@@ -103,7 +103,6 @@ class Processor extends AbstractProcessor {
     if (trainFile.isEmpty) throw new RuntimeException("Training file required in train-test mode")
     val io = new LocalIOAssistant
     val components = getComponentsViaSettings(appSettings, io)
-    println("Received components")
     val fe = components.featureExtractor
     val pr = components.predictor
     val optimizer = MMLPOptimizer.getOptimizer(appSettings, components.ann)

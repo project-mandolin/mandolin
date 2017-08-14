@@ -2,17 +2,21 @@
 
 ## MNIST Example
 
-While Mandolin is intended to be used with Apache Spark, all algorithms can be run within
-a single JVM process using a separate non-Spark backend. To run a simple example using a linear (logistic
-regression) model, enter the directory `examples/mnist`. Assuming the Mandolin jar file
-has been built (see above), the following invocation should train a model and evaluate its
-progress during training every trainin epoch:
 
-    java -cp ../../mandolin-core/target/scala-2.11/mandolin-core-assembly-0.3_2.11.7.jar \
-         org.mitre.mandolin.app.Driver --conf mnist.conf
+Run the MNIST MMLP example via the following commands, starting from the top-level `mandolin` directory.
 
-The evaluation is written in this example to the file `mnist.train.progress` as specified in the
-`mnist.conf` configuration file. Note that all configuration file values can be overridden on the
+    cd examples/mnist
+    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf
+
+This invocation's behavior is driven by the contents of the `mnist.conf` file. In this instance, the behavior
+involves training model on the providing training data and evaluating the results (after each epoch) on
+a single set of validation/test data. The results are written to the file `mnist.train.progress`.
+
+Below is a portion of the `mnist.conf` file specifying the behavior requested above:
+
+@@snip [mnist.conf](snippets/mnist.1.conf)
+
+Note that all configuration file values can be overridden on the
 command line.  So to write the training progress to a different file name, one could use the 
 invocation:
 
