@@ -375,7 +375,7 @@ class BayesianNNScoringFunction(ms: ModelSpace, acqFunc: AcquisitionFunction = n
         // don't use predictor variance - instead use updated variance based on pending evaluations
         // val nvar = bv.t * kInv1 * bv + regressor.variance
         val sd = math.sqrt(v)
-        val sc = mu + sd //   acqFunc.score(bestScore, mu, v)
+        val sc = acqFunc.score(bestScore, mu, v)
         (sc, bv, c)
       }
       val sortedBasisVecs = initialScoredBasisVecs.sortBy {

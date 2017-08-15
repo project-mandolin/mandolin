@@ -8,39 +8,74 @@ Run the MNIST MMLP example via the following commands, starting from the top-lev
     cd examples/mnist
     java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf
 
-This invocation's behavior is driven by the contents of the `mnist.conf` file. In this instance, the behavior
-involves training model on the providing training data and evaluating the results (after each epoch) on
-a single set of validation/test data. The results are written to the file `mnist.train.progress`.
-
-Below is a portion of the `mnist.conf` file specifying the behavior requested above:
+This invocation's behavior is driven by the contents of the `mnist.conf` file, a portion of which is
+below:
 
 @@snip [mnist.conf](snippets/mnist.1.conf)
 
-Note that all configuration file values can be overridden on the
-command line.  So to write the training progress to a different file name, one could use the 
-invocation:
+A key field is the `mode` attribute within the `mandolin` block/namespace. This field, `mandolin.mode` specifies
+the overall behavior of the invocation. In this case, the mode is `"train-test"` which specifies that a model
+should be trained on the provided training data, specified by the field `mandolin.mmlp.train-file` and
+evaluated against the examples in `mandolin.mmlp.test-file`. The field `mandolin.mmlp.eval-freq` specifies
+how frequently (in terms of training iterations/epochs) the model should be evaluated against the
+test data. The results of this repeated evaluation are presented in the file `mandolin.mmlp.progress-file`.
 
-    java -cp ../../mandolin-core/target/scala-2.11/mandolin-core-assembly-0.3_2.11.7.jar \
-        org.mitre.mandolin.app.Driver --conf mnist.conf \
-        mandolin.app.trainer.progress-file=$PWD/another.output.file
+The various configuration options are discussed in more detail here @ref[config](../configuration.md).
+
+Mandolin encourages the use of configuration files as they provide a written record of experiments and
+can be used within version control to allow experiments to be easily repeated and recovered. In some cases,
+however it is useful to be able to specify parameters on the command-line. Mandolin configuration
+attributes can be overridden on the command line by simply specifying attribute value pairs separated by
+the `=` sign. For example, we can change the number of training epochs with the invocation:
+
+    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
+        mandolin.mmlp.num-epochs=60
+
+Rather than using a single test file to validate the trained model, we may prefer to use cross validation.
+In `train-test` mode, if Mandolin is only provided a training file and no testing file, the assumed
+intent is to perform cross validation on the training file. We can achieve this by simply setting
+the test file to `null` as follows:
+
+    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
+        mandolin.mmlp.test-file=null
+
+When performing cross validation in `train-test` mode, Mandolin will not perform an evaluation
+after each epoch and instead simply evaluate the final models. The evaluation metric results
+on each fold will be aggregated with the results placed in the contents of the file
+`mandolin.mmlp.progress-file`.
 
 Mandolin supports a variety of model topologies and loss functions which can be specified easily
-using the configuration system. More details follow in the configuration section, but for now,
-let's train a DNN model using a single hidden layer of 1000 Rectified Linear Units with 50% dropout.
-This model is specified in the configuration file `examples/mnist/mnist.1hl.conf` and can be
-invoked as:
+using the configuration system. There are also various methods for optimizing loss functions. The relevant
+configuration options within `mandolin.conf` are:
 
-    java -cp ../../mandolin-core/target/scala-2.11/mandolin-core-assembly-0.3_2.11.7.jar \
-         org.mitre.mandolin.app.Driver --conf mnist.conf \
-         --conf mnist.1h.conf 
+@@snip [mnist.conf](snippets/mnist.2.conf)
 
-Note that the training of this model will take some time to finish. The configuration file specifies
-that 8 CPU threads should be used. If you have a more powerful machine, you can speed up the training
-time by adding the option `mandolin.threads=N` to the command-line
-invocation where `N` refers to the number of threads to utilize.
+The options within the `mandolin.mmlp.optimizer` block indicate which optimization algorithm should be used
+and any relevant parameters, in this case Adagrad is used (via `mandolin.mmlp.optimizer.method=adagrad`) and
+the initial learning rate is set to 0.1.
 
-Examination of the output file `mnist.train.1hl.progress` makes 
-apparent the advantage of using a more complex, non-linear model on this dataset. The test accuracies are 
-much improved over the linear model.
+The model topology is specified within the `mandolin.mmlp.specification` attribute which takes a list
+of layers. In this case, the network is linear having just an input layer and a "softmax" output layer.
+
+More details follow in the configuration section.
+
+Moving on to a more complex example, let's use the same data, but add a hidden layer to create
+a multi-layered perceptron. Specifically, let's add a single hidden layer with 500 units/dimensions
+with the rectified linear activation function.  
+
+This model is specified in the configuration file `examples/mnist/mnist.1hl.conf`. The relevant
+portions are:
+
+@@snip [mnist.1hl.conf](snippets/mnist.1hl.1.conf)
+
+The model can be invoked as:
+
+    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin \
+         --conf mnist.1hl.conf
+
+Training this model requires markedly longer. The results are better, however, as this
+model has more capacity and can capture non-linear interactions. In fact, adding two more layers
+of comparable complexity allows the model to reach error rates of less than 1% when using
+the full MNIST training set.
 
 ## Web URL

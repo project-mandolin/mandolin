@@ -80,8 +80,8 @@ class ModelScorer(modelConfigSpace: ModelSpace, acqFn: ScoringFunction, evalMast
 
   def getScoredConfigs(size: Int) = {
     val unscoredConfigs = for (i <- 1 to size) yield modelConfigSpace.drawRandom
-    val computeScoresConcurrently = acqFn.getAcqFun.isInstanceOf[UcbParallel]
-    if (concurrentScores > 1 && computeScoresConcurrently) {
+    // val computeScoresConcurrently = acqFn.getAcqFun.isInstanceOf[UcbParallel]
+    if (concurrentScores > 1) {
       // actually do a full concurrent scoring of the number of concurrent evaluations + number of evals needed to rebuild the acquisition
       // function
       val numToScoreConcurrent = concurrentScores + acqFnThreshold * 2
