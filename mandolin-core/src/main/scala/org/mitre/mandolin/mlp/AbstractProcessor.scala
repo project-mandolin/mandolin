@@ -302,7 +302,7 @@ abstract class AbstractProcessor extends LineParser {
     }
   }    
 
-  def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, MMLPFactor)], laOpt: Option[Alphabet]): Unit = {
+  def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, MMLPFactor)], laOpt: Option[Alphabet], noLabels: Boolean = false): Unit = {
     laOpt foreach { la =>
       if (la.getSize < 2) {
         os.print("ID,response,value\n")
@@ -314,10 +314,15 @@ abstract class AbstractProcessor extends LineParser {
         os.print(',')
         os.print(labelHeader(i))
       }
-      os.print(',')
-      os.print("Label")
+      if (!noLabels) {
+        os.print(',')
+        os.print("Label")
+      }
       os.println
-      outputs foreach { case (s, factor) => os.print(s); os.print(','); os.print(factor.getOneHot.toString); os.println }
+      outputs foreach { case (s, factor) => 
+        os.print(s)
+        if (!noLabels) { os.print(','); os.print(factor.getOneHot.toString) } // pass through ground truth if we had it 
+        os.println }
       }
     }
   }

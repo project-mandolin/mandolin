@@ -6,6 +6,8 @@ package org.mitre.mandolin.transform
 import org.mitre.mandolin.util.{Alphabet, IdentityAlphabet}
 
 abstract class FeatureExtractor[IType, U] extends Serializable {
+  
+  var noLabels = false
   def extractFeatures(input: IType) : U
   def getNumberOfFeatures : Int
   def getAlphabet : Alphabet

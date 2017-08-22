@@ -8,5 +8,7 @@ working through an example.
 @@@ index
 
  * [MMLP](mmlp.md)
+ * [XGBoost](xgboost.md)
+ * [MXnet](mxnet.md)
 
 @@@

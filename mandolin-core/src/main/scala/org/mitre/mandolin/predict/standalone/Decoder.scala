@@ -50,6 +50,29 @@ class PosteriorDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, OType
     val outputs = responses map {case (i,u,r) => (constructOutput(i,r, u.toString), u)}
     outputs.toVector
   }
+    
+}
+
+class PosteriorEvalDecoder[IType, U : ClassTag, W <: Weights[W], R : ClassTag, C <: Confusion[C] : ClassTag, OType: ClassTag](
+    fe: FeatureExtractor[IType,U],
+    pr: EvalPredictor[U, W, R, C],
+    val oc: OutputConstructor[IType, Seq[(Float, R)], OType]
+    ) {
+  
+  def runEval(inputs: Vector[IType], w: W) : (C, Vector[(OType, U)]) = {
+    val extractFeatures = fe.extractFeatures _
+    val predict         =
+      {u : U =>
+        (pr.getScoredPredictions(u, w), pr.getConfusion(u, w))
+      }
+    val constructOutput = oc.constructOutput _
+    val punits    = inputs map { i => (i, extractFeatures(i)) }
+    val responses = punits map { case (i,u) => (i,u,predict(u)) }
+    val outputs = responses map {case (i,u,(r,_)) => (constructOutput(i,r, u.toString), u)}
+    val confusions = responses map {case (_,_,(_,c)) => c}
+    val finalConfusion = confusions reduce {_ compose _}
+    (finalConfusion, outputs.toVector)
+  }
 }
 
 class NonExtractingEvalDecoder[U : ClassTag, W <: Weights[W], R : ClassTag, C <: Confusion[C] : ClassTag](

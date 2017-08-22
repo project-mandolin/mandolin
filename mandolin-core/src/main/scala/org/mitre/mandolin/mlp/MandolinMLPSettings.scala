@@ -10,9 +10,9 @@ import net.ceedubs.ficus.Ficus._
   */
 class MandolinMLPSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) extends AppSettings[MandolinMLPSettings](_confOptions, _conf) with Serializable {
 
-  val decoderInputFile = asStrOpt("mandolin.decoder.input-file")
-  val outputFile = asStrOpt("mandolin.decoder.output-file")
-  val inputModelFile = asStrOpt("mandolin.decoder.model-file")
+  val decoderInputFile = asStrOpt("mandolin.mmlp.test-file")
+  val outputFile = asStrOpt("mandolin.mmlp.prediction-file")
+  val inputModelFile = asStrOpt("mandolin.mmlp.model-file")
 
   val numFeatures = asInt("mandolin.mmlp.num-hash-features")
   val trainFile = asStrOpt("mandolin.mmlp.train-file")

@@ -10,6 +10,13 @@ abstract class Alphabet {
 
   def ofString(s: String): Int
   def ofString(s: String, v: Double) : Int
+  def ofString(s: Option[String]) : Int = {
+    s match {case Some(s) => ofString(s) case None => 0}
+  }
+  
+  def ofString(s: Option[String], v: Double) : Int = {
+    s match {case Some(s) => ofString(s,v) case None => 0}
+  }
   
   /*
    * This provides a hook into an Alphabet so that it may keep scaling factors or other
