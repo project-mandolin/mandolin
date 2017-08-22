@@ -15,7 +15,7 @@ such as:
     * Specification of complex neural networks via the configuration system
  * Gradient boosted trees via XGBoost
  * Linear models and multi-layered perceptrons with a variety of loss functions
- * Optional and seemless standalone use (without Apache Spark)
+ * Optional and seamless standalone use (without Apache Spark)
 
 Mandolin also contains an API extension based on **spark.ml**.
 This allows Mandolin models to be used directly within the MLLib ecosystem, leveraging
@@ -24,7 +24,8 @@ other datastructures, tools, and MLLib's rich ML Pipeline framework.
 @@@ index
 
 * [Installation](installation/installation.md)
-* [Essentials](essentials/index.md)
+* [Essentials](essentials/essentials.md)
+* [Examples](examples/overview.md)
 * [MMLPs](mmlp/mmlp.md)
 * [XGBoost](xgboost/xgboost.md)
 * [MXNET](mxnet/mxnet.md)

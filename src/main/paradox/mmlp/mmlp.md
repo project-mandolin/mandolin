@@ -1,11 +1,5 @@
 # MMLPs
 
-@@@ index
-
- * [Examples](examples/examples.md)
-
-@@@
-
 
 Mandolin supports *built-in* iterative gradient-based machine learning algorithms that do
 not rely on third party libraries and run entirely within the JVM (implemented in
@@ -47,9 +41,6 @@ corresponding to the type of activation function for the layer and must also spe
 number of dimensions for the layer.  Finally, each layer, except the input layer may
 include L1, L2 or max-norm regluarization as well as drop-out.
 
-## Examples
-
-
 
 ## Additional properties
 
@@ -64,3 +55,11 @@ Some additional options are detailed below:
 |``mandolin.mmlp.test-partitions``        |Specifies the number of data partitions for the *test* data specified by ``mandolin.mmlp.test-file``. This should usually be set to 3-4 times the number of total cores on the compute cluster as typical for Spark jobs.|
 |``mandolin.mmlp.oversample``             |This is a ``Double`` that is a coefficient determining how much data should be (re)sampled  from the entire dataset for each partition/node during online training. If this is non-positive, the dataset is not resampled and 1/k of the data (where k is the number of compute nodes) is sharded to each compute node. If set to a positive value, a, then a/k of the data is sampled for each data partition **on each epoch**.  See user guide for more details.|
 |``mandolin.mmlp.print-feature-file``     |A file path that will receive a list of all the features used/selected for training with a given input file.|
+
+
+@@@ include
+
+ * [Examples](examples/examples.md)
+
+@@@
+

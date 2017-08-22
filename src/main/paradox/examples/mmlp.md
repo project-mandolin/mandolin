@@ -1,4 +1,4 @@
-# Examples
+# MMLPs
 
 ## MNIST Example
 
@@ -20,7 +20,7 @@ evaluated against the examples in `mandolin.mmlp.test-file`. The field `mandolin
 how frequently (in terms of training iterations/epochs) the model should be evaluated against the
 test data. The results of this repeated evaluation are presented in the file `mandolin.mmlp.progress-file`.
 
-The various configuration options are discussed in more detail here @ref[config](../configuration.md).
+The various configuration options are discussed in more detail here @ref[config](../mmlp/configuration.md).
 
 Mandolin encourages the use of configuration files as they provide a written record of experiments and
 can be used within version control to allow experiments to be easily repeated and recovered. In some cases,
