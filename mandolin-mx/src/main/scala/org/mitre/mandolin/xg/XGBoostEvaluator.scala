@@ -37,6 +37,14 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
       case _ => throw new RuntimeException("Unable to parse cross validation metric: " + s)
     }
   }
+  
+  def getPredictionsAndEval(booster: Booster, data: Iterator[MMLPFactor]) : (Array[Array[Float]], Float) = {
+    val dataDm = new DMatrix(data map mapMMLPFactorToLabeledPoint)
+    val res = booster.predict(dataDm)
+    val evalInfo = booster.evalSet(Array(dataDm), Array("auc"), 1)   
+    println("Eval info: " + evalInfo)
+    (res, 1.0f - gatherTestAUC(evalInfo))
+  }
 
   def evaluateTrainingSet(train: Iterator[MMLPFactor], test: Option[Iterator[MMLPFactor]]) : (Float, Option[Booster]) = {
     val trIter = train map mapMMLPFactorToLabeledPoint
