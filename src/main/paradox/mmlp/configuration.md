@@ -1,7 +1,7 @@
 Configuration
 =============
 
-Mandolin provides various ways to provide configuraiton properties that specifiy system
+Mandolin provides various ways to provide configuration properties that specify system
 behavior. Primarily this is done using a configuration file.
 
 |  Property Name                             |  Meaning              |

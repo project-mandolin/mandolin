@@ -79,3 +79,13 @@ of comparable complexity allows the model to reach error rates of less than 1% w
 the full MNIST training set.
 
 ## Web URL
+The Web URL dataset contains about 2.4M instances of sparsely-populated feature vectors. To benefit from the
+sparse vector optimizations, the `mandolin.mmlp.ensure-sparse` parameter is set to `true`.  Also, the layer type of
+the input layer in the mmlp specification has changed from `Input` to `InputSparse`.
+
+@@snip [url.conf](snippets/url.conf)
+
+The Web URL training example can be invoked as:
+
+    cd examples/weburl
+    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf url.conf
