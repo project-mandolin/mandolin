@@ -7,9 +7,10 @@ import ml.dmlc.xgboost4j.scala.{XGBoost, DMatrix}
 object PrintUtils {
   def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, MMLPFactor)], laOpt: Option[Alphabet], noLabels: Boolean = false): Unit = {
     laOpt foreach { la =>
+      val invLa = la.getInverseMapping
       if (la.getSize < 2) {
         os.print("ID,response,value\n")
-        outputs foreach {case (s, factor) => os.print(s); os.print(','); os.print(factor.getOutput(0).toString); os.println}
+        outputs foreach {case (s, factor) => os.print(s); os.print(','); os.print(invLa(factor.getOutput(0).toInt).toString); os.println}
       } else {
       val labelHeader = la.getMapping.toSeq.sortWith((a, b) => a._2 < b._2).map(_._1) // get label strings sorted by their index
       os.print("ID")
@@ -24,7 +25,7 @@ object PrintUtils {
       os.println
       outputs foreach { case (s, factor) => 
         os.print(s)
-        if (!noLabels) { os.print(','); os.print(factor.getOneHot.toString) } // pass through ground truth if we had it 
+        if (!noLabels) { os.print(','); os.print(invLa(factor.getOneHot.toInt).toString) } // pass through ground truth if we had it 
         os.println }
       }
     }
@@ -82,9 +83,16 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
           }
           buf.toString
         } zip tstVecs.get
+        val finalOutputs = resVecAndFactor map {case (s,f) =>
+          val sb = new StringBuilder
+          sb append f.getId.toString
+          sb append ","
+          sb append s
+          (sb.toString, f)
+          }
         val io = new LocalIOAssistant
         val os = io.getPrintWriterFor(xgSettings.outputFile.get, false)
-        PrintUtils.writeOutputs(os, resVecAndFactor.toIterator, Some(labelAlphabet), false)
+        PrintUtils.writeOutputs(os, finalOutputs.toIterator, Some(labelAlphabet), false)
         os.close()
       case "predict" =>
         

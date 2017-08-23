@@ -40,9 +40,8 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
   
   def getPredictionsAndEval(booster: Booster, data: Iterator[MMLPFactor]) : (Array[Array[Float]], Float) = {
     val dataDm = new DMatrix(data map mapMMLPFactorToLabeledPoint)
-    val res = booster.predict(dataDm)
+    val res = booster.predict(dataDm,false,0)
     val evalInfo = booster.evalSet(Array(dataDm), Array("auc"), 1)   
-    println("Eval info: " + evalInfo)
     (res, 1.0f - gatherTestAUC(evalInfo))
   }
 
@@ -54,8 +53,6 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
       case Some(tst) =>
         val metrics = Array(Array.fill(settings.rounds)(0.0f))
         val b = XGBoost.train(trainDm, paramMap.toMap, settings.rounds, Map("auc" -> new DMatrix(tst)), metrics, null, null)
-        // val xv = XGBoost.crossValidation(trainDm, paramMap.toMap, settings.rounds, 5, Array("auc"), null, null)        
-        // val finalTestMetric = gatherTestAUC(xv.last)
         (1.0f - metrics(0)(settings.rounds - 1), Some(b))
       case None => 
         val xv = XGBoost.crossValidation(trainDm, paramMap.toMap, settings.rounds, 5, Array("auc"), null, null)
