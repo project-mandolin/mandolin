@@ -1,7 +1,6 @@
-# Examples
+# MMLPs
 
 ## MNIST Example
-
 
 Run the MNIST MMLP example via the following commands, starting from the top-level `mandolin` directory.
 
@@ -20,11 +19,11 @@ evaluated against the examples in `mandolin.mmlp.test-file`. The field `mandolin
 how frequently (in terms of training iterations/epochs) the model should be evaluated against the
 test data. The results of this repeated evaluation are presented in the file `mandolin.mmlp.progress-file`.
 
-The various configuration options are discussed in more detail here @ref[config](../configuration.md).
+The various configuration options are discussed in more detail @ref[here](../mmlp/configuration.md).
 
 Mandolin encourages the use of configuration files as they provide a written record of experiments and
 can be used within version control to allow experiments to be easily repeated and recovered. In some cases,
-however it is useful to be able to specify parameters on the command-line. Mandolin configuration
+however, it is useful to be able to specify parameters on the command-line. Mandolin configuration
 attributes can be overridden on the command line by simply specifying attribute value pairs separated by
 the `=` sign. For example, we can change the number of training epochs with the invocation:
 

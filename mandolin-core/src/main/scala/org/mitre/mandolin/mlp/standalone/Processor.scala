@@ -6,9 +6,9 @@ package org.mitre.mandolin.mlp.standalone
 
 import org.mitre.mandolin.util.{Alphabet, IOAssistant, LocalIOAssistant}
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.predict.DiscreteConfusion
+import org.mitre.mandolin.predict.{DiscreteConfusion}
 import org.mitre.mandolin.optimize.standalone.VectorData
-import org.mitre.mandolin.predict.standalone.{Trainer, TrainTester, TrainDecoder, PosteriorDecoder}
+import org.mitre.mandolin.predict.standalone.{Trainer, TrainTester, TrainDecoder, PosteriorDecoder, PosteriorEvalDecoder}
 import org.mitre.mandolin.mlp.{AbstractProcessor, MandolinMLPSettings, MMLPModelWriter, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor, MMLPFactor, MMLPWeights, MMLPInstanceEvaluator, MMLPLossGradient, MMLPModelSpec, ANNetwork, NullMMLPUpdater}
 import org.mitre.mandolin.optimize.{BatchEvaluator, GenData}
 import com.twitter.chill.EmptyScalaKryoInstantiator
@@ -91,11 +91,31 @@ class Processor extends AbstractProcessor {
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
     val predictor = new CategoricalMMLPPredictor(modelSpec.ann, true)
     val oc = new MMLPPosteriorOutputConstructor()
-    val decoder = new PosteriorDecoder(modelSpec.fe, predictor, oc)
+    val featureExtractor = modelSpec.fe
+    featureExtractor.noLabels_=(true) // assumes we don't have ground truth labels to score against and they don't appear in input/test file
+    val decoder = new PosteriorDecoder(featureExtractor, predictor, oc)
     val os = io.getPrintWriterFor(appSettings.outputFile.get, false)
     val outputs = decoder.run(testLines.get, modelSpec.wts)
-    writeOutputs(os, outputs.toIterator, Some(modelSpec.la))
+    writeOutputs(os, outputs.toIterator, Some(modelSpec.la), noLabels = true)
     os.close()
+  }
+  
+  def processPredictEval(appSettings: MandolinMLPSettings) = {
+    val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+    if (appSettings.modelFile.isEmpty) throw new RuntimeException("Model file required in decoding mode")
+    val io = new LocalIOAssistant
+    val modelSpec = (new StandaloneMMLPModelReader).readModel(appSettings.modelFile.get, io)
+    val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
+    val predictor = new CategoricalMMLPPredictor(modelSpec.ann, true)    
+    val oc = new MMLPPosteriorOutputConstructor()
+    val featureExtractor = modelSpec.fe
+    val decoder = new PosteriorEvalDecoder(featureExtractor, predictor, oc)
+    val os = io.getPrintWriterFor(appSettings.outputFile.get, false)
+    val (confusion, outputs) = decoder.runEval(testLines.get, modelSpec.wts)
+    writeOutputs(os, outputs.toIterator, Some(modelSpec.la), noLabels = false)    
+    os.close()
+    // XXX - this should actually create an eval file with fine-grained test-error information
+    logger.info("Model accuracy: " + confusion.getMatrix.getAccuracy)
   }
 
   def processTrainTest(appSettings: MandolinMLPSettings) = {

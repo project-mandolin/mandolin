@@ -16,9 +16,9 @@ object MandolinMain extends LogInit with AppMain {
     mode match {
       case "train"             => localProcessor.processTrain(appSettings)
       case "predict"            => localProcessor.processPredict(appSettings)
+      case "predict-eval"      => localProcessor.processPredictEval(appSettings)
       case "train-test"        => localProcessor.processTrainTest(appSettings)
       case "train-decode"      => localProcessor.processTrainDecode(appSettings)
-
     }
     System.exit(0)
   }

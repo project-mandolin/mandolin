@@ -29,6 +29,21 @@ class DenseReader(val delim: Char) extends Serializable {
  * @author wellner
  */
 class SparseToDenseReader(val delim: Char, fa: Alphabet, val dim: Int) extends Serializable {
+  
+  def getUnlabeledLine(l: String) : DenseVec = {
+    val vec : DenseVec = DenseVec.zeros(dim)
+    var i = 0
+    val items = l.split(delim)
+    while (i < items.length - 1) {
+      val el = items(i).split(':')
+      // the -1 below assumes input has 1-based indexing
+      val vv = fa.getValue(el(0).toInt, el(1).toFloat)
+      vec(el(0).toInt - 1) = vv.toFloat
+      i += 1
+    }
+    vec
+  }
+  
   def getLabeledLine(l: String) : (String, DenseVec) = {
     val items = l.split(delim)
     val vec : DenseVec = DenseVec.zeros(dim)

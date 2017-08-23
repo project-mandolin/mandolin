@@ -24,7 +24,8 @@ other data structures, tools, and MLLib's rich ML Pipeline framework.
 @@@ index
 
 * [Installation](installation/installation.md)
-* [Essentials](essentials/index.md)
+* [Essentials](essentials/essentials.md)
+* [Examples](examples/overview.md)
 * [MMLPs](mmlp/mmlp.md)
 * [XGBoost](xgboost/xgboost.md)
 * [MXNET](mxnet/mxnet.md)

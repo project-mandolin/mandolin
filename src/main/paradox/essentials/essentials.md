@@ -1,4 +1,6 @@
-# File Formats
+# Essentials
+
+## File Formats
 
 Mandolin includes a standard file format for representing training and test instances that
 is based on the sparse vector representation used by libSVM. 
@@ -16,7 +18,7 @@ itself well to *sparse* representations where the total number of features in th
 is large, but for any given instance a relatively small number of features will have a non-zero
 value.
 
-## Dense Vector Representation
+### Dense Vector Representation
 
 This representation uses a [dense vector](../api/index.html#org.mitre.mandolin.util.DenseTensor1) 
 as the model inputs.  It reads the input assuming that each `<feature_i>` denoting a feature
@@ -34,7 +36,7 @@ with feature representations has dense vectors corresponding to those to the rig
 Finally, note that the model topology specification should specify that the inputs are dense
 and not sparse.  See the [configuration](Configuration).
 
-## Vector Construction with an Alphabet
+### Vector Construction with an Alphabet
 
 This input method does not require that the feature names correspond to integers referring
 to the feature indices.  Instead, features names may be arbitrary strings. The input 
@@ -50,8 +52,7 @@ as: `{"ltype": "InputSparse",...}`.
 
 See the [configuration](Configuration)
 
-## Hashed Features
-
+### Hashed Features
 
 For datasets with a very large number of features, it can be much more efficient
 to simply hash feature names in a way that maps each feature name to an integer
@@ -69,8 +70,7 @@ Where `n` is the specified size of the hash space and `%` is the modulo operator
 As the input vector space will be large and instances here will be sparse
 the input layer specification should have the form: `{"ltype": "InputSparse",...}`
 
-
-## Label File
+### Label File
 
 For *all* input datasets the labels to be used by the classifier must be specified
 in a separate file, indicated with the configuration option `mandolin.app.trainer.label-file`.

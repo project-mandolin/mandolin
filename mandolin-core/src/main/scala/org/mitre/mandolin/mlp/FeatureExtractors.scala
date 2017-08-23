@@ -24,7 +24,7 @@ class VecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
   def getAlphabet = alphabet
 
   def extractFeatures(s: String): MMLPFactor = {
-    val (l, spv, id) = sparseOfLine(s, alphabet)
+    val (l, spv, id) = sparseOfLine(s, alphabet, noLabels = noLabels)
     val dVec: DenseVec = DenseVec.zeros(alphabet.getSize)
     spv foreach { f =>
       if (f.fid >= 0) {
@@ -55,10 +55,11 @@ class SparseVecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
   extends FeatureExtractor[String, MMLPFactor] with LineParser with Serializable {
   var ind = 0
 
+  
   def getAlphabet = alphabet
 
   def extractFeatures(s: String): MMLPFactor = {
-    val (l, spv, id) = sparseOfLine(s, alphabet)
+    val (l, spv, id) = sparseOfLine(s, alphabet, noLabels=noLabels)
     val spVec: SparseVec = SparseVec(alphabet.getSize)
     spv foreach { f =>
       if (f.fid >= 0) {
@@ -84,90 +85,47 @@ class SparseVecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
   *
   * @author
   */
-class StdVectorExtractorWithAlphabet(la: Alphabet, fa: Alphabet, nfs: Int) extends FeatureExtractor[String, MMLPFactor] with Serializable {
+class StdVectorExtractorWithAlphabet(la: Alphabet, fa: Alphabet, nfs: Int) 
+extends FeatureExtractor[String, MMLPFactor] with Serializable {
   val reader = new SparseToDenseReader(' ', fa, nfs)
-
+  
   def getAlphabet = fa
 
   def extractFeatures(s: String): MMLPFactor = {
+    if (noLabels) {
+      val features = reader.getUnlabeledLine(s)
+      val targetVec = DenseVec.zeros(la.getSize)
+      new StdMMLPFactor(features, targetVec)
+    } else {
     val (lab, features) = reader.getLabeledLine(s)
     val targetVec = DenseVec.zeros(la.getSize)
-    targetVec.update(la.ofString(lab), 1.0f) // set one-hot
+    targetVec.update(la.ofString(lab), 1.0f) // set one-hot    
     new StdMMLPFactor(features, targetVec)
+    }
   }
 
   def getNumberOfFeatures = nfs
 }
 
-class StdVectorExtractorRegression(fa: Alphabet, nfs: Int) extends FeatureExtractor[String, MMLPFactor] with Serializable {
+class StdVectorExtractorRegression(fa: Alphabet, nfs: Int) 
+extends FeatureExtractor[String, MMLPFactor] with Serializable {
   val reader = new SparseToDenseReader(' ', fa, nfs)
+
 
   def getAlphabet = fa
 
   def extractFeatures(s: String): MMLPFactor = {
+    if (noLabels) {
+      val features = reader.getUnlabeledLine(s)
+      val targetVec = DenseVec.zeros(1)
+      new StdMMLPFactor(features, targetVec)
+    } else {
     val (lab, features) = reader.getLabeledLine(s)
     val lv = lab.toFloat
     val targetVec = DenseVec.tabulate(1) { _ => lv }
     new StdMMLPFactor(features, targetVec)
-  }
-
-  def getNumberOfFeatures = nfs
-}
-
-class BagOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String, MMLPFactor] with Serializable {
-  def getNumberOfFeatures = nfs
-
-  def getAlphabet = new IdentityAlphabet(nfs)
-
-  var x = 0
-
-  def extractFeatures(s: String): MMLPFactor = {
-    x += 1
-    val line = s.split(" ")
-    val ln = line.length
-    val lab = line(0)
-    var mm = Map[Int, Float]()
-    var i = 1;
-    while (i < ln) {
-      val av = line(i).split(":")
-      val ind = av(0).toInt
-      val vl = if (av.length > 1) av(1).toDouble else 1.0
-      val cv = mm.get(ind).getOrElse(0.0f)
-      mm += (ind -> (cv + 1.0f))
-      i += 1
     }
-    val targetVec: Vec = SparseVec.getOneHot(la.getSize, la.ofString(lab))
-    val (inds, vls) = mm.toList.unzip
-    val spv = SparseVec.getStaticSparseTensor1(nfs, inds.toArray, vls.toArray)
-    new SparseMMLPFactor(spv, targetVec)
   }
-}
-
-class SequenceOneHotExtractor(la: Alphabet, nfs: Int) extends FeatureExtractor[String, MMLPFactor] with Serializable {
-
-  var x = 0
 
   def getNumberOfFeatures = nfs
-
-  def getAlphabet = new IdentityAlphabet(nfs)
-
-  def extractFeatures(s: String): MMLPFactor = {
-    x += 1
-    val line = s.split(" ")
-    val ln = line.length
-    val lab = line(0)
-    var flist: List[(Int, Float)] = Nil
-    var i = 1;
-    while (i < ln) {
-      val av = line(i).split(":")
-      val ind = av(0).toInt + (i - 1) * nfs
-      val vl = if (av.length > 1) av(1).toFloat else 1.0f
-      flist = (ind, vl) :: flist
-      i += 1
-    }
-    val targetVec: Vec = SparseVec.getOneHot(la.getSize, la.ofString(lab))
-    val (inds, vls) = flist.unzip
-    if ((x % 10000) == 1) println("Processed " + x + " input vectors")
-    new SparseMMLPFactor(SparseVec.getStaticSparseTensor1(nfs * (ln - 1), inds.toArray, vls.toArray), targetVec)
-  }
 }
