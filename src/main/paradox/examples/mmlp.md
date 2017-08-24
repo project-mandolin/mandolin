@@ -5,7 +5,7 @@
 Run the MNIST MMLP example via the following commands, starting from the top-level `mandolin` directory.
 
     cd examples/mnist
-    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf
+    java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf
 
 This invocation's behavior is driven by the contents of the `mnist.conf` file, a portion of which is
 below:
@@ -27,7 +27,7 @@ however, it is useful to be able to specify parameters on the command-line. Mand
 attributes can be overridden on the command line by simply specifying attribute value pairs separated by
 the `=` sign. For example, we can change the number of training epochs with the invocation:
 
-    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
+    java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
         mandolin.mmlp.num-epochs=60
 
 Rather than using a single test file to validate the trained model, we may prefer to use cross validation.
@@ -35,7 +35,7 @@ In `train-test` mode, if Mandolin is only provided a training file and no testin
 intent is to perform cross validation on the training file. We can achieve this by simply setting
 the test file to `null` as follows:
 
-    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
+    java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
         mandolin.mmlp.test-file=null
 
 When performing cross validation in `train-test` mode, Mandolin will not perform an evaluation
@@ -69,7 +69,7 @@ portions are:
 
 The model can be invoked as:
 
-    java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin \
+    java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin \
          --conf mnist.1hl.conf
 
 Training this model requires markedly longer. The results are better, however, as this

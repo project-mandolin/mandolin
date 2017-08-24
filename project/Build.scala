@@ -43,7 +43,7 @@ object MandolinBuild extends Build {
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore, mandolinMx)
 
-  val mainVersion = "0.3.5"
+  val mainVersion = "0.3.6"
   
 
   def rootSettings = sharedSettings ++ Seq(

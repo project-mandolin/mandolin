@@ -23,6 +23,7 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   override val numThreads = asIntOpt("mandolin.xg.threads").getOrElse(1)
   override val denseVectorSize = asIntOpt("mandolin.xg.dense-vector-size").getOrElse(0)
 
+  val featureImportance = asStrOpt("mandolin.xg.feature-importance-file")
   val maxDepth = asIntOpt("mandolin.xg.max-depth").getOrElse(5)
   val rounds   = asIntOpt("mandolin.xg.rounds").getOrElse(20)
   val objective = asStrOpt("mandolin.xg.objective").getOrElse("binary:logistic")

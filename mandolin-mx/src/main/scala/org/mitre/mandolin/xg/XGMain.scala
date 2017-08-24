@@ -65,6 +65,33 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
     }
     
   }
+  
+  def getImportanceMap(dumps: Array[String], featureAlphabet: Alphabet): Map[String, Float] = {
+    var mpGain = new collection.immutable.HashMap[String, Float]
+    var mpCover = new collection.immutable.HashMap[String, Float]
+    dumps foreach { t =>
+      t.split('\n') foreach {line =>
+        val ar = line.split('[')
+        if (ar.length > 1) {
+          val fi1 = ar(1).split(']')
+          val gain = fi1(1).split("gain=")(1).split(',')(0).toFloat
+          val fid = fi1(0).split('<')(0)
+          val curCover = mpCover.get(fid).getOrElse(0.0f)
+          val curGain = mpGain.get(fid).getOrElse(0.0f)
+          mpCover += (fid -> (curCover + 1.0f))
+          mpGain += (fid -> (curGain + gain))
+        }
+        }
+      }
+    mpCover foreach {case (k,v) => mpGain += (k -> mpGain(k)/mpCover(k))}
+    var finalGain = new collection.immutable.HashMap[String, Float]
+    val invFa = featureAlphabet.getInverseMapping
+    mpGain foreach {case (k,v) =>
+      val id = k.substring(1,k.length).toInt
+      finalGain += (invFa(id) -> v)
+      }
+    finalGain
+  }
 
   def main(args: Array[String]): Unit = {
     val xgSettings = new XGModelSettings(args)
@@ -75,7 +102,15 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
         val evaluator = new XGBoostEvaluator(xgSettings, labelAlphabet.getSize)
         val (finalMetric, booster) = evaluator.evaluateTrainingSet(trVecs.toIterator, tstVecs map { _.toIterator})
         val io = new LocalIOAssistant
-        booster foreach { b =>          
+        booster foreach { b =>               
+          xgSettings.featureImportance foreach {fi =>
+            val writer = io.getPrintWriterFor(fi, true)
+            writer.print("Feature, Gain\n")
+            val fscores = b.getModelDump("", true)
+            val impList = getImportanceMap(fscores, fe.getAlphabet).toList.sortWith{case ((_,a), (_,b)) => a > b}
+            impList foreach {case (f,g) => writer.print(f); writer.print(','); writer.print(g.toString); writer.println}
+            writer.close()
+            }
           xgSettings.modelFile match {            
           case Some(m) =>
             val writer = new StandaloneXGBoostModelWriter
