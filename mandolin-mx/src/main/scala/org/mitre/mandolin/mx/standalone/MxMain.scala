@@ -66,6 +66,7 @@ object MxMain extends LogInit with MxNetSetup with org.mitre.mandolin.app.AppMai
   } 
   
   def trainGlpModel(appSettings: MxModelSettings) = {
+    assert(appSettings.modelFile.isDefined)
     val devices = getDeviceArray(appSettings)
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)        
     val (trVecs, tstVecs, nfs) = getVecIOs(appSettings)

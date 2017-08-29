@@ -18,7 +18,7 @@ case class MMLPComponentSet(
 
 
 object ANNBuilder {
-    def mapSpecToList(conf: Map[String, Map[String, String]]) = {
+  def mapSpecToList(conf: Map[String, Map[String, String]]) = {
     val layerNames = conf.keySet
     var prevName = ""
     val nextMap = layerNames.toSet.foldLeft(Map():Map[String,String]){case (ac,v) =>

@@ -14,6 +14,16 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   
   import scala.collection.JavaConversions._
   
+  override val trainFile = asStrOpt("mandolin.mx.train-file")
+  override val testFile = asStrOpt("mandolin.mx.test-file")
+  override val testFreq = asInt("mandolin.mx.eval-freq")
+  override val modelFile = asStrOpt("mandolin.mx.model-file")
+  
+  override val labelFile = asStrOpt("mandolin.mx.label-file")
+  override val denseVectorSize = asInt("mandolin.mx.dense-vector-size")
+  override val scaleInputs = asBoolean("mandolin.mx.scale-inputs")  
+  override val miniBatchSize = asIntOpt("mandolin.mx.mini-batch-size").getOrElse(32)
+  
   // input type: 1) mlp, 2) ndarray, 3) recordio ... others?
   val inputType       = asStrOpt("mandolin.mx.input-type").getOrElse("mlp")
   val numberOfClasses = asIntOpt("mandolin.mx.num-classes").getOrElse(2)
