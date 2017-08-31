@@ -69,7 +69,6 @@ object ANNBuilder {
         case "Logistic"     => LType(LogisticLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Linear"       =>
           val lt = if (i >= cs.length - 1) LinearOutLType else LinearLType
-          println("dim = " + dim)
           LType(lt, dim, dropOut, l1Pen, l2Pen, mn)
         case "LinearNoBias" => LType(LinearNoBiasLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "CrossEntropy" => LType(CrossEntropyLType, dim, dropOut, l1Pen, l2Pen, mn)
