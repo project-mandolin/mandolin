@@ -49,12 +49,12 @@ class SingletonFactor(input: MMLPFactor, val label: Int) extends GMFactor[Single
     if (!dual) fm.getMode(this)
     else {
       val fmarg = fm.getFullMarginal(this)
-      
+      // println("Singleton original marginal: " + fmarg)
       var bestSc = -Double.MaxValue
       var best = 0 // index into best assignment
       var zSum = 0.0
       fmarg foreach {case (v,ind) =>
-        var av = v
+        var av = 0.0 // v
         parentFactors foreach { case (mfactor, lid) =>
           //println("Adding parent factor deltas to singleton score: " + mfactor.name + " ("+lid+","+ind+") => " + mfactor.deltas(lid)(ind))
           av += mfactor.deltas(lid)(ind) }
@@ -70,7 +70,7 @@ class SingletonFactor(input: MMLPFactor, val label: Int) extends GMFactor[Single
         reparameterizedMarginals(i) /= zSum   // normalize
         i += 1
       }
-      //println("Singleton assignment = " + best + " with score = " + bestSc)
+      // println("Singleton assignment = " + best + " with score = " + bestSc)
       best
     }
   }
@@ -143,25 +143,31 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     val pairUnit = getInput
     val singleUnit1 = singletons(0).getInput
     val singleUnit2 = singletons(1).getInput
-    logger.info("Pair unit FV instance = " + pairUnit)
-    logger.info("Singleton 1 = " + singleUnit1)
-    logger.info("Singleton 2 = " + singleUnit2)
+    // logger.info("Pair unit FV instance = " + pairUnit + " # " + pairUnit.getUniqueKey)
+    // logger.info("Singleton 1 = " + singleUnit1 + " # " + singleUnit1.getUniqueKey)
+    // logger.info("Singleton 2 = " + singleUnit2 + " # " + singleUnit2.getUniqueKey)
     
     singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
-    val f1Output = singleGlp.outLayer.getOutput(true)
+    val f1Output = singleGlp.outLayer.getOutput(true).copy
     singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
-    val f2Output = singleGlp.outLayer.getOutput(true)
+    val f2Output = singleGlp.outLayer.getOutput(true).copy
     pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
-    val pairOutput = pairGlp.outLayer.getOutput(true).asArray
+    val pairOutput = pairGlp.outLayer.getOutput(true).copy.asArray
     val a1 = f1Output.asArray
     val a2 = f2Output.asArray    
     val dim = a1.length
     var sum = 0.0
     var maxScore = -Float.MaxValue
+    // println("Input A1 = " + singleUnit1.getInput.asArray.toVector)
+    // println("Input A2 = " + singleUnit2.getInput.asArray.toVector)
     val potentials = 
     Array.tabulate(dim){i =>
-      Array.tabulate(dim){ j =>        
-        val sc = a1(i) + a2(j) + pairOutput(assignmentToIndex(Array(i,j)))
+      Array.tabulate(dim){ j =>    
+        // println("A1 of i = " + i + " = " + a1(i))
+        // println("A2 of j = " + j + " = " + a2(j))
+        val pairOut = pairOutput(assignmentToIndex(Array(i,j)))
+        // println("Pair = " + pairOut)
+        val sc = a1(i) + a2(j) + pairOut
         maxScore = math.max(maxScore, sc)
         sc
         }
@@ -182,6 +188,16 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
       }
       i += 1
     }
+    
+    val vec2 = Array.tabulate(dim){j =>
+      var s = 0.0f
+      var i = 0; while (i < dim) {
+        s += potentials(i)(j)
+        i += 1
+      }
+      s
+    }
+
     val vec1 = Array.tabulate(dim){i =>
       var s = 0.0f
       val pi = potentials(i)
@@ -191,21 +207,17 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
       }
       s
     }
+    
     // Re-run forward pass    
     singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
-    singleGlp.outLayer.setOutput(new DenseVec(vec1)) // set this to the vec1
-    val gr1 = singleGlp.backpropGradients(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)    
-    val vec2 = Array.tabulate(dim){j =>
-      var s = 0.0f
-      val pj = potentials(j)
-      var i = 0; while (i < dim) {
-        s += pj(i)
-        i += 1
-      }
-      s
-    }
+    val dt1 = new DenseVec(vec1)
+    singleGlp.outLayer.setOutput(dt1.copy) // set this to the vec1 - but use a copy
+    val gr1 = singleGlp.backpropGradients(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
+
     singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
-    singleGlp.outLayer.setOutput(new DenseVec(vec2)) // set this to the vec2
+    val dt2 = new DenseVec(vec2)
+    singleGlp.outLayer.setOutput(dt2.copy) // set this to the vec2
+
     val gr2 = singleGlp.backpropGradients(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
     
     pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
@@ -216,10 +228,11 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
       potentials(assignment(0))(assignment(1))
     }
     
-    pairGlp.outLayer.setOutput(new DenseVec(pairVec))
+    pairGlp.outLayer.setOutput(new DenseVec(pairVec).copy)
     val grPair = pairGlp.backpropGradients(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
+
     gr1.addEquals(gr2, 1.0f)
-    // joint probability and marginals for variable 1 (vec1) and variable 2 (vec2)
+    
     (pairVec, vec1, vec2)
   }
   

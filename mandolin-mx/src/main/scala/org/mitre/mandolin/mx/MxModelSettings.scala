@@ -16,11 +16,11 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   
   override val trainFile = asStrOpt("mandolin.mx.train-file")
   override val testFile = asStrOpt("mandolin.mx.test-file")
-  override val testFreq = asInt("mandolin.mx.eval-freq")
+  override val testFreq = asIntOpt("mandolin.mx.eval-freq").getOrElse(10)
   override val modelFile = asStrOpt("mandolin.mx.model-file")
   
   override val labelFile = asStrOpt("mandolin.mx.label-file")
-  override val denseVectorSize = asInt("mandolin.mx.dense-vector-size")
+  override val denseVectorSize = asIntOpt("mandolin.mx.dense-vector-size").getOrElse(0)
   override val scaleInputs = asBoolean("mandolin.mx.scale-inputs")  
   override val miniBatchSize = asIntOpt("mandolin.mx.mini-batch-size").getOrElse(32)
   

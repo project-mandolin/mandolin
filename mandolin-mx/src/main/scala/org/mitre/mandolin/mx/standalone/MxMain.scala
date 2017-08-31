@@ -97,7 +97,7 @@ object MxMain extends LogInit with MxNetSetup with org.mitre.mandolin.app.AppMai
           case "mnist" => trainMnistModel(appSettings)
           case _ => trainGlpModel(appSettings)
           // case _ => throw new RuntimeException("Only image models with 'recordio' format currently supported")
-        }
+        }      
       case _ => throw new RuntimeException("Only 'train' mode currently supported")
     }
   }

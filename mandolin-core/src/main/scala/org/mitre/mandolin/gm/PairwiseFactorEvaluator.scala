@@ -82,6 +82,8 @@ extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossG
   def evaluateTrainingUnit(unit: MultiFactor, weights: MultiFactorWeights, u: U) : MultiFactorLossGradient = {
     
     val (pairVec, vec1, vec2) = unit.marginalInference(singleGlp, pairGlp, weights)  // this does the heavy lift of full pair-wise inference
+
+    /*
     val vstr = new StringBuilder
     pairVec foreach {v => vstr append v; vstr append ' '}
     logger.info("Pair vec: " + vstr.toString)
@@ -93,24 +95,26 @@ extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossG
     val vstr2 = new StringBuilder
     vec2 foreach {v => vstr2 append v; vstr2 append ' '}
     logger.info("Vec2: " + vstr2.toString)
+    */
     
     val singleUnit1 = unit.singletons(0).getInput
     val singleUnit2 = unit.singletons(1).getInput
     val pairUnit = unit.getInput
-    
+
     // Re-run forward pass    
     singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
-    singleGlp.outLayer.setOutput(new DenseTensor1(vec1)) // set this to the vec1
+    singleGlp.outLayer.setOutput(new DenseTensor1(vec1).copy) // set this to the vec1, this is re-marginalized    
+    // println("-Inferred output- = " + singleGlp.outLayer.getOutput(true).toString)
+    // println("Target output = " + singleUnit1.getOutput.toString)
     val gr1 = singleGlp.backpropGradients(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)    
     singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
-    singleGlp.outLayer.setOutput(new DenseTensor1(vec2)) // set this to the vec2
+    singleGlp.outLayer.setOutput(new DenseTensor1(vec2).copy) // set this to the vec2
+    // println("Target output = " + singleUnit2.getOutput.toString)
     val gr2 = singleGlp.backpropGradients(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
-    
     pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)    
-    pairGlp.outLayer.setOutput(new DenseTensor1(pairVec))
+    pairGlp.outLayer.setOutput(new DenseTensor1(pairVec).copy)
     val grPair = pairGlp.backpropGradients(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
     gr1.addEquals(gr2, 1.0f)
-    
     new MultiFactorLossGradient(0.0,gr1,grPair)
   }  
   
