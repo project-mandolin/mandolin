@@ -18,7 +18,7 @@ case class MMLPComponentSet(
 
 
 object ANNBuilder {
-    def mapSpecToList(conf: Map[String, Map[String, String]]) = {
+  def mapSpecToList(conf: Map[String, Map[String, String]]) = {
     val layerNames = conf.keySet
     var prevName = ""
     val nextMap = layerNames.toSet.foldLeft(Map():Map[String,String]){case (ac,v) =>
@@ -69,7 +69,6 @@ object ANNBuilder {
         case "Logistic"     => LType(LogisticLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "Linear"       =>
           val lt = if (i >= cs.length - 1) LinearOutLType else LinearLType
-          println("dim = " + dim)
           LType(lt, dim, dropOut, l1Pen, l2Pen, mn)
         case "LinearNoBias" => LType(LinearNoBiasLType, dim, dropOut, l1Pen, l2Pen, mn)
         case "CrossEntropy" => LType(CrossEntropyLType, dim, dropOut, l1Pen, l2Pen, mn)

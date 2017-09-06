@@ -19,9 +19,11 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   override val testFile = asStrOpt("mandolin.xg.test-file")
   override val labelFile = asStrOpt("mandolin.xg.label-file")
   override val modelFile = asStrOpt("mandolin.xg.model-file")
+  override val outputFile = asStrOpt("mandolin.xg.prediction-file")
   override val numThreads = asIntOpt("mandolin.xg.threads").getOrElse(1)
   override val denseVectorSize = asIntOpt("mandolin.xg.dense-vector-size").getOrElse(0)
 
+  val featureImportance = asStrOpt("mandolin.xg.feature-importance-file")
   val maxDepth = asIntOpt("mandolin.xg.max-depth").getOrElse(5)
   val rounds   = asIntOpt("mandolin.xg.rounds").getOrElse(20)
   val objective = asStrOpt("mandolin.xg.objective").getOrElse("binary:logistic")

@@ -18,7 +18,7 @@ All three artifacts can be built from source by downloading [SBT](http://www.sca
     > sbt assembly
 
 This will build three assembly artifacts (i.e. "fat" jar files) :
-`mandolin-core-0.3.5.jar`, `mandolin-mx-0.3.5.jar` and `mandolin-spark-0.3.5.jar`.
+`mandolin-core-0.3.6.jar`, `mandolin-mx-0.3.6.jar` and `mandolin-spark-0.3.6.jar`.
 These are placed in the directory `mandolin/dist`.
 
 If **only** the the `mandolin-core` artifact is required, it can be compiled by executing:
@@ -30,7 +30,7 @@ Apache Spark nor XGBoost or MXNet are not needed.
 
 ## Building with MXNet and XGBoost
 
-The `mandolin-mx-0.3.5.jar` artifact provides bindings to both MXNet and XGBoost as well as Mandolin
+The `mandolin-mx-0.3.6.jar` artifact provides bindings to both MXNet and XGBoost as well as Mandolin
 code that supports model specification via configuration as well as model selection. The native
 code for both MXNet and XGBoost is ***not*** included in this artifact, however. Pre-compiled shared
 libraries for XGBoost are provided in `mandolin-mx/pre-compiled/xgboost` for both `linux` and `osx`.

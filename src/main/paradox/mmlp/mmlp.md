@@ -57,9 +57,4 @@ Some additional options are detailed below:
 |``mandolin.mmlp.print-feature-file``     |A file path that will receive a list of all the features used/selected for training with a given input file.|
 
 
-@@@ include
-
- * [Examples](examples/examples.md)
-
-@@@
 

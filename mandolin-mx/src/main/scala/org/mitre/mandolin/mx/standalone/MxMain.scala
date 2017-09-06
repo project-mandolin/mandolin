@@ -66,6 +66,7 @@ object MxMain extends LogInit with MxNetSetup with org.mitre.mandolin.app.AppMai
   } 
   
   def trainGlpModel(appSettings: MxModelSettings) = {
+    assert(appSettings.modelFile.isDefined)
     val devices = getDeviceArray(appSettings)
     val sym     = (new SymbolBuilder).symbolFromSpec(appSettings.config)        
     val (trVecs, tstVecs, nfs) = getVecIOs(appSettings)
@@ -96,7 +97,7 @@ object MxMain extends LogInit with MxNetSetup with org.mitre.mandolin.app.AppMai
           case "mnist" => trainMnistModel(appSettings)
           case _ => trainGlpModel(appSettings)
           // case _ => throw new RuntimeException("Only image models with 'recordio' format currently supported")
-        }
+        }      
       case _ => throw new RuntimeException("Only 'train' mode currently supported")
     }
   }

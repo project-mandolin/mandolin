@@ -22,15 +22,15 @@ class SubgradientInference(val fm: PairFactorModel, val sm: SingletonFactorModel
       var adjustments = 0
       f foreach {factor =>
         val fAssignment = factor.varAssignment
-        // val sb = new StringBuilder
-        // fAssignment foreach {v => sb append (" " + v)}
-        // logger.info(sb.toString)
+        val sb = new StringBuilder
+        fAssignment foreach {v => sb append (" " + v)}
+        logger.info(sb.toString)
         var j = 0; while (j < factor.numVars) {
           val fjAssign = fAssignment(j)
           val sjAssign = factor.singletons(j).currentAssignment
           if (fjAssign != sjAssign) { // disagreement in variable assignment
             adjustments += 1
-            // logger.debug("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
+            logger.info("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
             factor.deltas(j)(fjAssign) += alpha
             factor.deltas(j)(sjAssign) -= alpha
           }
@@ -109,7 +109,7 @@ class StarCoordinatedBlockMinimizationInference(val fm: PairFactorModel, val sm:
           parents foreach {case (c,vInd) =>
             c.getMode(fm, true, tau)     // this will get re-computed a lot, can we cache?
             margSums += math.log(c.fixedVarMarginals(vInd)(iVal)) }
-          margSums += math.log(u_i)
+          margSums += math.log(u_i)   // XXX - this adds in prior probability
           margSums /= (1.0 + parents.length)
           val mSum = margSums.toFloat / tau.toFloat
           // once fixed margSums computed, perform standalone closed-form update to deltas
