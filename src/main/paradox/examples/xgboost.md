@@ -5,7 +5,7 @@ format). The wrapper also facilitates use of model selection over XGBoost hyper-
 
 ## Splice Example
 
-A small excerpt of the full Splice dataset is used here to demonstrate the utiltiy of XGBoost
+A small excerpt of the full Splice dataset is used here to demonstrate the utility of XGBoost
 for modeling problems best captured with a non-linear classifier. The example can be run via:
 
     cd $MANDOLIN/examples/splice
