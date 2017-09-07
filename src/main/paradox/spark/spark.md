@@ -31,11 +31,17 @@ classes: RDDs and Broadcast variables.  The training data is read into
 an RDD and partitioned such that only a single partition exists on each
 Spark executor.  This is realized by forcing the number of partitions to
 be equal to the number of executors, which should be equal to the number
-of nodes on the compute cluster.
+of nodes on the compute cluster.  Each executor trains a model
+independently, then each model is averaged during the reduce phase.
+Before the start of the next iteration, the current model parameters are
+broadcast to each executor.  This process is illustrated in the figure
+below.
+
+![DORMA](./img/dorma.png)
 
 Optionally, each iteration can also involve repartitioning the data
-across the cluster. This process is controlled by the `oversample`
-parameter.
+across the cluster. This process is controlled by the
+`mandolin.mmlp.oversample` parameter.
 
 
 

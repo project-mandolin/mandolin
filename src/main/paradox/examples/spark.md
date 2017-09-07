@@ -11,7 +11,7 @@ on the configuration properties available.
 The following config file snippet shows the addition of the `spark`
 block.
 
-@@snip [url.distributed.1.conf](snippets/url.distributed.1.conf)
+@@snip [url.distributed.1.conf](snippets/url.distributed.conf)
 
 The application settings block demonstrates how to set typical Spark
 application properties such as the application name and Spark master
