@@ -74,14 +74,25 @@ class MultiFactorLossGradient(l: Double, val singles: MMLPLayout, val pairs: MML
   def asArray = throw new RuntimeException("As Array not feasible with non-linear model")
 }
 
-class PairwiseFactorEvaluator[U <: Updater[MultiFactorWeights, MultiFactorLossGradient, U]](val singleGlp: ANNetwork, val pairGlp: ANNetwork)
+
+
+class PairwiseFactorEvaluator[U <: Updater[MultiFactorWeights, MultiFactorLossGradient, U]](
+    val singleGlp: ANNetwork, val pairGlp: ANNetwork, variableOrder: Int)
 extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossGradient, U] with Serializable {
   
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
-
+  
+  val potentials = Array.tabulate(variableOrder){_ => Array.tabulate(variableOrder){_ => 0.0f}}
+  val vec1 = Array.tabulate(variableOrder){_ => 0.0f}
+  val vec2 = Array.tabulate(variableOrder){_ => 0.0f}
+  val pairVec = Array.tabulate(variableOrder * variableOrder){ _ => 0.0f}
+  
+  var evaluated = 0
+  
   def evaluateTrainingUnit(unit: MultiFactor, weights: MultiFactorWeights, u: U) : MultiFactorLossGradient = {
     
-    val (pairVec, vec1, vec2) = unit.marginalInference(singleGlp, pairGlp, weights)  // this does the heavy lift of full pair-wise inference
+    val gradients = 
+      unit.marginalInference(singleGlp, pairGlp, weights, potentials, vec1, vec2, pairVec, true)  // this does the heavy lift of full pair-wise inference and gradients
 
     /*
     val vstr = new StringBuilder
@@ -96,29 +107,13 @@ extends TrainingUnitEvaluator [MultiFactor, MultiFactorWeights, MultiFactorLossG
     vec2 foreach {v => vstr2 append v; vstr2 append ' '}
     logger.info("Vec2: " + vstr2.toString)
     */
-    
-    val singleUnit1 = unit.singletons(0).getInput
-    val singleUnit2 = unit.singletons(1).getInput
-    val pairUnit = unit.getInput
-
-    // Re-run forward pass    
-    singleGlp.forwardPass(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)
-    singleGlp.outLayer.setOutput(new DenseTensor1(vec1).copy) // set this to the vec1, this is re-marginalized    
-    // println("-Inferred output- = " + singleGlp.outLayer.getOutput(true).toString)
-    // println("Target output = " + singleUnit1.getOutput.toString)
-    val gr1 = singleGlp.backpropGradients(singleUnit1.getInput, singleUnit1.getOutput, weights.singleWeights)    
-    singleGlp.forwardPass(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
-    singleGlp.outLayer.setOutput(new DenseTensor1(vec2).copy) // set this to the vec2
-    // println("Target output = " + singleUnit2.getOutput.toString)
-    val gr2 = singleGlp.backpropGradients(singleUnit2.getInput, singleUnit2.getOutput, weights.singleWeights)
-    pairGlp.forwardPass(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)    
-    pairGlp.outLayer.setOutput(new DenseTensor1(pairVec).copy)
-    val grPair = pairGlp.backpropGradients(pairUnit.getInput, pairUnit.getOutput, weights.pairWeights)
-    gr1.addEquals(gr2, 1.0f)
+    evaluated += 1
+    if ((evaluated % 10000) == 0) logger.info("Processed [ " + evaluated + "] instances")       
+    val (grPair, gr1) = gradients match {case Some((grPair, gr1)) => (grPair, gr1) case None => throw new RuntimeException("Expected gradients")}
     new MultiFactorLossGradient(0.0,gr1,grPair)
   }  
   
-  def copy() = new PairwiseFactorEvaluator(singleGlp.sharedWeightCopy(), pairGlp.sharedWeightCopy()) // this copy will share weights but have separate layer data members
+  def copy() = new PairwiseFactorEvaluator(singleGlp.sharedWeightCopy(), pairGlp.sharedWeightCopy(), variableOrder) // this copy will share weights but have separate layer data members
   
 }
 

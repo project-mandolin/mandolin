@@ -1,7 +1,7 @@
 package org.mitre.mandolin.xg
 
 import org.mitre.mandolin.mlp.{MMLPFactor, MMLPTrainerBuilder}
-import org.mitre.mandolin.util.{LocalIOAssistant, AbstractPrintWriter, Alphabet}
+import org.mitre.mandolin.util.{LocalIOAssistant, AbstractPrintWriter, Alphabet, IdentityAlphabet}
 import org.mitre.mandolin.transform.FeatureExtractor
 import ml.dmlc.xgboost4j.scala.{XGBoost, DMatrix}
 
@@ -69,7 +69,7 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
   def getImportanceMap(dumps: Array[String], featureAlphabet: Alphabet): Map[String, Float] = {
     var mpGain = new collection.immutable.HashMap[String, Float]
     var mpCover = new collection.immutable.HashMap[String, Float]
-    dumps foreach { t =>
+    dumps foreach { t =>      
       t.split('\n') foreach {line =>
         val ar = line.split('[')
         if (ar.length > 1) {
@@ -85,10 +85,16 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
       }
     mpCover foreach {case (k,v) => mpGain += (k -> mpGain(k)/mpCover(k))}
     var finalGain = new collection.immutable.HashMap[String, Float]
-    val invFa = featureAlphabet.getInverseMapping
+    
+    val featureMap = 
+      featureAlphabet match {
+        case fa: IdentityAlphabet => { (i: Int) => i.toString}
+        case _ => featureAlphabet.getInverseMapping
+    }
+    
     mpGain foreach {case (k,v) =>
       val id = k.substring(1,k.length).toInt
-      finalGain += (invFa(id) -> v)
+      finalGain += (featureMap(id) -> v)
       }
     finalGain
   }

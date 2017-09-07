@@ -15,6 +15,7 @@ class FactorGraphSettings(args: Array[String]) extends MandolinMLPSettings(args)
   val sgAlpha = asDouble("mandolin.gm.sg-alpha")
   val inferAlgorithm = asStrOpt("mandolin.gm.infer-algorithm")
   val isSparse = this.netspec.head("ltype").equals("InputSparse")
+  val singletonFactorWeight = asFloatOpt("mandolin.gm.single-factor-weight").getOrElse(0.0f)
   
   val factorSpec = try {
     config.as[List[Map[String, String]]]("mandolin.gm.factor-spec")

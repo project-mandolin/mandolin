@@ -31,8 +31,8 @@ class SubgradientInference(val fm: PairFactorModel, val sm: SingletonFactorModel
           if (fjAssign != sjAssign) { // disagreement in variable assignment
             adjustments += 1
             logger.info("Disagreement on var " + j + " true = " + factor.singletons(j).label + " factor = " + fjAssign + " single = " + sjAssign)
-            factor.deltas(j)(fjAssign) += alpha
-            factor.deltas(j)(sjAssign) -= alpha
+            factor.deltas.get(j)(fjAssign) += alpha
+            factor.deltas.get(j)(sjAssign) -= alpha
           }
           j += 1
         }
@@ -53,7 +53,7 @@ trait ComputeFullGradient {
       var iVal = 0; while (iVal < s.varOrder) {
         val uvMarg = s.reparameterizedMarginals(iVal)
         s.parentFactors foreach {case (c, vInd) =>
-          val diff = (uvMarg - c.fixedVarMarginals(vInd)(iVal))
+          val diff = (uvMarg - c.fixedVarMarginals.get(vInd)(iVal))
           n += (diff * diff)
         }
         iVal += 1
@@ -74,13 +74,21 @@ class SmoothedGradientInference(val fm: PairFactorModel, val sm: SingletonFactor
   def mapInfer(factors: Vector[MultiFactor], singletons: Vector[SingletonFactor], maxN: Int) = {
     var i = 0; while (i < maxN) {
       //alpha /= (1.0f + i)
+      var singlesProcessed = 0
+      var tt = System.nanoTime
       singletons foreach {s =>
         s.getMode(sm, true, 10.0f)
+        singlesProcessed += 1
+        if ((singlesProcessed % 1000) == 0) {
+          val ct = System.nanoTime
+          logger.info("Updates ["+singlesProcessed+"] in " + ((ct - tt)/1E9) + " seconds")
+          tt = ct
+        }
         var iVal = 0; while (iVal < s.varOrder) {
           val mu_i = s.reparameterizedMarginals(iVal)
           s.parentFactors foreach { case (c, vInd) =>
             c.getMode(fm, true, 10.0f)
-            c.deltas(vInd)(iVal) -= (alpha * (mu_i - c.fixedVarMarginals(vInd)(iVal))).toFloat 
+            c.deltas.get(vInd)(iVal) -= (alpha * (mu_i - c.fixedVarMarginals.get(vInd)(iVal))).toFloat 
           }
           iVal += 1
         }
@@ -100,22 +108,30 @@ class StarCoordinatedBlockMinimizationInference(val fm: PairFactorModel, val sm:
     logger.info("Performing MAP inference using star-updates")
     var i = 0; while (i < maxN) {
       val shuffled = util.Random.shuffle(singletons)
+      var singlesProcessed = 0
+      var tt = System.nanoTime
       shuffled foreach {s =>
         s.getMode(sm, true, tau)
         val parents = s.parentFactors
+        singlesProcessed += 1
+        if ((singlesProcessed % 1000) == 0) {
+          val ct = System.nanoTime
+          logger.info("Updates ["+singlesProcessed+"] in " + ((ct - tt)/1E9) + " seconds")
+          tt = ct
+        }
         var iVal = 0; while (iVal < s.varOrder) { // iterate over var domain                    
           val u_i = s.reparameterizedMarginals(iVal)
           var margSums = 0.0
-          parents foreach {case (c,vInd) =>
-            c.getMode(fm, true, tau)     // this will get re-computed a lot, can we cache?
-            margSums += math.log(c.fixedVarMarginals(vInd)(iVal)) }
-          margSums += math.log(u_i)   // XXX - this adds in prior probability
+          parents foreach {case (c,vInd) =>            
+            c.getMode(fm, true, tau)     // can't cache this as re-parameterized marginals are updated via delta update below ...
+            margSums += math.log(c.fixedVarMarginals.get(vInd)(iVal)) }
+          margSums += math.log(u_i)   
           margSums /= (1.0 + parents.length)
           val mSum = margSums.toFloat / tau.toFloat
-          // once fixed margSums computed, perform standalone closed-form update to deltas
+          // once fixed margSums computed, perform closed-form update to deltas
           parents foreach {case (c,vInd) =>
-            // update deltas -- STAR update --
-            c.deltas(vInd)(iVal) += ((math.log(c.fixedVarMarginals(vInd)(iVal)).toFloat / tau.toFloat) - mSum)
+            // update deltas -- STAR update --  Update all parents
+            c.deltas.get(vInd)(iVal) += ((math.log(c.fixedVarMarginals.get(vInd)(iVal)).toFloat / tau.toFloat) - mSum)
           }
           iVal += 1
         }

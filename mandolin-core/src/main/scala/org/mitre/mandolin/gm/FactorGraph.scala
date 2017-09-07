@@ -12,7 +12,7 @@ case class AlphabetSet(sa: Alphabet, fa: Alphabet, sla: Alphabet, fla: Alphabet)
 
 object PairWiseOptimizer {
 
-  def getOptimizer(fgSettings: FactorGraphSettings, singleNN: ANNetwork, pairNN: ANNetwork) = {
+  def getOptimizer(fgSettings: FactorGraphSettings, singleNN: ANNetwork, pairNN: ANNetwork, varOrder: Int) = {
     val weightsSingle = singleNN.generateRandomWeights
     val sumSquaredSingle = singleNN.generateZeroedLayout
     val weightsPair = pairNN.generateRandomWeights
@@ -23,7 +23,7 @@ object PairWiseOptimizer {
     val uSingle = new MMLPAdaGradUpdater(sumSquaredSingle, fgSettings.initialLearnRate)
     val uPair = new MMLPAdaGradUpdater(sumSquaredPair, fgSettings.initialLearnRate)
     val updater = new MultiFactorAdaGradUpdater(uSingle, uPair, fgSettings.initialLearnRate)
-    val evaluator = new PairwiseFactorEvaluator[MultiFactorAdaGradUpdater](singleNN, pairNN)
+    val evaluator = new PairwiseFactorEvaluator[MultiFactorAdaGradUpdater](singleNN, pairNN, varOrder)
     val weights = new MultiFactorWeights(weightsSingle, weightsPair, 1.0f)
     new OnlineOptimizer[MultiFactor, MultiFactorWeights, MultiFactorLossGradient, MultiFactorAdaGradUpdater](weights, evaluator, updater, fgSettings)
   }
@@ -32,11 +32,13 @@ object PairWiseOptimizer {
 class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGraph) {
 
   val logger = LoggerFactory.getLogger(this.getClass)
+  
+  val variableOrder = factorGraph.alphabets.sla.getSize
 
   val (singletonNN, factorNN) = getComponents(fgSettings, factorGraph.alphabets)
   val sOpt = MMLPOptimizer.getOptimizer(fgSettings, singletonNN)
   // val fOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, factorNN)
-  val fOpt = PairWiseOptimizer.getOptimizer(fgSettings, singletonNN, factorNN)
+  val fOpt = PairWiseOptimizer.getOptimizer(fgSettings, singletonNN, factorNN, variableOrder)
   val ie = new IdentityExtractor(new IdentityAlphabet(1))
 
   val sTrainer = new Trainer[SingletonFactor, MMLPFactor, MMLPWeights](ie, sOpt)
@@ -62,10 +64,10 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
       val (fWeights,_) = fTrainer.retrainWeights(factorGraph.factors, fgSettings.numEpochs)
 
       logger.info("Estimation finished in " + ((System.nanoTime - t1) / 1E9) + " seconds ")
-      new PairFactorModel(singletonNN, factorNN, fWeights)
+      new PairFactorModel(singletonNN, factorNN, fWeights, variableOrder)
     } else {
       val emptyWeights = new MultiFactorWeights(new MMLPWeights(new MMLPLayout(IndexedSeq())), new MMLPWeights(new MMLPLayout(IndexedSeq())), 1.0f)
-      new PairFactorModel(singletonNN, factorNN, emptyWeights)
+      new PairFactorModel(singletonNN, factorNN, emptyWeights, variableOrder)
     }
     val sm = new SingletonFactorModel(new CategoricalMMLPPredictor(singletonNN, true), sWeights)
     new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
@@ -170,10 +172,20 @@ object FactorGraph {
     }
     fa
   }
+  
+  def gatherPairFactors(factorPath: String, factorExtractor: GMFactorExtractor) = {
+    var ll = 0
+    scala.io.Source.fromFile(new java.io.File(factorPath)).getLines map {l =>
+      ll += 1      
+      if (ll % 1000 == 0) logger.info("Extracted [" + ll + "] pair-wise factors")
+      factorExtractor.extractFeatures(l)
+      }    
+  }
 
   def gatherFactorGraph(fgSettings: FactorGraphSettings): FactorGraph = {
     val singletonStr = fgSettings.singletonFile
     val factorStr = fgSettings.factorFile
+    val decoding = (fgSettings.appMode.equals("decode") || fgSettings.appMode.equals("predict") || fgSettings.appMode.equals("predict-eval"))
     val (sa, sla) = getFeatureAlphabetSingleton(singletonStr)
     sa.ensureFixed
     sla.ensureFixed
@@ -187,9 +199,9 @@ object FactorGraph {
         val fla = new IdentityAlphabet(cardinality * cardinality, false, true)
         fa.ensureFixed
         fla.ensureFixed
-        val factorExtractor = new GMFactorExtractor(fa, fla, cardinality, singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse)
+        val factorExtractor = new GMFactorExtractor(fa, fla, cardinality, singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse, decoding)        
+        val factors = gatherPairFactors(factorStr, factorExtractor)
         logger.info("Factor graph constructed with " + fa.getSize + " features for pair-wise factors")
-        val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
         new FactorGraph(factors.toVector, singletons.toVector, AlphabetSet(sa, fa, sla, fla))
       case None =>
         new FactorGraph(Vector(), singletons.toVector, AlphabetSet(sa, new IdentityAlphabet, sla, new IdentityAlphabet))
@@ -202,14 +214,14 @@ object FactorGraph {
     val fla = alphabets.fla
     val fa = alphabets.fa
     val singletonStr = fgSettings.singletonTestFile.get
-
-    val singletonExtractor = new GMSingletonExtractor(sa, sla, fgSettings.isSparse)
+    val decoding = (fgSettings.appMode.equals("decode") || fgSettings.appMode.equals("predict") || fgSettings.appMode.equals("predict-eval"))
+    val singletonExtractor = new GMSingletonExtractor(sa, sla, fgSettings.isSparse, fgSettings.singletonFactorWeight.toDouble)
     val singletons = scala.io.Source.fromFile(new java.io.File(singletonStr)).getLines.toList map singletonExtractor.extractFeatures
     logger.info("Factor graph constructed with " + sa.getSize + " features for singleton factors")
     fgSettings.factorTestFile match {
       case Some(factorStr) =>
-        val factorExtractor = new GMFactorExtractor(fa, fla, sla.getSize, singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse)
-        val factors = scala.io.Source.fromFile(new java.io.File(factorStr)).getLines.toList map factorExtractor.extractFeatures
+        val factorExtractor = new GMFactorExtractor(fa, fla, sla.getSize, singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse, decoding)
+        val factors = gatherPairFactors(factorStr, factorExtractor)
         logger.info("Factor graph constructed with " + fa.getSize + " features for pair-wise factors")
         new FactorGraph(factors.toVector, singletons.toVector, alphabets)
       case None =>
@@ -227,7 +239,7 @@ class IdentityExtractor(alphabet: Alphabet) extends FeatureExtractor[SingletonFa
 }
 
 class GMFactorExtractor(factorAlphabet: Alphabet, factorLa: Alphabet, varOrder: Int, varToSingles: Map[String, SingletonFactor],
-                        sparse: Boolean = false)
+                        sparse: Boolean = false, decode: Boolean = false)
   extends FeatureExtractor[String, MultiFactor] {
 
   val sep = ' '
@@ -277,7 +289,7 @@ class GMFactorExtractor(factorAlphabet: Alphabet, factorLa: Alphabet, varOrder: 
         val s1 = varToSingles(v1)
         val s2 = varToSingles(v2)
         val sgs = Array(s1, s2)
-        val mf = new MultiFactor(indexAssignmentMap, varOrder, sgs, vec, (v1 + v2))
+        val mf = new MultiFactor(indexAssignmentMap, varOrder, sgs, vec, (v1 + v2), decode)
         s1.addParent(mf, 0)
         s2.addParent(mf, 1)
         mf
@@ -286,7 +298,8 @@ class GMFactorExtractor(factorAlphabet: Alphabet, factorLa: Alphabet, varOrder: 
   }
 }
 
-class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet, sparse: Boolean = false) extends FeatureExtractor[String, SingletonFactor] {
+class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet, sparse: Boolean = false, singletonWeight: Double = 0.0) 
+extends FeatureExtractor[String, SingletonFactor] {
 
   val sep = ' '
   val buildVecs = true
@@ -324,7 +337,7 @@ class GMSingletonExtractor(singletonAlphabet: Alphabet, singletonLa: Alphabet, s
         case v: DenseVec => new StdMMLPFactor(-1, v, lv, Some(uniqueId))
         case v: SparseVec => new SparseMMLPFactor(-1, v, lv, Some(uniqueId))
       }
-        val factor = new SingletonFactor(sgf, l_ind)
+        val factor = new SingletonFactor(sgf, l_ind, singletonWeight)
         variableToSingletonFactors += (v1 -> factor)
         factor
 
