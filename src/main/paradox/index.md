@@ -5,7 +5,7 @@ Mandolin is a tool for developing machine learning-based prediction models. It p
 such as:
 
 * A rich configuration system for declaratively specifying models
-* Fast distributed training using Apache Spark
+* Fast, distributed training using Apache Spark
 * Large-scale, robust concurrent model selection/tuning
     * Concurrent evaluation using Apache Spark
     * Adaptive model selection using Bayesian Optimization techniques and Hyperband
@@ -19,7 +19,7 @@ such as:
 
 Mandolin also contains an API extension based on **spark.ml**.
 This allows Mandolin models to be used directly within the MLLib ecosystem, leveraging
-other datastructures, tools, and MLLib's rich ML Pipeline framework.
+other data structures, tools, and MLLib's rich ML Pipeline framework.
 
 @@@ index
 
