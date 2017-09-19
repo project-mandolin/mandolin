@@ -29,13 +29,13 @@ object PairWiseOptimizer {
   }
 }
 
-class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGraph) {
+class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: List[FactorGraph], alphabets: AlphabetSet) {
 
   val logger = LoggerFactory.getLogger(this.getClass)
   
-  val variableOrder = factorGraph.alphabets.sla.getSize
+  val variableOrder = alphabets.sla.getSize
 
-  val (singletonNN, factorNN) = getComponents(fgSettings, factorGraph.alphabets)
+  val (singletonNN, factorNN) = getComponents(fgSettings, alphabets)
   val sOpt = MMLPOptimizer.getOptimizer(fgSettings, singletonNN)
   // val fOpt = LocalGLPOptimizer.getLocalOptimizer(fgSettings, factorNN)
   val fOpt = PairWiseOptimizer.getOptimizer(fgSettings, singletonNN, factorNN, variableOrder)
@@ -55,13 +55,15 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
   def trainModels() = {
     val t = System.nanoTime
     logger.info("Estimating singleton parameters ... with " + fgSettings.numEpochs + " epochs")
-    val (sWeights, _) = sTrainer.trainWeights(factorGraph.singletons)
+    val singletons = factorGraph.foldLeft(Vector(): Vector[SingletonFactor]){case (ac,v) => v.singletons ++ ac}
+    val factors    = factorGraph.foldLeft(Vector(): Vector[MultiFactor]){case (ac,v) => v.factors ++ ac}
+    val (sWeights, _) = sTrainer.trainWeights(singletons)
     logger.info("Estimation finished in " + ((System.nanoTime - t) / 1E9) + " seconds ")
-    val fm = if (factorGraph.factors.length > 0) {
+    val fm = if (factors.length > 0) {
       logger.info("Estimating non-singular factor parameters ... with " + fgSettings.numEpochs + " epochs" )
       val t1 = System.nanoTime
 
-      val (fWeights,_) = fTrainer.retrainWeights(factorGraph.factors, fgSettings.numEpochs)
+      val (fWeights,_) = fTrainer.retrainWeights(factors, fgSettings.numEpochs)
 
       logger.info("Estimation finished in " + ((System.nanoTime - t1) / 1E9) + " seconds ")
       new PairFactorModel(singletonNN, factorNN, fWeights, variableOrder)
@@ -70,19 +72,14 @@ class FactorGraphTrainer(fgSettings: FactorGraphSettings, factorGraph: FactorGra
       new PairFactorModel(singletonNN, factorNN, emptyWeights, variableOrder)
     }
     val sm = new SingletonFactorModel(new CategoricalMMLPPredictor(singletonNN, true), sWeights)
-    new TrainedFactorGraph(fm, sm, factorGraph, fgSettings.sgAlpha)
+    new TrainedFactorGraph(fm, sm, fgSettings.sgAlpha, fgSettings.inferAlgorithm.getOrElse("star"))
   }
 }
 
-class FactorGraph(val factors: Vector[MultiFactor], val singletons: Vector[SingletonFactor], val alphabets: AlphabetSet)
+class FactorGraph(val factors: Vector[MultiFactor], val singletons: Vector[SingletonFactor])
 
 class TrainedFactorGraph(val factorModel: PairFactorModel, val singletonModel: SingletonFactorModel,
-                         _fs: Vector[MultiFactor], _ss: Vector[SingletonFactor], _a: AlphabetSet, init: Double = 0.1,
-                         inferType: String = "star")
-  extends FactorGraph(_fs, _ss, _a) {
-  def this(fm: PairFactorModel, sm: SingletonFactorModel, fg: FactorGraph, lr: Double) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr)
-
-  def this(fm: PairFactorModel, sm: SingletonFactorModel, fg: FactorGraph, lr: Double, inferType: String) = this(fm, sm, fg.factors, fg.singletons, fg.alphabets, lr, inferType)
+                         init: Double = 0.1, inferType: String = "star") {
 
   //val inference = new SubgradientInference(factorModel, singletonModel, init)
   val inference = inferType match {
@@ -90,23 +87,29 @@ class TrainedFactorGraph(val factorModel: PairFactorModel, val singletonModel: S
     case "smoothgrad" => new SmoothedGradientInference(factorModel, singletonModel, init)
     case _ => new StarCoordinatedBlockMinimizationInference(factorModel, singletonModel, init)
   }
-  //val inference = new SmoothedGradientInference(factorModel, singletonModel, init)
 
-  def mapInfer(n: Int) = {
+
+  def mapInfer(n: Int, factors: Vector[MultiFactor], singletons: Vector[SingletonFactor]) = {
     inference.mapInfer(factors, singletons, n)
   }
+  
+  def mapInfer(n: Int, fg: FactorGraph) = {
+    inference.mapInfer(fg.factors, fg.singletons, n)
+  }
 
-  def getMap() = {
+  def getMap(singletons: Vector[SingletonFactor]) = {
     singletons map { s => s.getMode(singletonModel, true) }
   }
 
-  def getAccuracy = {
+  def getAccuracy(singletons: Vector[SingletonFactor]) : Double = {
     val cor = singletons.foldLeft(0) { case (ac, v) => if (v.label == v.getMode(singletonModel, true)) ac + 1 else ac }
     cor.toDouble / singletons.length
   }
+  
+  def getAccuracy(fg: FactorGraph) : Double = getAccuracy(fg.singletons)
 
-  def renderMapOutput(ofile: String, la: Alphabet) = {
-    val o = new java.io.PrintWriter(new java.io.File(ofile))
+  def renderMapOutput(singletons: Vector[SingletonFactor], ofile: String, la: Alphabet, append: Boolean = true) = {    
+    val o = new java.io.PrintWriter(new java.io.FileOutputStream(new java.io.File(ofile), append))
     val invLa = la.getInverseMapping
     singletons foreach { v =>
       o.print(v.getInput.getUniqueKey.getOrElse("?"))
@@ -119,6 +122,16 @@ class TrainedFactorGraph(val factorModel: PairFactorModel, val singletonModel: S
 }
 
 object FactorGraph {
+  
+  import scalax.collection.GraphPredef._
+    import scalax.collection.Graph
+    import scalax.collection.edge.LDiEdge
+    import scalax.collection.edge.Implicits._
+    
+  import scalax.collection.edge.LBase._
+  
+  object MultiFactorLabel extends LEdgeImplicits[MultiFactor]
+  import MultiFactorLabel._
 
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
@@ -181,8 +194,17 @@ object FactorGraph {
       factorExtractor.extractFeatures(l)
       }    
   }
+  
+  def getGraphs(factors: Iterator[MultiFactor]) = {
+    val edges = factors map {mf => (mf.singletons(0) ~+> mf.singletons(1))(mf)}
+    val g = Graph.from(edges = edges.toTraversable)
+    val subGraphs = for (c <- g.componentTraverser()) yield { 
+      c.toGraph
+      }
+    subGraphs
+  }
 
-  def gatherFactorGraph(fgSettings: FactorGraphSettings): FactorGraph = {
+  def gatherFactorGraphs(fgSettings: FactorGraphSettings): (List[FactorGraph], AlphabetSet) = {
     val singletonStr = fgSettings.singletonFile
     val factorStr = fgSettings.factorFile
     val decoding = (fgSettings.appMode.equals("decode") || fgSettings.appMode.equals("predict") || fgSettings.appMode.equals("predict-eval"))
@@ -201,14 +223,20 @@ object FactorGraph {
         fla.ensureFixed
         val factorExtractor = new GMFactorExtractor(fa, fla, cardinality, singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse, decoding)        
         val factors = gatherPairFactors(factorStr, factorExtractor)
+        val graphs = getGraphs(factors)
+        val factorGraphs = graphs map {g =>
+          val singles = g.nodes.toOuter
+          val factors = g.edges.toOuter map {case s :~> t + (l: MultiFactor) => l}
+          new FactorGraph(factors.toVector, singles.toVector)
+          }
         logger.info("Factor graph constructed with " + fa.getSize + " features for pair-wise factors")
-        new FactorGraph(factors.toVector, singletons.toVector, AlphabetSet(sa, fa, sla, fla))
+        (factorGraphs.toList, AlphabetSet(sa, fa, sla, fla))
       case None =>
-        new FactorGraph(Vector(), singletons.toVector, AlphabetSet(sa, new IdentityAlphabet, sla, new IdentityAlphabet))
+        (List(new FactorGraph(Vector(), singletons.toVector)), AlphabetSet(sa, new IdentityAlphabet, sla, new IdentityAlphabet))
     }
   }
 
-  def gatherFactorGraph(fgSettings: FactorGraphSettings, alphabets: AlphabetSet) = {
+  def gatherFactorGraphs(fgSettings: FactorGraphSettings, alphabets: AlphabetSet) = {
     val sla = alphabets.sla
     val sa = alphabets.sa
     val fla = alphabets.fla
@@ -222,10 +250,16 @@ object FactorGraph {
       case Some(factorStr) =>
         val factorExtractor = new GMFactorExtractor(fa, fla, sla.getSize, singletonExtractor.variableToSingletonFactors, fgSettings.factorSparse, decoding)
         val factors = gatherPairFactors(factorStr, factorExtractor)
+        val graphs = getGraphs(factors)
+        val factorGraphs = graphs map {g =>
+          val singles = g.nodes.toOuter
+          val factors = g.edges.toOuter map {case s :~> t + (l: MultiFactor) => l}
+          new FactorGraph(factors.toVector, singles.toVector)
+          }
         logger.info("Factor graph constructed with " + fa.getSize + " features for pair-wise factors")
-        new FactorGraph(factors.toVector, singletons.toVector, alphabets)
+        (factorGraphs.toList, AlphabetSet(sa, fa, sla, fla))
       case None =>
-        new FactorGraph(Vector(), singletons.toVector, alphabets)
+        (List(new FactorGraph(Vector(), singletons.toVector)), alphabets)
     }
   }
 }

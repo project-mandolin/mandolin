@@ -16,7 +16,13 @@ object PrintUtils {
         outputs foreach {case (s, factor) => 
           os.print(s)
           if (!noLabels) {
-            os.print(','); os.print(invLa(factor.getOutput(0).toInt).toString)
+            val oo = factor.getOutput.asArray
+            if (oo.length > 1) {
+              val vv = factor.getOutput.argmax
+              os.print(','); os.print(invLa(vv).toString)
+            } else { // actual regression, just print raw value here
+              os.print(','); os.print(oo(0).toString)
+            }
           }
           os.println}
       } else {

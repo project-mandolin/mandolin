@@ -20,7 +20,7 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
     gf match {
       case x: SparseMMLPFactor =>
         val spv = x.getInput
-        val out = x.getOutput
+        val out = x.getOutput        
         val outVal = out.argmax.toFloat
         LabeledPoint.fromSparseVector(outVal, spv.indArray, spv.valArray)
       case x: StdMMLPFactor =>

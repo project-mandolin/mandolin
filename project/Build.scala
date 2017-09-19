@@ -54,7 +54,7 @@ object MandolinBuild extends Build {
     organization := "org.mitre.mandolin",
     version := mainVersion+"-SNAPSHOT",
     scalaVersion := "2.11.8",
-    crossScalaVersions := Seq("2.10.5","2.11.8"),
+    crossScalaVersions := Seq("2.11.8", "2.12.3"),
     publishTo := {
        val nexus = "https://oss.sonatype.org/"
        if (isSnapshot.value)
@@ -125,14 +125,15 @@ object MandolinBuild extends Build {
       libraryDependencies ++= Seq(
       "commons-cli" % "commons-cli" % "1.2",
       "org.rogach" %% "scallop" % "0.9.5",
-      "org.scalatest"    %% "scalatest" % "2.2.4" % "test",
+      "org.scalatest"    %% "scalatest" % "3.0.1" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.5",
       "com.typesafe" % "config" % "1.2.1",
       "colt" % "colt" % "1.2.0",
-      "com.twitter" %% "chill" % "0.7.2",
-      "org.scalanlp" %% "breeze" % "0.12", 
-      "com.typesafe.akka" %% "akka-actor" % "2.4.11",
-      "com.typesafe.akka" %% "akka-agent" % "2.4.11",
+      "com.twitter" %% "chill" % "0.9.2",
+      "org.scalanlp" %% "breeze" % "0.13.2",
+      "org.scala-graph" %% "graph-core" % "1.12.0",
+      "com.typesafe.akka" %% "akka-actor" % "2.5.0",
+      "com.typesafe.akka" %% "akka-agent" % "2.5.0",
       versionDependencies(scalaVersion.value)
       )
     )
@@ -209,7 +210,7 @@ object MandolinBuild extends Build {
 
   def versionDependencies(v:String) = v match {
     case "2.10.5" => "net.ceedubs" %% "ficus" % "1.0.1"
-    case _ => "net.ceedubs" %% "ficus" % "1.1.2"
+    case _ => "com.iheart" %% "ficus" % "1.4.2"
   }
 
   def assemblyProjSettings(subProj: String) : Seq[Setting[_]] = Seq(

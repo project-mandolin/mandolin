@@ -30,6 +30,7 @@ abstract class GMFactor[F <: GMFactor[F]] {
 class SingletonFactor(input: MMLPFactor, val label: Int, singletonWeight: Double = 0.0) extends GMFactor[SingletonFactor] {
   // keeps a list of parent factors and the standalone index of THIS singleton factor
   // in the parent factors set of singletons
+
   var parentFactors : List[(MultiFactor,Int)] = Nil
 
   val useSingleton = singletonWeight > 0.0f
@@ -123,11 +124,13 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
   
   
   // let this keep track of reparameterized marginals
-  val reparamMarginals : Option[Array[Double]] = if (decoding) Some(Array.fill(numConfigs)(0.0)) else None
+  // size is varOrder * varOrder
+  val reparamMarginals : Option[Array[Double]] = None // if (decoding) Some(Array.fill(numConfigs)(0.0)) else None
   
   /*
    * This keeps track of single fixed variable marginalizations
    * fixedVarMarginals(i,v) is the marginalized probability of the factor with variable i fixed to v
+   * size is 2 * varOrder
    */
   val fixedVarMarginals : Option[Array[Array[Double]]] = if (decoding) Some(Array.fill(numVars,variableOrder)(0.0)) else None
   
@@ -347,7 +350,7 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
       //println
       val _fVMs = fixedVarMarginals.get
       val _deltas = deltas.get
-      val _reparamMarginals = reparamMarginals.get
+      // val _reparamMarginals = reparamMarginals.get
       
       var i = 0; while (i < numVars) {
         var j = 0; while (j < variableOrder) {
@@ -365,7 +368,7 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
           i += 1
         }
         val ss = math.exp(av * tau)
-        _reparamMarginals(ind) = ss  // Store reparameterized marginals
+        // _reparamMarginals(ind) = ss  // Store reparameterized marginals
         zSum += ss
         i = 0; while (i < numVars) {
           _fVMs(i)(assignment(i)) += ss
@@ -376,14 +379,14 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
           best = ind
         }
       }
+      
+      // println("Reparameterized marginals factor: ")
       /*
-      println("Reparameterized marginals factor: ")
       i = 0; while (i < numConfigs) {
-        reparamMarginals(i) /= zSum
-        print(" " + reparamMarginals(i))
+        _reparamMarginals(i) /= zSum
+        // print(" " + reparamMarginals(i))
         i += 1
       }
-      println
       */
       // normalize single-fixed variable marginalizations
       /*

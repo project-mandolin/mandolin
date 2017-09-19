@@ -53,40 +53,60 @@ class FGProcessor {
 
   def processTrain(fgSettings: FactorGraphSettings) = {
     val io = new LocalIOAssistant
-    val fg = FactorGraph.gatherFactorGraph(fgSettings)
-    val trainer = new FactorGraphTrainer(fgSettings, fg)
+    val (fgs, alphabets) = FactorGraph.gatherFactorGraphs(fgSettings)
+    val trainer = new FactorGraphTrainer(fgSettings, fgs, alphabets)
     val trFg = trainer.trainModels()
     val mWriter = new StandaloneFactorGraphModelWriter
-    mWriter.writeModel(io, fgSettings.modelFile.get, trFg.singletonModel.wts, fg.alphabets.sa, fg.alphabets.sla, trainer.singletonNN, 
-        trFg.factorModel.fullWts, fg.alphabets.fa, fg.alphabets.fla, trainer.factorNN)
+    mWriter.writeModel(io, fgSettings.modelFile.get, trFg.singletonModel.wts, alphabets.sa, alphabets.sla, trainer.singletonNN, 
+        trFg.factorModel.fullWts, alphabets.fa, alphabets.fla, trainer.factorNN)
   }
 
   def processTrainTest(fgSettings: FactorGraphSettings) = {
     val io = new LocalIOAssistant
-    val fg = FactorGraph.gatherFactorGraph(fgSettings)
-    val trainer = new FactorGraphTrainer(fgSettings, fg)
+    val (fgs, alphabets) = FactorGraph.gatherFactorGraphs(fgSettings)
+    val trainer = new FactorGraphTrainer(fgSettings, fgs, alphabets)
     val trFg = trainer.trainModels()
-    val testFg = FactorGraph.gatherFactorGraph(fgSettings, fg.alphabets)
+    val (testFgs, _) = FactorGraph.gatherFactorGraphs(fgSettings, alphabets)
     val infer = fgSettings.inferAlgorithm.getOrElse("star")
-    val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, testFg, fgSettings.sgAlpha, infer)
-    runtimeFg.mapInfer(fgSettings.subGradEpochs)
-    logger.info("Test Accuracy: " + runtimeFg.getAccuracy)
+    val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, fgSettings.sgAlpha, infer)
+    var wAcc = 0.0
+    var cnt = 0
+    testFgs foreach { fg => 
+      runtimeFg.mapInfer(fgSettings.subGradEpochs, fg)
+      val numSingles = fg.singletons.length
+      wAcc += runtimeFg.getAccuracy(fg) * numSingles
+      cnt += numSingles
+      }
+    logger.info("Test Accuracy: " + (wAcc / cnt))
   }
 
   def processDecode(fgSettings: FactorGraphSettings) = {
+    import scala.collection.parallel._
     val io = new LocalIOAssistant
     val mReader = new StandaloneFactorGraphModelReader
     val testFgModel = mReader.readModel(io, fgSettings.modelFile.get)
-    val factorModel = new PairFactorModel(testFgModel.fnet, testFgModel.snet, testFgModel.fwts, testFgModel.sla.getSize)
-    val singleModel = new SingletonFactorModel(new CategoricalMMLPPredictor(testFgModel.snet), testFgModel.swts)
     val alphabetset = AlphabetSet(testFgModel.sfa, testFgModel.ffa, testFgModel.sla, testFgModel.fla)
-    val decodeFg = FactorGraph.gatherFactorGraph(fgSettings, alphabetset)
+    val (decodeFgs, _) = FactorGraph.gatherFactorGraphs(fgSettings, alphabetset)
     val infer = fgSettings.inferAlgorithm.getOrElse("star")
-    val runtime = new TrainedFactorGraph(factorModel, singleModel, decodeFg, fgSettings.sgAlpha, infer)
-    runtime.mapInfer(fgSettings.subGradEpochs)
+    
+    var wAcc = 0.0
+    var cnt = 0
     val outFile = fgSettings.outputFile
-    runtime.renderMapOutput(outFile.get, testFgModel.sla)
-    logger.info("Test Accuracy: " + runtime.getAccuracy)
+    val parFgs = decodeFgs.par
+    parFgs.tasksupport_=(new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(fgSettings.decoderThreads)))
+    parFgs foreach { fg =>
+      val factorModel = new PairFactorModel(testFgModel.fnet, testFgModel.snet, testFgModel.fwts, testFgModel.sla.getSize)
+      val singleModel = new SingletonFactorModel(new CategoricalMMLPPredictor(testFgModel.snet), testFgModel.swts)
+      val runtime = new TrainedFactorGraph(factorModel, singleModel, fgSettings.sgAlpha, infer)
+      val numSingles = fg.singletons.length
+      logger.info("MAP inference on factor graph with: [ " + numSingles + " singletons and " + fg.factors.length + " pair-wise factors ]")
+      runtime.mapInfer(fgSettings.subGradEpochs, fg)
+      runtime.renderMapOutput(fg.singletons, outFile.get, alphabetset.sla, true)
+      
+      wAcc += runtime.getAccuracy(fg) * numSingles
+      cnt += numSingles
+      }
+    logger.info("Test Accuracy: " + (wAcc / cnt))    
   }
 }
 
