@@ -108,17 +108,10 @@ class StarCoordinatedBlockMinimizationInference(val fm: PairFactorModel, val sm:
     logger.info("Performing MAP inference using star-updates")
     var i = 0; while (i < maxN) {
       val shuffled = util.Random.shuffle(singletons)
-      var singlesProcessed = 0
       var tt = System.nanoTime
       shuffled foreach {s =>
         s.getMode(sm, true, tau)
         val parents = s.parentFactors
-        singlesProcessed += 1
-        if ((singlesProcessed % 1000) == 0) {
-          val ct = System.nanoTime
-          logger.info("Updates ["+singlesProcessed+"] in " + ((ct - tt)/1E9) + " seconds")
-          tt = ct
-        }
         var iVal = 0; while (iVal < s.varOrder) { // iterate over var domain                    
           val u_i = s.reparameterizedMarginals(iVal)
           var margSums = 0.0

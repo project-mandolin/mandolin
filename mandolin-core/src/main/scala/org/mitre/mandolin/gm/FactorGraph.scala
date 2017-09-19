@@ -95,6 +95,7 @@ class TrainedFactorGraph(val factorModel: PairFactorModel, val singletonModel: S
   
   def mapInfer(n: Int, fg: FactorGraph) = {
     inference.mapInfer(fg.factors, fg.singletons, n)
+    fg.factors foreach {_.deallocate()}
   }
 
   def getMap(singletons: Vector[SingletonFactor]) = {

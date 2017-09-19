@@ -79,7 +79,7 @@ class FGProcessor {
       }
     logger.info("Test Accuracy: " + (wAcc / cnt))
   }
-
+  
   def processDecode(fgSettings: FactorGraphSettings) = {
     import scala.collection.parallel._
     val io = new LocalIOAssistant
@@ -93,10 +93,13 @@ class FGProcessor {
     var cnt = 0
     val outFile = fgSettings.outputFile
     val parFgs = decodeFgs.par
+    logger.info("Decoding " + decodeFgs.length + " graphs using " + fgSettings.decoderThreads + " compute threads")
     parFgs.tasksupport_=(new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(fgSettings.decoderThreads)))
     parFgs foreach { fg =>
-      val factorModel = new PairFactorModel(testFgModel.fnet, testFgModel.snet, testFgModel.fwts, testFgModel.sla.getSize)
-      val singleModel = new SingletonFactorModel(new CategoricalMMLPPredictor(testFgModel.snet), testFgModel.swts)
+      val sn = testFgModel.snet.copy
+      val fn = testFgModel.fnet.copy
+      val factorModel = new PairFactorModel(fn, sn, testFgModel.fwts, testFgModel.sla.getSize)
+      val singleModel = new SingletonFactorModel(new CategoricalMMLPPredictor(sn), testFgModel.swts)
       val runtime = new TrainedFactorGraph(factorModel, singleModel, fgSettings.sgAlpha, infer)
       val numSingles = fg.singletons.length
       logger.info("MAP inference on factor graph with: [ " + numSingles + " singletons and " + fg.factors.length + " pair-wise factors ]")
