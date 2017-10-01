@@ -80,11 +80,11 @@ class SingletonFactor(input: MMLPFactor, val label: Int, singletonWeight: Double
           best = ind
         }
       }
+      
       var i = 0; while (i < varOrder) {
         reparameterizedMarginals(i) /= zSum   // normalize
         i += 1
       }
-      // println("Singleton assignment = " + best + " with score = " + bestSc)
       best
     }
   }
@@ -125,23 +125,29 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
   
   // let this keep track of reparameterized marginals
   // size is varOrder * varOrder
-  val reparamMarginals : Option[Array[Double]] = None // if (decoding) Some(Array.fill(numConfigs)(0.0)) else None
+  // val reparamMarginals : Option[Array[Double]] = None // if (decoding) Some(Array.fill(numConfigs)(0.0)) else None
   
   /*
    * This keeps track of single fixed variable marginalizations
    * fixedVarMarginals(i,v) is the marginalized probability of the factor with variable i fixed to v
    * size is 2 * varOrder
    */
-  val fixedVarMarginals : Option[Array[Array[Double]]] = if (decoding) Some(Array.fill(numVars,variableOrder)(0.0)) else None
+  var fixedVarMarginals : Option[Array[Array[Double]]] = if (decoding) Some(Array.fill(numVars,variableOrder)(0.0)) else None
   
   // maps single index values for assignments to array of standalone variable assignment
   //val indexAssignmentMap = Array.tabulate(numConfigs)(indexToAssignment)
   
   // each singleton sub-factor is a row
   // each possible value for the corresponding variable is an entry in the row
-  val deltas : Option[Array[Array[Float]]] = if (decoding) Some(Array.fill(numVars,variableOrder)(0.0f)) else None
+  var deltas : Option[Array[Array[Float]]] = if (decoding) Some(Array.fill(numVars,variableOrder)(0.0f)) else None
   
   def varAssignment : Array[Int] = indexAssignmentMap(currentAssignment)
+  
+  def deallocate() = {
+    cachedMarginal = None
+    fixedVarMarginals = None
+    // deltas = None
+  }
   
   val input = {
     val lv = DenseVec.zeros(numConfigs)
@@ -333,7 +339,9 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     if (!dual) {
       fm.getMode(this)
     } else {
-      val fmarg = cachedMarginal match {
+      val fmarg = // fm.getFullMarginal(this)
+      
+        cachedMarginal match {
         case Some(m) => m
         case None => 
           val m = fm.getFullMarginal(this)
