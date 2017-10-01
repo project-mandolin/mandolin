@@ -3,9 +3,10 @@ package org.mitre.mandolin.mlp.spark
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.mitre.mandolin.mlp._
 import org.mitre.mandolin.optimize.spark.{DistributedOnlineOptimizer, DistributedOptimizerEstimator}
-import org.mitre.mandolin.util.{Alphabet, IdentityAlphabet}
+import org.mitre.mandolin.util.{Alphabet, IdentityAlphabet, DenseTensor1 => DenseVec}
 import org.mitre.mandolin.util.spark.SparkIOAssistant
 
 /**
@@ -17,7 +18,6 @@ import org.mitre.mandolin.util.spark.SparkIOAssistant
 trait MMLPDataFrames {
 
   import org.apache.spark.sql.types.{StructType, StructField, DoubleType}
-  import org.apache.spark.mllib.linalg.Vectors
   import org.apache.spark.sql._
 
   private def toDouble(x: Array[Float]) = x map {
@@ -29,10 +29,11 @@ trait MMLPDataFrames {
     val rows = fvs map { f =>
       val label = f.getOneHot.toDouble // label as the one-hot output index
     val fv = f.getInput
-      val rseq = (label, Vectors.dense(toDouble(fv.asArray)))
+      //val rseq = (label, Vectors.dense(toDouble(fv.asArray)))
+      val rseq = (label, org.apache.spark.ml.linalg.Vectors.dense(toDouble(fv.asArray)))
       org.apache.spark.sql.Row.fromTuple(rseq)
     }
-    val schema = StructType(Seq(StructField("label", DoubleType, true), StructField("features", new org.apache.spark.mllib.linalg.VectorUDT, true)))
+    val schema = StructType(Seq(StructField("label", DoubleType, true), StructField("features", VectorType, true)))
     val df = sqlSc.createDataFrame(rows, schema)
     df
   }
@@ -44,10 +45,10 @@ trait MMLPDataFrames {
     val rows = fvs map { f =>
       val label = f.getOneHot.toDouble // label as the one-hot output index
     val fv = f.getInput
-      val rseq = (label, Vectors.dense(toDouble(fv.asArray)))
+      val rseq = (label, org.apache.spark.ml.linalg.Vectors.dense(toDouble(fv.asArray)))
       org.apache.spark.sql.Row.fromTuple(rseq)
     }
-    val schema = StructType(Seq(StructField("label", DoubleType, true), StructField("features", new org.apache.spark.mllib.linalg.VectorUDT, true)))
+    val schema = StructType(Seq(StructField("label", DoubleType, true), StructField("features", VectorType, true)))
     val df = sqlSc.createDataFrame(rows, schema)
     df
   }
@@ -56,13 +57,25 @@ trait MMLPDataFrames {
     * Map a Spark DataFrame back into an `RDD` of `MMLPFactor` objects.  Assumes the input
     * DataFrame just has two columns (label, features)
     */
-  case class LabPoint(lab: Double, point: org.apache.spark.mllib.linalg.Vector)
+  case class LabPoint(lab: Double, point: org.apache.spark.ml.linalg.Vector)
 
   def mapDfToMMLPFactors(sc: SparkContext, df: Dataset[org.apache.spark.sql.Row], fvDim: Int, labelDim: Int): RDD[MMLPFactor] = {
-    throw new RuntimeException("Spark 2.0 invalidates dataframe to MMLP code")
+
+    //implicit val encoder = Encoders.tuple[Encoders.scalaDouble, Encoders.
+    val dset = df.toDF()
+
+    val rows: RDD[MMLPFactor] = dset.rdd.map { (row: Row) =>
+      val l = row.getDouble(0)
+      val outVec = Array.fill(labelDim)(0.0)
+      val r = l.toInt
+      outVec(r) = 1.0
+      val p = row.getAs[org.apache.spark.ml.linalg.Vector](1)
+      val inVec = p.toArray
+      new StdMMLPFactor(-1, new DenseVec(inVec), new DenseVec(outVec), None)
+    }
+    rows
   }
 }
-
 
 class MMLPModel extends MMLPDataFrames with Serializable {
 
@@ -103,7 +116,7 @@ class MMLPModel extends MMLPDataFrames with Serializable {
   def estimate(trdata: DataFrame, mSpec: IndexedSeq[LType], upSpec: UpdaterSpec,
                epochs: Int = 20, threads: Int = 8, partitions: Int = 0): MMLPModelSpec = {
     val dp = new DistributedProcessor()
-    val idim = trdata.select("features").head().get(0).asInstanceOf[org.apache.spark.mllib.linalg.Vector].size
+    val idim = trdata.select("features").head().get(0).asInstanceOf[org.apache.spark.ml.linalg.Vector].size
     val odim = trdata.select("label").rdd map { v => v.getDouble(0) } max // get the maximum value of the label column
     val modelSpec = ANNetwork.fullySpecifySpec(mSpec, idim, odim.toInt + 1)
     val components = dp.getComponentsDenseVecs(modelSpec)

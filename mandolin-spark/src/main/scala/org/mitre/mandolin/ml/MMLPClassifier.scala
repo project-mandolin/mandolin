@@ -3,15 +3,14 @@ package org.mitre.mandolin.ml
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.mlp.{ StdMMLPFactor, MMLPModelSpec, LType, CategoricalMMLPPredictor,
-  SoftMaxLType, InputLType, UpdaterSpec, AdaGradSpec}
+import org.mitre.mandolin.mlp.{AdaGradSpec, CategoricalMMLPPredictor, InputLType, LType, MMLPModelSpec, SoftMaxLType, StdMMLPFactor, UpdaterSpec}
 import org.mitre.mandolin.mlp.spark.MMLPModel
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec}
-import org.apache.spark.ml.{Predictor, PredictionModel}
+import org.apache.spark.ml.{PredictionModel, Predictor}
 import org.apache.spark.ml.param._
 import org.apache.spark.ml.evaluation.Evaluator
 import org.apache.spark.ml.util.Identifiable
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{Dataset, Row}
 import org.apache.spark.mllib.linalg.{Vector => MllibVector}
 
 /**
@@ -45,12 +44,12 @@ trait MMLPParams extends Params {
  * @param mmlp A MMLP model instance
  * @author wellner
  */
-abstract class MMLPClassifier(override val uid: String, mmlp: MMLPModel)
+class MMLPClassifier(override val uid: String, mmlp: MMLPModel)
 extends Predictor[MllibVector, MMLPClassifier, MMLPClassificationModel] with MMLPParams {
 
   def this(mmlp: MMLPModel) = this(Identifiable.randomUID("MMLPClassifier"), mmlp)
 
-  def copy(extra: ParamMap) : MMLPClassifier // = new MMLPClassifier(mlp.copy())
+  def copy(extra: ParamMap) : MMLPClassifier  = new MMLPClassifier(mmlp.copy())
   def setLayerSpec(sp: IndexedSeq[LType]) : this.type = set(modelSpecParam, sp)
   def setUpdaterSpec(usp: UpdaterSpec) : this.type = set(updaterSpecParam, usp)
   def setMaxIters(mi: Int) : this.type = set(maxIterParam, mi)
@@ -62,15 +61,17 @@ extends Predictor[MllibVector, MMLPClassifier, MMLPClassificationModel] with MML
    * @param dataset A training dataset
    * @return A `MMLPClassificationModel` used to make predictions
    */
-  def train(dataset: DataFrame) : MMLPClassificationModel = {
+  override protected def train(dataset: Dataset[_]) : MMLPClassificationModel = {
     val modelSpec = get(modelSpecParam).get
     val updaterSpec = get(updaterSpecParam).getOrElse(AdaGradSpec(0.1))
     val maxIters = get(maxIterParam).getOrElse(20)
     val threads  = get(threadsParam).getOrElse(8)
     val partitions = get(numPartitionsParam).getOrElse(0)
-    val m = mmlp.estimate(dataset, modelSpec, updaterSpec, maxIters, threads, partitions)
+    val m = mmlp.estimate(dataset.toDF(), modelSpec, updaterSpec, maxIters, threads, partitions)
     new MMLPClassificationModel(m)
   }
+
+  //override protected def train(dataset: Dataset[_]): MMLPClassificationModel = ???
 }
 
 /**
