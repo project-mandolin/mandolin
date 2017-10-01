@@ -34,3 +34,9 @@ Mandolin on Spark.  The `serializer` and `kryo.registrator` must be set
 to the values shown in the snippet.  It is recommended that the Kryo
 Serializer buffer size be increased above the default as well.
 
+Distributed Mandolin jobs can be launched using the spark-submit utility as follows:
+
+	   spark-submit --driver-memory 32G --class org.mitre.mandolin.app.Mandolin mandolin-spark-0.3.5.jar --conf url.distributed.conf
+
+Note that the `--driver-memory` option must be specified BEFORE launching the job; it 
+cannot be specified in the configuration file.   
