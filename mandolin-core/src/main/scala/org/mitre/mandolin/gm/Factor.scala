@@ -33,7 +33,7 @@ class SingletonFactor(input: MMLPFactor, val label: Int, singletonWeight: Double
 
   var parentFactors : List[(MultiFactor,Int)] = Nil
 
-  val useSingleton = singletonWeight > 0.0f
+  val useSingleton = singletonWeight > 0.0
   val varOrder = input.getOutput.getDim
   
   val reparameterizedMarginals = Array.fill(varOrder)(0.0)
@@ -132,7 +132,7 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
    * fixedVarMarginals(i,v) is the marginalized probability of the factor with variable i fixed to v
    * size is 2 * varOrder
    */
-  var fixedVarMarginals : Option[Array[Array[Double]]] = if (decoding) Some(Array.fill(numVars,variableOrder)(0.0)) else None
+  var fixedVarMarginals : Option[Array[Array[Float]]] = if (decoding) Some(Array.fill(numVars,variableOrder)(0.0f)) else None
   
   // maps single index values for assignments to array of standalone variable assignment
   //val indexAssignmentMap = Array.tabulate(numConfigs)(indexToAssignment)
@@ -147,6 +147,13 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
     cachedMarginal = None
     fixedVarMarginals = None
     // deltas = None
+  }
+  
+  def getInitialDeltas : Array[Array[Float]] = Array.fill(numVars, variableOrder)(0.0f)  
+  def getInitialFixedVarMarginals : Array[Array[Float]] = Array.fill(numVars, variableOrder)(0.0f)
+  def setWorkSpace = {
+    fixedVarMarginals = Some(getInitialFixedVarMarginals)
+    deltas = Some(getInitialDeltas)
   }
   
   val input = {
@@ -379,7 +386,7 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
         // _reparamMarginals(ind) = ss  // Store reparameterized marginals
         zSum += ss
         i = 0; while (i < numVars) {
-          _fVMs(i)(assignment(i)) += ss
+          _fVMs(i)(assignment(i)) += ss.toFloat
           i += 1
         }
         if (av > bestSc) {
@@ -412,7 +419,7 @@ class MultiFactor(val indexAssignmentMap: Array[Array[Int]],
       //println("Factor marginalizations\n--------")
       i = 0; while (i < numVars) {
         var j = 0; while (j < variableOrder) {
-          _fVMs(i)(j) /= zSum
+          _fVMs(i)(j) /= zSum.toFloat
           //println("P(x_"+i+"="+j+"|.)="+fixedVarMarginals(i)(j))
           j += 1
         }

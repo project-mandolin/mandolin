@@ -105,6 +105,7 @@ class StarCoordinatedBlockMinimizationInference(val fm: PairFactorModel, val sm:
   
   
   def mapInfer(factors: Vector[MultiFactor], singletons: Vector[SingletonFactor], maxN: Int) = {
+    if (factors.length > 0) {
     logger.info("Performing MAP inference using star-updates")
     var i = 0; while (i < maxN) {
       val shuffled = util.Random.shuffle(singletons)
@@ -131,6 +132,7 @@ class StarCoordinatedBlockMinimizationInference(val fm: PairFactorModel, val sm:
       }
       computeGradientNorm(factors, singletons)
       i += 1
+    }
     }
     // simple MAP primal solution:
     singletons foreach { single => single.setMode(sm, true) }

@@ -43,7 +43,7 @@ object MandolinBuild extends Build {
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore, mandolinMx)
 
-  val mainVersion = "0.3.6"
+  val mainVersion = "0.3.6.2"
   
 
   def rootSettings = sharedSettings ++ Seq(
@@ -134,6 +134,7 @@ object MandolinBuild extends Build {
       "org.scala-graph" %% "graph-core" % "1.12.0",
       "com.typesafe.akka" %% "akka-actor" % "2.5.0",
       "com.typesafe.akka" %% "akka-agent" % "2.5.0",
+      "org.xerial.larray" %% "larray" % "0.4.0",
       versionDependencies(scalaVersion.value)
       )
     )

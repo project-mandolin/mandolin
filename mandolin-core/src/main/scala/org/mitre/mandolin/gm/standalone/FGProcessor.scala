@@ -7,6 +7,9 @@ import com.twitter.chill.EmptyScalaKryoInstantiator
 import org.mitre.mandolin.config.MandolinRegistrator
 import com.esotericsoftware.kryo.Kryo
 
+import scalax.collection.mutable.Graph
+import scalax.collection.edge.LDiEdge
+  
 class StandaloneRegistrator extends MandolinRegistrator {
   def registerClasses(kryo: Kryo) = register(kryo)
 }
@@ -48,13 +51,22 @@ class StandaloneFactorGraphModelReader extends FactorGraphModelReader with KryoS
 
 
 class FGProcessor {
+  
+  
+    import scalax.collection.edge.Implicits._
+    
+  import scalax.collection.edge.LBase._
+  
+  object MultiFactorLabel extends LEdgeImplicits[MultiFactor]
+  import MultiFactorLabel._
+
 
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
   def processTrain(fgSettings: FactorGraphSettings) = {
     val io = new LocalIOAssistant
-    val (fgs, alphabets) = FactorGraph.gatherFactorGraphs(fgSettings)
-    val trainer = new FactorGraphTrainer(fgSettings, fgs, alphabets)
+    val (fg, alphabets) = FactorGraph.gatherSingleFactorGraph(fgSettings) // just gather a single big Factor Graph for training
+    val trainer = new FactorGraphTrainer(fgSettings, List(fg), alphabets)
     val trFg = trainer.trainModels()
     val mWriter = new StandaloneFactorGraphModelWriter
     mWriter.writeModel(io, fgSettings.modelFile.get, trFg.singletonModel.wts, alphabets.sa, alphabets.sla, trainer.singletonNN, 
@@ -63,21 +75,58 @@ class FGProcessor {
 
   def processTrainTest(fgSettings: FactorGraphSettings) = {
     val io = new LocalIOAssistant
-    val (fgs, alphabets) = FactorGraph.gatherFactorGraphs(fgSettings)
-    val trainer = new FactorGraphTrainer(fgSettings, fgs, alphabets)
+    val (fg, alphabets) = FactorGraph.gatherSingleFactorGraph(fgSettings)
+    val trainer = new FactorGraphTrainer(fgSettings, List(fg), alphabets)
     val trFg = trainer.trainModels()
-    val (testFgs, _) = FactorGraph.gatherFactorGraphs(fgSettings, alphabets)
+    val (testFg, _) = FactorGraph.gatherFactorGraphs(fgSettings, Some(alphabets))
     val infer = fgSettings.inferAlgorithm.getOrElse("star")
     val runtimeFg = new TrainedFactorGraph(trFg.factorModel, trFg.singletonModel, fgSettings.sgAlpha, infer)
     var wAcc = 0.0
     var cnt = 0
-    testFgs foreach { fg => 
+    /*
+    val traverser = testFgs.get
+    traverser.foreach { (c: Graph[SingletonFactor,LDiEdge]#Component) =>
+      val singles = c.nodes.map{_.toOuter}.toVector
+      val factors = c.edges.map{_.toOuter} map {case s :~> t + (l: MultiFactor) => l}
+      val fg = new FactorGraph(factors.toVector, singles.toVector)          
+            
       runtimeFg.mapInfer(fgSettings.subGradEpochs, fg)
       val numSingles = fg.singletons.length
       wAcc += runtimeFg.getAccuracy(fg) * numSingles
       cnt += numSingles
       }
+      * 
+      */
     logger.info("Test Accuracy: " + (wAcc / cnt))
+  }
+  
+  def decodeNodesEdges(s:Vector[SingletonFactor], f: Vector[MultiFactor], fgSettings: FactorGraphSettings,
+      testFgModel: FactorGraphModelSpec, alphabetset: AlphabetSet) = {
+    val infer = fgSettings.inferAlgorithm.getOrElse("star")
+    val outFile = fgSettings.outputFile
+    val fg = new FactorGraph(f, s)
+      val sn = testFgModel.snet.copy
+      val fn = testFgModel.fnet.copy
+      
+      // need to set up workspace for decoding
+      fg.factors foreach {_.setWorkSpace} // this will setup workspace dynamically
+      
+      val factorModel = new PairFactorModel(fn, sn, testFgModel.fwts, testFgModel.sla.getSize)
+      val singleModel = new SingletonFactorModel(new CategoricalMMLPPredictor(sn), testFgModel.swts)
+      val runtime = new TrainedFactorGraph(factorModel, singleModel, fgSettings.sgAlpha, infer)
+      val numSingles = fg.singletons.length
+      logger.info("MAP inference on factor graph with: [ " + numSingles + " singletons and " + fg.factors.length + " pair-wise factors ]")
+      runtime.mapInfer(fgSettings.subGradEpochs, fg)
+      runtime.renderMapOutput(fg.singletons, outFile.get, alphabetset.sla, true)
+      (runtime.getAccuracy(fg), numSingles)
+ 
+  }
+  
+  def decodeSubGraph(c: Graph[SingletonFactor,LDiEdge]#Component, fgSettings: FactorGraphSettings, 
+      testFgModel: FactorGraphModelSpec, alphabetset: AlphabetSet) = {
+    val singles = c.nodes.map{_.toOuter}.toVector
+    val factors = c.edges.map{_.toOuter} map {case s :~> t + (l: MultiFactor) => l}
+    decodeNodesEdges(singles, factors.toVector, fgSettings, testFgModel, alphabetset)                    
   }
   
   def processDecode(fgSettings: FactorGraphSettings) = {
@@ -86,29 +135,69 @@ class FGProcessor {
     val mReader = new StandaloneFactorGraphModelReader
     val testFgModel = mReader.readModel(io, fgSettings.modelFile.get)
     val alphabetset = AlphabetSet(testFgModel.sfa, testFgModel.ffa, testFgModel.sla, testFgModel.fla)
-    val (decodeFgs, _) = FactorGraph.gatherFactorGraphs(fgSettings, alphabetset)
+    val (decodeFgs, _) = FactorGraph.gatherFactorGraphs(fgSettings, Some(alphabetset))
     val infer = fgSettings.inferAlgorithm.getOrElse("star")
     
     var wAcc = 0.0
     var cnt = 0
-    val outFile = fgSettings.outputFile
-    val parFgs = decodeFgs.par
-    logger.info("Decoding " + decodeFgs.length + " graphs using " + fgSettings.decoderThreads + " compute threads")
-    parFgs.tasksupport_=(new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(fgSettings.decoderThreads)))
-    parFgs foreach { fg =>
-      val sn = testFgModel.snet.copy
-      val fn = testFgModel.fnet.copy
-      val factorModel = new PairFactorModel(fn, sn, testFgModel.fwts, testFgModel.sla.getSize)
-      val singleModel = new SingletonFactorModel(new CategoricalMMLPPredictor(sn), testFgModel.swts)
-      val runtime = new TrainedFactorGraph(factorModel, singleModel, fgSettings.sgAlpha, infer)
-      val numSingles = fg.singletons.length
-      logger.info("MAP inference on factor graph with: [ " + numSingles + " singletons and " + fg.factors.length + " pair-wise factors ]")
-      runtime.mapInfer(fgSettings.subGradEpochs, fg)
-      runtime.renderMapOutput(fg.singletons, outFile.get, alphabetset.sla, true)
+    if (fgSettings.decoderThreads > 1) {
+      val batchSize = fgSettings.decoderThreads * 40
       
-      wAcc += runtime.getAccuracy(fg) * numSingles
-      cnt += numSingles
+      val subgraphs = 
+        if (fgSettings.factorFile.isDefined) {
+      val entireGraph = decodeFgs.get
+      val size = entireGraph.nodes.size
+      var curSize = size
+      while (curSize > 0) {
+        var i = 0
+        val buf = new collection.mutable.ListBuffer[(Vector[SingletonFactor], Vector[MultiFactor])]
+        while (curSize > 0 && i < batchSize) {
+          val n = entireGraph.nodes.draw(util.Random)          
+          // val nn = entireGraph.nodes.dr
+          val c = n.weakComponent
+          val singles = c.nodes.map{_.toOuter}.toVector
+          val factors = c.edges.map{_.toOuter} map {case s :~> t + (l: MultiFactor) => l}
+          buf append ((singles, factors.toVector))
+          c.nodes foreach {n => entireGraph -= n; curSize -= 1}
+          i += 1
+        }
+        val parBuf = buf.toList.par      
+        parBuf.tasksupport_=(new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(fgSettings.decoderThreads)))
+        parBuf foreach {case (n,e) =>
+          val (acc, numSingles) = decodeNodesEdges(n, e, fgSettings, testFgModel, alphabetset)
+          wAcc += acc * numSingles
+          cnt += numSingles
+        }
       }
+        }
+        else {
+          val nodes = decodeFgs.get.nodes.toOuter.toVector
+          val (acc, numSingles) = decodeNodesEdges(nodes, Vector(), fgSettings, testFgModel, alphabetset)
+          wAcc += acc * numSingles
+          cnt += numSingles
+        }
+    } else {
+      val entireGraph = decodeFgs.get
+      while (entireGraph.size > 0) {
+        val n = entireGraph.nodes.draw(util.Random)
+        val component = n.weakComponent
+        val (acc, numSingles) = decodeSubGraph(component, fgSettings, testFgModel, alphabetset)
+        wAcc += acc * numSingles
+        cnt += numSingles
+        component.nodes foreach {n => entireGraph -= n}
+      }
+      /*
+      val traverser = decodeFgs.get
+      logger.info("Traversing graph using single thread ...")
+      traverser foreach {(c: Graph[SingletonFactor, LDiEdge]#Component) =>
+        logger.info("Processing component ...")
+        val (acc, numSingles) = decodeSubGraph(c, fgSettings, testFgModel, alphabetset)
+        wAcc += acc * numSingles
+        cnt += numSingles
+      }
+      * 
+      */
+    }
     logger.info("Test Accuracy: " + (wAcc / cnt))    
   }
 }
