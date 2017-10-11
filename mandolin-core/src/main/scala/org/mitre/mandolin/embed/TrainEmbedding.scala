@@ -7,17 +7,14 @@ import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
 import org.mitre.mandolin.mlp.MandolinMLPSettings
 import com.typesafe.config.Config
 
-class EmbeddingModelSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _conf: Option[Config]) 
-extends MandolinMLPSettings(None,_conf) {
+class EmbeddingModelSettings(args: Array[String]) extends MandolinMLPSettings(args) {
  
-  def this(args: Array[String]) = this(Some(new ConfigGeneratedCommandOptions(args)), None)
-  
   val embedMethod = asStr("mandolin.embed.method")
   val eDim        = asInt("mandolin.embed.dim")
   val contextSize = asInt("mandolin.embed.window")
   val minCnt      = asInt("mandolin.embed.min-cnt")
   val negSample   = asInt("mandolin.embed.neg-sample")
-  val downSample  = asDouble("mandolin.embed.down-sample")
+  val downSample  = asFloatOpt("mandolin.embed.down-sample").getOrElse(1E-5f).toDouble
 
 }
 
