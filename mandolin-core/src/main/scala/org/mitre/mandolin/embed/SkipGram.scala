@@ -2,23 +2,26 @@ package org.mitre.mandolin.embed
 
 import org.mitre.mandolin.optimize.TrainingUnitEvaluator
 
+import xerial.larray._
+
 class SkipGramEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int,
                                               freqTable: Array[Int], logisticTable: Array[Float], chances: Array[Int])
   extends TrainingUnitEvaluator[SeqInstance, EmbedWeights, EmbedGradient, U] with Serializable {
 
   val maxSentLength = 1000
   val ftLen = freqTable.length
-  val hlSize = emb.embW.getDim2
-  val vocabSize = emb.embW.getDim1
-  val h = Array.fill(hlSize)(0.0f)
-  val d = Array.fill(hlSize)(0.0f)
+  val hlSize = emb.embW.rowSize
+  val vocabSize = emb.embW.colSize
+  val h = LArray.of[Float](hlSize)
+  val d = LArray.of[Float](hlSize)  
+
   val maxDp = 6.0f
   val logisticTableSizeCoef = logisticTable.length.toFloat / maxDp / 2.0f
   val eDp = 5.999f
 
   // xorshift generator with period 2^128 - 1; on the order of 10 times faster than util.Random.nextInt
-  var seed0 = util.Random.nextInt(Integer.MAX_VALUE)
-  var seed1 = util.Random.nextInt(Integer.MAX_VALUE)
+  var seed0 = scala.util.Random.nextInt(Integer.MAX_VALUE)
+  var seed1 = scala.util.Random.nextInt(Integer.MAX_VALUE)
 
   @inline
   private final def nextInt(m: Int): Int = {
@@ -32,14 +35,14 @@ class SkipGramEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: 
 
 
   @inline
-  private final def set(a: Array[Float], v: Float) = {
+  private final def set(a: LArray[Float], v: Float) = {
     var i = 0; while (i < hlSize) {
       a(i) = v; i += 1
     }
   }
 
   @inline
-  private final def timesEq(a: Array[Float], v: Float) = {
+  private final def timesEq(a: LArray[Float], v: Float) = {
     var i = 0; while (i < hlSize) {
       a(i) *= v; i += 1
     }
@@ -55,8 +58,8 @@ class SkipGramEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: 
     var bagSize = 0
 
     var con_i = 0
-    val l1Ar = w.embW.asArray // array layout of matrix
-    val l2Ar = w.outW.asArray // array layout of matrix
+    // val l1Ar = w.embW.asArray // array layout of matrix
+    // val l2Ar = w.outW.asArray // array layout of matrix
     val sent = Array.fill(maxSentLength)(0)
 
     var ii = 0
@@ -97,35 +100,36 @@ class SkipGramEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: 
                 val ri = nextInt(ftLen)
                 outIndex = freqTable(ri)
                 if (outIndex == curWord) {
-                  outIndex = (outIndex + nextInt(vocabSize)) % vocabSize
+                  outIndex = (outIndex + nextInt(vocabSize.toInt)) % vocabSize.toInt
                 }
                 label = 0.0f
               }
-              val outOffset = outIndex * hlSize
+              // val outOffset = outIndex * hlSize
               var dp = 0.0f
               i = 0;
               while (i < hlSize) {
-                dp += l1Ar(inOffset + i) * l2Ar(outOffset + i)
+                //dp += l1Ar(inOffset + i) * l2Ar(outOffset + i)
+                dp += w.embW(inIndex, i) * w.outW(outIndex, i)
                 i += 1
               }
               val out = if (dp >= eDp) 1.0f else if (dp <= -eDp) 0.0f else logisticFn(dp)
               val o_err = (label - out)
               i = 0;
               while (i < hlSize) {
-                d(i) += o_err * l2Ar(outOffset + i)
+                d(i) += o_err * w.outW(outIndex, i)
                 i += 1
               }
               i = 0;
               while (i < hlSize) {
-                val g = o_err * l1Ar(inOffset + i)
-                up.updateOutputSqG(outOffset + i, l2Ar, g)
+                val g = o_err * w.embW(inIndex, i)
+                up.updateOutputSqG(outIndex, i, w.outW, g)
                 i += 1
               }
               s += 1
             }
             i = 0;
             while (i < hlSize) {
-              up.updateEmbeddingSqG(inOffset + i, l1Ar, d(i))
+              up.updateEmbeddingSqG(inIndex, i, w.embW, d(i))
               i += 1
             }
           }

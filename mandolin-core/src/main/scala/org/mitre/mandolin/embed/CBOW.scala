@@ -2,6 +2,8 @@ package org.mitre.mandolin.embed
 
 import org.mitre.mandolin.optimize.TrainingUnitEvaluator
 
+import xerial.larray._
+
 /**
  * @author wellner
  */
@@ -11,17 +13,17 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
   
   val maxSentLength = 1000
   val ftLen = freqTable.length
-  val hlSize = emb.embW.getDim2
-  val vocabSize = emb.embW.getDim1
-  val h = Array.fill(hlSize)(0.0f)
-  val d = Array.fill(hlSize)(0.0f)
+  val hlSize = emb.embW.rowSize
+  val vocabSize = emb.embW.colSize
+  val h = LArray.of[Float](hlSize)
+  val d = LArray.of[Float](hlSize)
   val maxDp = 6.0f
   val logisticTableSizeCoef = logisticTable.length.toFloat / maxDp / 2.0f
   val eDp = 5.999f
   
   // xorshift generator with period 2^128 - 1; on the order of 10 times faster than util.Random.nextInt
-  var seed0 = util.Random.nextInt(Integer.MAX_VALUE)
-  var seed1 = util.Random.nextInt(Integer.MAX_VALUE)
+  var seed0 = scala.util.Random.nextInt(Integer.MAX_VALUE)
+  var seed1 = scala.util.Random.nextInt(Integer.MAX_VALUE)
   
   @inline
   private final def nextInt(m : Int) : Int = {
@@ -35,9 +37,9 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
   
   
   @inline
-  private final def set(a: Array[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
+  private final def set(a: LArray[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
   @inline
-  private final def timesEq(a: Array[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
+  private final def timesEq(a: LArray[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
   @inline
   private final def logisticFn(x: Float) = logisticTable(((x + maxDp) * logisticTableSizeCoef).toInt) // 1.0 / (1.0 + math.exp(-x)) 
   
@@ -50,8 +52,8 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
     var bagSize = 0
     
     var con_i = 0
-    val l1Ar = w.embW.asArray // array layout of matrix
-    val l2Ar = w.outW.asArray // array layout of matrix
+    // val l1Ar = w.embW.asArray // array layout of matrix
+    // val l2Ar = w.outW.asArray // array layout of matrix
     
     var ii = 0
     while ((con_i < in.ln) && (ii < maxSentLength)) {      
@@ -83,7 +85,7 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
     		  val wi = sent(con_i)
     		  if (wi >= 0) {
     			  bagSize += 1
-    			  var i = 0; while (i < hlSize) { h(i) += l1Ar(i + wi * hlSize); i += 1}
+    			  var i = 0; while (i < hlSize) { h(i) += w.embW(wi, i); i += 1}
     		  }
     		}
         a += 1
@@ -96,32 +98,33 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
           val ri = nextInt(ftLen)
           outIndex = freqTable(ri)
           if (outIndex == curWord) {
-            outIndex = (outIndex + nextInt(vocabSize)) % vocabSize
+            outIndex = (outIndex + nextInt(vocabSize.toInt)) % vocabSize.toInt
           }
           label = 0.0f
         }        
-        val offset = outIndex * hlSize
+        // val offset = outIndex * hlSize
         var dp = 0.0f
         var i = 0; while (i < hlSize) {
-          dp += h(i) * l2Ar(offset + i)         
+          dp += h(i) * w.outW(outIndex, i)         
           i += 1 } 
         val out = if (dp >= eDp) 1.0f else if (dp <= -eDp) 0.0f else logisticFn(dp)
         val o_err = (label - out)
         i = 0; while (i < hlSize) { 
-          d(i) += o_err * l2Ar(offset + i)
+          d(i) += o_err * w.outW(outIndex, i)
           i += 1}
         i = 0; while (i < hlSize) {
           val g = o_err * h(i)
-          up.updateOutputSqG(offset + i, l2Ar, g)
+          up.updateOutputSqG(outIndex, i, w.outW, g)
           i += 1}
         s += 1
       }
       a = b; while (a < wSize * 2 + 1 - b) {
         con_i = spos - wSize + a
         if ((a != wSize) && (con_i >= 0) && (con_i < in.ln) && (con_i < maxSentLength)) {
-          val offset = sent(con_i) * hlSize
+          //val offset = sent(con_i) * hlSize
+          val wi = sent(con_i)
           var i = 0; while (i < hlSize) {
-            up.updateEmbeddingSqG(i + offset, l1Ar, d(i))
+            up.updateEmbeddingSqG(wi, i, w.embW, d(i))
             //l1Ar(i + offset) += d(i)
             i += 1
           }
