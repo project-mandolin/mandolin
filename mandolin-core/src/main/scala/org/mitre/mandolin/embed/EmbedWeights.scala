@@ -113,7 +113,7 @@ class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUp
   @volatile var totalProcessed = 0.0f
   var currentRate = 0.0f
   
-  def getZeroUpdater = new NullUpdater(initialLearnRate, decay)
+  // def getZeroUpdater = new NullUpdater(initialLearnRate, decay)
   
   def updateFromArray(ar: Array[Float]) = {}
   
@@ -145,22 +145,22 @@ class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUp
   }
 }
 
-class EmbedAdaGradUpdater(initialLearningRate: Float, val embSqG: Array[Float], val outSqG: Array[Float]) 
+class EmbedAdaGradUpdater(initialLearningRate: Float, val embSqG: LArray[Float], val outSqG: LArray[Float]) 
 extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
   
   import org.mitre.mandolin.util.SimpleFloatCompressor
   
   val fullSize = embSqG.length
-  def getZeroUpdater = new EmbedAdaGradUpdater(initialLearningRate, Array.fill(fullSize)(0.0f), Array.fill(fullSize)(0.0f))
+  // def getZeroUpdater = new EmbedAdaGradUpdater(initialLearningRate, LArray.of[Float](fullSize), LArray.of[Float](fullSize))
 
-  var compressedEmbSqG = (Array[Byte](), Array[Float]())
-  var compressedOutSqG = (Array[Byte](), Array[Float]())
+  var compressedEmbSqG = (LArray[Byte](), Array[Float]())
+  var compressedOutSqG = (LArray[Byte](), Array[Float]())
   
   def compress() = {
     if (!isCompressed) {
-      val ne = new EmbedAdaGradUpdater(initialLearningRate, Array(), Array())
+      val ne = new EmbedAdaGradUpdater(initialLearningRate, LArray[Float](), LArray[Float]())
       ne.compressedEmbSqG_=(SimpleFloatCompressor.compress(embSqG))
-      ne.compressedOutSqG_=(SimpleFloatCompressor.compress(outSqG))
+      ne.compressedOutSqG_=(SimpleFloatCompressor.compress(outSqG))            
       ne.isCompressed_=(true)    
       ne 
     } else this
@@ -170,8 +170,16 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
     if (isCompressed) {
       val (eAr,eVls) = compressedEmbSqG
       val (oAr,oVls) = compressedOutSqG
-      val nEmb = Array.tabulate(eAr.length){i => eVls(eAr(i).toInt + 128)}
-      val nOut = Array.tabulate(oAr.length){i => oVls(oAr(i).toInt + 128)}
+      //System.err.println("")
+      val nEmb = LArray.of[Float](eAr.length)
+      val nOut = LArray.of[Float](oAr.length)
+      var i = 0; while (i < eAr.length) {
+        nEmb(i) = eVls(eAr(i).toInt + 128)
+        nOut(i) = oVls(oAr(i).toInt + 128)
+        i += 1
+      }
+      //val nEmb = LArray.tabulate(eAr.length){i => eVls(eAr(i).toInt + 128)}
+      //val nOut = LArray.tabulate(oAr.length){i => oVls(oAr(i).toInt + 128)}
       new EmbedAdaGradUpdater(initialLearningRate, nEmb, nOut)
     } else this
   }
@@ -195,8 +203,8 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
     }
   }
   
-  def asArray = {
-    Array.tabulate(fullSize*2){i => if (i < fullSize) embSqG(i) else outSqG(i - fullSize) }
+  def asArray = { throw new RuntimeException("As array unavailable as this could exceed standard array limits")
+    // Array.tabulate(fullSize*2){i => if (i < fullSize) embSqG(i) else outSqG(i - fullSize) }
   }
   
   def copy() : EmbedAdaGradUpdater = {
@@ -241,14 +249,14 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
     
   final def updateEmbeddingSqG(i: Long, j: Long, wts: LArray2D[Float], g: Float) = {
     val offset = i * wts.rowSize + j
-    embSqG(offset.toInt) += g * g
-    wts(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(embSqG(offset.toInt))))
+    embSqG(offset) += g * g
+    wts(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(embSqG(offset))))
   }
   
   final def updateOutputSqG(i: Long, j: Long, wts: LArray2D[Float], g: Float) = {
     val offset = i * wts.rowSize + j
-    outSqG(offset.toInt) += g * g
-    wts(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(outSqG(offset.toInt))))
+    outSqG(offset) += g * g
+    wts(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(outSqG(offset))))
   }  
   def updateNumProcessed() = {}
 }

@@ -11,6 +11,7 @@ import org.mitre.mandolin.mlp.spark.AppConfig
 
 import org.apache.spark.{SparkContext, AccumulatorParam}
 import org.apache.spark.rdd.RDD
+import xerial.larray._
 
 object CBOWDist {
   
@@ -99,8 +100,8 @@ object CBOWDist {
     val vocabSize = mapping.getSize  
     val wts = EmbedWeights(eDim, vocabSize) 
     val fe = new SeqInstanceExtractor(mapping)
-    val gemb = Array.fill(eDim * vocabSize)(0.0f)
-    val gout = Array.fill(eDim * vocabSize)(0.0f)
+    val gemb = LArray.of[Float](eDim.toLong * vocabSize.toLong)
+    val gout = LArray.of[Float](eDim.toLong * vocabSize.toLong)
     println("*** Number of parameters = " + (eDim * vocabSize * 2))
     val lines1 = lines.repartition(appSettings.numPartitions * appSettings.numThreads).coalesce(appSettings.numPartitions, false) // repartition should balance these across cluster ..
     if (appSettings.method equals "adagrad") {

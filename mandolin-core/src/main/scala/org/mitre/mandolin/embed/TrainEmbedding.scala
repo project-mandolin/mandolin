@@ -6,6 +6,7 @@ import org.mitre.mandolin.predict.standalone.Trainer
 import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
 import org.mitre.mandolin.mlp.MandolinMLPSettings
 import com.typesafe.config.Config
+import xerial.larray._
 
 class EmbeddingModelSettings(args: Array[String]) extends MandolinMLPSettings(args) {
  
@@ -37,8 +38,8 @@ object TrainEmbedding {
     
     if (appSettings.method equals "adagrad") {
       println(">> Using AdaGrad adaptive weight update scheme <<")
-      val gemb = Array.fill(eDim * vocabSize)(0.0f)
-      val gout = Array.fill(eDim * vocabSize)(0.0f)    
+      val gemb = LArray.of[Float](eDim.toLong * vocabSize.toLong)
+      val gout = LArray.of[Float](eDim.toLong * vocabSize.toLong)    
       val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)
       val ev = 
       if (appSettings.embedMethod.equals("skipgram")) 
