@@ -13,10 +13,10 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
   
   val maxSentLength = 1000
   val ftLen = freqTable.length
-  val hlSize = emb.embW.rowSize
-  val vocabSize = emb.embW.colSize
-  val h = LArray.of[Float](hlSize)
-  val d = LArray.of[Float](hlSize)
+  val hlSize = emb.embW.getDim2
+  val vocabSize = emb.embW.getDim1
+  val h = Array.fill(hlSize)(0.0f)
+  val d = Array.fill(hlSize)(0.0f)
   val maxDp = 6.0f
   val logisticTableSizeCoef = logisticTable.length.toFloat / maxDp / 2.0f
   val eDp = 5.999f
@@ -37,9 +37,11 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
   
   
   @inline
-  private final def set(a: LArray[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
+  //private final def set(a: LArray[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
+  private final def set(a: Array[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) = v; i += 1} }
   @inline
-  private final def timesEq(a: LArray[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
+  //private final def timesEq(a: LArray[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
+  private final def timesEq(a: Array[Float], v: Float) = { var i = 0; while (i < hlSize) { a(i) *= v; i += 1} }
   @inline
   private final def logisticFn(x: Float) = logisticTable(((x + maxDp) * logisticTableSizeCoef).toInt) // 1.0 / (1.0 + math.exp(-x)) 
   

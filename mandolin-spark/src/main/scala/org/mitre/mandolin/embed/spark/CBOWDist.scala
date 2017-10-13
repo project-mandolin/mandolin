@@ -7,11 +7,32 @@ import org.mitre.mandolin.util.{Alphabet, StdAlphabet}
 import org.mitre.mandolin.optimize.spark.DistributedOnlineOptimizer
 import org.mitre.mandolin.predict.spark.Trainer
 import org.mitre.mandolin.mlp.spark.AppConfig
-
+import org.mitre.mandolin.util.Simple2DArray
 
 import org.apache.spark.{SparkContext, AccumulatorParam}
 import org.apache.spark.rdd.RDD
 import xerial.larray._
+
+object TestBigArray {
+  
+  def main(args: Array[String]) : Unit = {
+    val appSettings = new org.mitre.mandolin.embed.EmbeddingModelSettings(args)
+    val sc = AppConfig.getSparkContext(appSettings)
+    val rdd1 = sc.parallelize(1 to 5).map { _ =>
+        val bigArray = Array.tabulate(1000000){_ => scala.util.Random.nextDouble()}
+        bigArray
+      }
+    val r1 = rdd1.collect()
+    println("SUCCESS 1")
+    val rdd2 = sc.parallelize(1 to 5).map { _ =>
+        val bigArray = Array.tabulate(200000000){_ => scala.util.Random.nextDouble()}
+        bigArray
+      }
+    println("About to COLLECT")
+    val res = rdd2.collect()
+    println("SUCCESS 2")
+  }
+}
 
 object CBOWDist {
   
@@ -100,8 +121,9 @@ object CBOWDist {
     val vocabSize = mapping.getSize  
     val wts = EmbedWeights(eDim, vocabSize) 
     val fe = new SeqInstanceExtractor(mapping)
-    val gemb = LArray.of[Float](eDim.toLong * vocabSize.toLong)
-    val gout = LArray.of[Float](eDim.toLong * vocabSize.toLong)
+    val gemb = Simple2DArray.floatArray(vocabSize, eDim)
+    val gout = Simple2DArray.floatArray(vocabSize, eDim)
+      
     println("*** Number of parameters = " + (eDim * vocabSize * 2))
     val lines1 = lines.repartition(appSettings.numPartitions * appSettings.numThreads).coalesce(appSettings.numPartitions, false) // repartition should balance these across cluster ..
     if (appSettings.method equals "adagrad") {
@@ -112,20 +134,19 @@ object CBOWDist {
           new SkipGramEvaluator[EmbedAdaGradUpdater](wts, appSettings.contextSize, appSettings.negSample, freqs, logisticTable, chances)
         else new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample, freqs, logisticTable, chances)
       val optimizer = 
-        new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](sc, wts, ev, up, epochs,1,nthreads,None)
-      val trainer = new Trainer(fe, optimizer)
-      //val io = new SparkIOAssistant(sc)
-      val (finalWeights,_) = trainer.trainWeights(lines1)
+        new DistributedEmbeddingProcessor[EmbedAdaGradUpdater](sc, wts, ev, up, epochs, nthreads)
+      val lines2 = lines1 map { fe.extractFeatures }  // heavy lift to map to seqinstance objects -- do this before repartitioning, tho?
+      val finalWeights = optimizer.estimate(lines2)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     }
     else {
       println("*** Using SGD optimization ***")
       val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)            
       val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable,chances)      
-      val optimizer = new DistributedOnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](sc, wts, ev, up, epochs,1,nthreads,None)
-      val trainer = new Trainer(fe, optimizer)
-      val io = new SparkIOAssistant(sc)
-      val (finalWeights,_) = trainer.trainWeights(lines1)
+      val optimizer = new DistributedEmbeddingProcessor[NullUpdater](sc, wts, ev, up, epochs,nthreads)
+      val lines2 = lines1 map {fe.extractFeatures}
+      // val io = new SparkIOAssistant(sc)
+      val finalWeights = optimizer.estimate(lines2)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     }
   }

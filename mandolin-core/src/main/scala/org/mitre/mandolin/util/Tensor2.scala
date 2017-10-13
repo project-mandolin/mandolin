@@ -326,6 +326,33 @@ class DenseTensor2(val a: Array[Float], val nrows: Int, val ncols: Int, dr: Floa
 
 }
 
+class Simple2DArray(val ars: Array[Array[Float]], val nrows: Int, val ncols: Int) {
+  
+  def apply(i: Int, j: Int) = ars(i)(j)
+  def update(i: Int, j: Int, v: Float) = ars(i)(j) = v
+  def getDim1 = nrows
+  def getDim2 = ncols
+  def +=(i: Int, j: Int, v: Float) = ars(i)(j) += v 
+}
+
+class Simple2DByteArray(val ars: Array[Array[Byte]], val nrows: Int, val ncols: Int) {
+  
+  def apply(i: Int, j: Int) = ars(i)(j)
+  def update(i: Int, j: Int, v: Byte) = ars(i)(j) = v
+  def getDim1 = nrows
+  def getDim2 = ncols
+
+}
+
+
+object Simple2DArray {
+    
+  def floatArray(i: Int,j: Int) = new Simple2DArray(Array.tabulate(i){_ => Array.fill(j)(0.0f)}, i, j)
+  
+  def byteArray(i: Int, j: Int) = new Simple2DByteArray(Array.tabulate(i){_ => Array.fill(j)(0)}, i, j)
+}
+
+
 /**
  * A matrix (tensor2) with sparse columns. Because matrix is sparse, many operations available for dense matrices aren't
  * provided as they would result in a dense matrix.

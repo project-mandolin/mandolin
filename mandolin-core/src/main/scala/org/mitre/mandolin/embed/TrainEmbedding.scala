@@ -5,6 +5,7 @@ import org.mitre.mandolin.optimize.standalone.{OnlineOptimizer}
 import org.mitre.mandolin.predict.standalone.Trainer
 import org.mitre.mandolin.config.ConfigGeneratedCommandOptions
 import org.mitre.mandolin.mlp.MandolinMLPSettings
+import org.mitre.mandolin.util.{DenseTensor2, Simple2DArray}
 import com.typesafe.config.Config
 import xerial.larray._
 
@@ -16,8 +17,8 @@ class EmbeddingModelSettings(args: Array[String]) extends MandolinMLPSettings(ar
   val minCnt      = asInt("mandolin.embed.min-cnt")
   val negSample   = asInt("mandolin.embed.neg-sample")
   val downSample  = asFloatOpt("mandolin.embed.down-sample").getOrElse(1E-5f).toDouble
-
 }
+
 
 object TrainEmbedding {
   
@@ -38,8 +39,12 @@ object TrainEmbedding {
     
     if (appSettings.method equals "adagrad") {
       println(">> Using AdaGrad adaptive weight update scheme <<")
-      val gemb = LArray.of[Float](eDim.toLong * vocabSize.toLong)
-      val gout = LArray.of[Float](eDim.toLong * vocabSize.toLong)    
+      // XXX - redo the updaters to use arrays of arrays
+      // val gemb = Array.fill(eDim.toLong * vocabSize.toLong)
+      // val gemb = Array.fill(eDim * vocabSize)(0.0f)
+      // val gout = Array.fill(eDim * vocabSize)(0.0f)
+      val gemb = Simple2DArray.floatArray(vocabSize, eDim)
+      val gout = Simple2DArray.floatArray(vocabSize, eDim)
       val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)
       val ev = 
       if (appSettings.embedMethod.equals("skipgram")) 

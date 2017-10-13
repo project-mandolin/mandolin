@@ -10,8 +10,8 @@ class SkipGramEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: 
 
   val maxSentLength = 1000
   val ftLen = freqTable.length
-  val hlSize = emb.embW.rowSize
-  val vocabSize = emb.embW.colSize
+  val hlSize = emb.embW.getDim2
+  val vocabSize = emb.embW.getDim1
   val h = LArray.of[Float](hlSize)
   val d = LArray.of[Float](hlSize)  
 
