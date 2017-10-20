@@ -328,11 +328,36 @@ class DenseTensor2(val a: Array[Float], val nrows: Int, val ncols: Int, dr: Floa
 
 class Simple2DArray(val ars: Array[Array[Float]], val nrows: Int, val ncols: Int) {
   
+  def getRow(i: Int) = ars(i)
   def apply(i: Int, j: Int) = ars(i)(j)
   def update(i: Int, j: Int, v: Float) = ars(i)(j) = v
   def getDim1 = nrows
   def getDim2 = ncols
-  def +=(i: Int, j: Int, v: Float) = ars(i)(j) += v 
+  def getSize = nrows * ncols
+  def +=(i: Int, j: Int, v: Float) = ars(i)(j) += v
+  def *=(i: Int, j: Int, v: Float) = ars(i)(j) *= v
+  
+  def +=(other: Simple2DArray) = {
+    var i = 0; while (i < nrows) {
+      var j = 0; while (j < ncols) {
+        ars(i)(j) += other(i,j)
+        j += 1
+      }
+      i += 1
+    }    
+  }
+  def *=(v: Float) = {
+    var i = 0; while (i < nrows) {
+      var j = 0; while (j < ncols) {
+        ars(i)(j) *= v
+        j += 1
+      }
+      i += 1
+    }
+  }
+  def copy() = {
+    new Simple2DArray(Array.tabulate(nrows){i => Array.tabulate(ncols){j => ars(i)(j)}}, nrows, ncols)
+  }
 }
 
 class Simple2DByteArray(val ars: Array[Array[Byte]], val nrows: Int, val ncols: Int) {

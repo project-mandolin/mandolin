@@ -72,6 +72,9 @@ abstract class TrainingUnitEvaluator[T, W <: Weights[W], LG <: LossGradient[LG],
   //def evaluateTrainingUnit(unit: T, modelParameters: W): LG
   def evaluateTrainingUnit(unit: T, modelParameters: W, updater: U) : LG
   def copy(): TrainingUnitEvaluator[T, W, LG, U]
+  /* override to initialize/cleanup as appropriate */
+  def initialize(): Unit = {}
+  def cleanup() : Unit = {}
 }
 
 

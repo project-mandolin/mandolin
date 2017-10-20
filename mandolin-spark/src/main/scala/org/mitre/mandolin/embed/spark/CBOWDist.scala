@@ -58,7 +58,7 @@ object CBOWDist {
   }
   
   def getVocabularyAndFreqs(lines: RDD[String], dim: Int, minCnt: Int, smoothFactor: Double, sample: Double = 0.0) = {
-    val maxVocabSize = (Integer.MAX_VALUE / dim / 21).toInt // this is an upper bound on the vocab size due to serialization constraints
+    val maxVocabSize = (Integer.MAX_VALUE).toInt // this is an upper bound on the vocab size due to serialization constraints
     val _mc = minCnt
     val res11 = lines.flatMap { x => x.split("[ \n\r\t]+") }
                .map{x => (getNormalizedString(x),1)}.filter{x => x._1.length() > 0} 
@@ -119,36 +119,20 @@ object CBOWDist {
     val lines = sc.textFile(inFile.get)
     val (mapping, freqs, logisticTable, chances) = getVocabularyAndFreqs(lines, appSettings.eDim, appSettings.minCnt, 0.75)
     val vocabSize = mapping.getSize  
-    val wts = EmbedWeights(eDim, vocabSize) 
     val fe = new SeqInstanceExtractor(mapping)
-    val gemb = Simple2DArray.floatArray(vocabSize, eDim)
-    val gout = Simple2DArray.floatArray(vocabSize, eDim)
-      
     println("*** Number of parameters = " + (eDim * vocabSize * 2))
     val lines1 = lines.repartition(appSettings.numPartitions * appSettings.numThreads).coalesce(appSettings.numPartitions, false) // repartition should balance these across cluster ..
-    if (appSettings.method equals "adagrad") {
-      println("*** Using AdaGrad stochastic optimization ***")
-      val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)            
-      val ev =
+    val useAdaGrad = (appSettings.method equals "adagrad")
+    if (appSettings.method equals "adagrad") println("*** Using AdaGrad stochastic optimization ***")
+    val ev =
         if (appSettings.embedMethod.equals("skipgram"))
-          new SkipGramEvaluator[EmbedAdaGradUpdater](wts, appSettings.contextSize, appSettings.negSample, freqs, logisticTable, chances)
-        else new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample, freqs, logisticTable, chances)
-      val optimizer = 
-        new DistributedEmbeddingProcessor[EmbedAdaGradUpdater](sc, wts, ev, up, epochs, nthreads)
-      val lines2 = lines1 map { fe.extractFeatures }  // heavy lift to map to seqinstance objects -- do this before repartitioning, tho?
-      val finalWeights = optimizer.estimate(lines2)
-      finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
-    }
-    else {
-      println("*** Using SGD optimization ***")
-      val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)            
-      val ev = new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable,chances)      
-      val optimizer = new DistributedEmbeddingProcessor[NullUpdater](sc, wts, ev, up, epochs,nthreads)
-      val lines2 = lines1 map {fe.extractFeatures}
-      // val io = new SparkIOAssistant(sc)
-      val finalWeights = optimizer.estimate(lines2)
-      finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
-    }
+          new SkipGramEvaluator(eDim, vocabSize, appSettings.contextSize, appSettings.negSample, freqs, logisticTable, chances)
+        else new CBOWEvaluator(eDim, vocabSize, appSettings.contextSize,appSettings.negSample, freqs, logisticTable, chances)
+    val optimizer = 
+        new DistributedEmbeddingProcessor(sc, ev, epochs, nthreads, vocabSize, eDim, useAdaGrad)
+    val lines2 = lines1 map { fe.extractFeatures }  // heavy lift to map to seqinstance objects -- do this before repartitioning, tho?
+    val finalWeights = optimizer.estimate(lines2)
+    finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))    
   }
 
 }

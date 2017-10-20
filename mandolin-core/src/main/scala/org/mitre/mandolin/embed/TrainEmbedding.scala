@@ -35,7 +35,7 @@ object TrainEmbedding {
     val wts = EmbedWeights(eDim, vocabSize)     
     val fe = new SeqInstanceExtractor(mapping)
     val io = new LocalIOAssistant
-    val lines = io.readLines(inFile.get).toVector
+    val lines = io.readLines(inFile.get)
     
     if (appSettings.method equals "adagrad") {
       println(">> Using AdaGrad adaptive weight update scheme <<")
@@ -48,24 +48,28 @@ object TrainEmbedding {
       val up = new EmbedAdaGradUpdater(appSettings.initialLearnRate, gemb, gout)
       val ev = 
       if (appSettings.embedMethod.equals("skipgram")) 
-        new SkipGramEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
+        new SkipGramEvaluator(eDim, vocabSize, appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
       else
-        new CBOWEvaluator[EmbedAdaGradUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)      
-      val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedAdaGradUpdater](wts, ev, up,epochs,1,nthreads,None)
+        new CBOWEvaluator(eDim, vocabSize, appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)      
+      val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedUpdater](wts, ev, up,epochs,1,nthreads,None)
       val trainer = new Trainer(fe, optimizer)
-      val (finalWeights,_) = trainer.trainWeights(lines)
+      val nlines = lines map {fe.extractFeatures}
+      val (finalWeights,_) = trainer.retrainWeights(nlines.toVector)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     } else {
       println(">> Using vanilla SGD weight update scheme <<")
       val up = new NullUpdater(appSettings.initialLearnRate, appSettings.sgdLambda)
       val ev =
         if (appSettings.embedMethod.equals("skipgram"))
-          new SkipGramEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
+          new SkipGramEvaluator(eDim, vocabSize, appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
         else 
-          new CBOWEvaluator[NullUpdater](wts,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)          
-      val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, NullUpdater](wts, ev, up,epochs,1,nthreads,None)
+          new CBOWEvaluator(eDim, vocabSize,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
+      wts.accelerate
+      val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedUpdater](wts, ev, up,epochs,1,nthreads,None)
+      wts.decelerate
       val trainer = new Trainer(fe, optimizer)
-      val (finalWeights,_) = trainer.trainWeights(lines)
+      val nlines = lines map {fe.extractFeatures}
+      val (finalWeights,_) = trainer.retrainWeights(nlines.toVector)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     }
   } 

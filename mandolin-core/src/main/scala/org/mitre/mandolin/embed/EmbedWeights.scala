@@ -3,17 +3,58 @@ package org.mitre.mandolin.embed
 import org.mitre.mandolin.optimize.{Weights, LossGradient, Updater}
 import org.mitre.mandolin.util.{Alphabet, Simple2DArray, Tensor1 => Vec, Tensor2 => Mat, DenseTensor2 => DenseMat, DenseTensor1 => DenseVec}
 
+import xerial.larray._
+
 /*
  * Note that these weights are represented using the transpose of MMLP weights.
  * That is, dim(W) = (l-1, l) has dim(l-1) rows and dim(l) columns where dim(l-1) is the number of inputs and dim(l)
  * is the number of outputs/dimensions of current layer
  */
-class EmbedWeights(val embW: Mat, val outW: Mat, m: Float) extends Weights[EmbedWeights](m) with Serializable {
+class EmbedWeights(val embW: Simple2DArray, val outW: Simple2DArray, m: Float) extends Weights[EmbedWeights](m) with Serializable {
 
   val numWeights = embW.getSize + outW.getSize
   def compress(): Unit = {}
   def decompress(): Unit = {}
   def weightAt(i: Int) = throw new RuntimeException("Not implemented")
+  
+  var fastEmbW : Option[LArray2D[Float]] = None
+  var fastOutW : Option[LArray2D[Float]] = None
+  var accelerated = false
+  def accelerate = {
+    if (!accelerated) {
+      val emb = LArray2D.of[Float](embW.getDim2, embW.getDim1)
+      val out = LArray2D.of[Float](outW.getDim2, outW.getDim1)
+      var i = 0; while (i < embW.getDim1) {
+        var j = 0; while (j < embW.getDim2) {
+          emb(i,j) = embW(i,j)
+          out(i,j) = outW(i,j)
+          j += 1
+        }
+        i += 1
+      }
+      fastEmbW_=(Some(emb))
+      fastOutW_=(Some(out))
+      accelerated_=(true)
+    }
+  }
+  
+  def decelerate = {
+    if (accelerated) {
+      val emb = fastEmbW.get
+      val out = fastOutW.get
+      var i = 0; while (i < embW.getDim1) {
+        var j = 0; while (j < embW.getDim2) {
+          embW(i,j) = emb(i,j)
+          outW(i,j) = out(i,j)
+          j += 1
+        }
+        i += 1
+      }
+    accelerated_=(false)
+    fastEmbW_=(None)
+    fastOutW_=(None)
+    }    
+  }
   
   def compose(otherWeights: EmbedWeights) = {
     this *= mass
@@ -29,7 +70,7 @@ class EmbedWeights(val embW: Mat, val outW: Mat, m: Float) extends Weights[Embed
     this
   }
 
-  def addEquals(otherWeights: EmbedWeights): Unit = {
+  def addEquals(otherWeights: EmbedWeights): Unit = {    
     embW += otherWeights.embW
     outW += otherWeights.outW
   }
@@ -39,28 +80,11 @@ class EmbedWeights(val embW: Mat, val outW: Mat, m: Float) extends Weights[Embed
     outW *= v
     }
   
-  def updateFromArray(ar: Array[Float]) = {
-    val eArr = embW.asArray
-    val oArr = outW.asArray
-    val ss = embW.getSize
-    var i = 0; while (i < ar.length) {
-      if (i < ss) {
-        eArr(i) = ar(i)        
-      } else {
-        oArr(i - embW.getSize) = ar(i)
-      }
-      i += 1
-    }
-    this
-  }
+  def updateFromArray(ar: Array[Float]) = { throw new RuntimeException("array update for NN not implemented") }
   
   def updateFromArray(ar: Array[Double]) = { throw new RuntimeException("array update for NN not implemented") }
-  def asArray = {
-    val eArr = embW.asArray
-    val oArr = outW.asArray
-    val ss = embW.getSize    
-    Array.tabulate(numWeights){i => if (i < ss) eArr(i) else oArr(i - ss) }
-  }
+  def asArray = { throw new RuntimeException("array update for NN not implemented") }
+
 
   def l2norm = throw new RuntimeException("Norm not implemented")
   def copy() = new EmbedWeights(embW.copy(), outW.copy(), m)
@@ -93,21 +117,34 @@ class EmbedGradient extends LossGradient[EmbedGradient](0.0) {
   def asArray = throw new RuntimeException("Norm not implemented")
 }
 
-abstract class EmbedUpdater[T <: Updater[EmbedWeights, EmbedGradient, T]] extends Updater[EmbedWeights, EmbedGradient, T] with Serializable {
-  def updateEmbeddingSqG(i: Int, j: Int, wArr: Mat, g: Float)
+abstract class EmbedUpdater extends Updater[EmbedWeights, EmbedGradient, EmbedUpdater] with Serializable {
+  def updateEmbeddingSqG(i: Int, j: Int, wArr: Simple2DArray, g: Float) : Unit
   
-  def updateOutputSqG(i: Int, j: Int, wArr: Mat, g: Float)
+  def updateEmbeddingSqG(i: Int, j: Int, wArr: LArray2D[Float], g: Float) : Unit
+  
+  def updateOutputSqG(i: Int, j: Int, wArr: Simple2DArray, g: Float) : Unit
+  
+  def updateOutputSqG(i: Int, j: Int, wArr: LArray2D[Float], g: Float) : Unit
   
   def updateNumProcessed() : Unit
   
+  def getArraySeq : Seq[Array[Float]]
+  
+  def getTotalProcessed : Int
+  def getCurrentRate : Float
+  
 }
 
-class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUpdater[NullUpdater] with Serializable {
+
+class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUpdater with Serializable {
   
   @volatile var totalProcessed = 0.0f
   var currentRate = 0.0f
   
   def getZeroUpdater = new NullUpdater(initialLearnRate, decay)
+  
+  def getTotalProcessed : Int = totalProcessed.toInt
+  def getCurrentRate = currentRate
   
   def updateFromArray(ar: Array[Float]) = {}
   
@@ -117,8 +154,7 @@ class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUp
     this.totalProcessed = v    
   }
   def copy() : NullUpdater = new NullUpdater(initialLearnRate, decay)
-  def compose(u: NullUpdater) : NullUpdater = {
-    this.totalProcessed += u.totalProcessed    
+  def compose(u: EmbedUpdater) : EmbedUpdater = {    
     this
   }
   def asArray = Array[Float](initialLearnRate)
@@ -126,24 +162,40 @@ class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUp
   def compress() = this
   def decompress() = this
   
-  @inline
-  final def updateEmbeddingSqG(i: Int, j : Int, wArr: Mat, g: Float) = { wArr(i,j) += g * currentRate }
+  def getArraySeq = Seq(Array[Float]())
   
   @inline
-  final def updateOutputSqG(i: Int, j: Int, wArr: Mat, g: Float) = { wArr(i,j) += g * currentRate }
+  final def updateEmbeddingSqG(i: Int, j : Int, wArr: Simple2DArray, g: Float) = { wArr(i,j) += g * currentRate }
   
+  @inline
+  final def updateEmbeddingSqG(i: Int, j: Int, wArr: LArray2D[Float], g: Float) : Unit = {
+    wArr(i,j) += g * currentRate
+  }
+  
+  @inline
+  final def updateOutputSqG(i: Int, j: Int, wArr: Simple2DArray, g: Float) = { wArr(i,j) += g * currentRate }
+
+  @inline
+  final def updateOutputSqG(i: Int, j: Int, wArr: LArray2D[Float], g: Float) = { wArr(i,j) += g * currentRate }
+
   @inline
   final def updateNumProcessed() = {
     totalProcessed += 1.0f
     currentRate = initialLearnRate / (1.0f + totalProcessed * decay)
   }
+
 }
 
 
-class EmbedAdaGradUpdater(initialLearningRate: Float, val embSqG: Simple2DArray, val outSqG: Simple2DArray) 
-extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
+class EmbedAdaGradUpdater(val initialLearningRate: Float, val embSqG: Simple2DArray, val outSqG: Simple2DArray) 
+extends EmbedUpdater with Serializable {
+  
+  def this(ir: Float, rows: Int, cols: Int) = this(ir, Simple2DArray.floatArray(rows, cols), Simple2DArray.floatArray(rows,cols))
   
   import org.mitre.mandolin.util.SimpleFloatCompressor
+  
+  def getTotalProcessed = 0
+  def getCurrentRate = initialLearningRate
   
   // val fullSize = embSqG.length
   def getZeroUpdater = 
@@ -151,6 +203,8 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
 
   var compressedEmbSqG = (Simple2DArray.byteArray(0, 0), Array.fill(0)(0.0f))
   var compressedOutSqG = (Simple2DArray.byteArray(0, 0), Array.fill(0)(0.0f))
+  
+  def getArraySeq : Seq[Array[Float]] = embSqG.ars.toSeq ++ outSqG.ars.toSeq
   
   def compress() = {
     if (!isCompressed) {
@@ -174,6 +228,7 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
   
   def updateWeights(g: EmbedGradient, w: EmbedWeights): Unit = {}
   def resetLearningRates(v: Float): Unit = {
+    /*
     var i = 0; while (i < embSqG.getDim1) {
       var j = 0; while (j < embSqG.getDim2) {
         embSqG(i,j) = v
@@ -182,6 +237,7 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
       }
       i += 1
     }
+    */
   }
   
   def updateFromArray(ar: Array[Float]) : Unit = {
@@ -201,7 +257,8 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
     cc
   }
   
-  def compose(u: EmbedAdaGradUpdater) : EmbedAdaGradUpdater = {
+  def compose(_u: EmbedUpdater) : EmbedUpdater = {
+    val u = _u match {case x: EmbedAdaGradUpdater => x case _ => throw new RuntimeException("Compose with AdaGrad updater requires AdaGrad updater")}
     if (isCompressed) {
       val (eAr, eVls) = compressedEmbSqG
       val (oAr, oVls) = compressedOutSqG
@@ -237,13 +294,26 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
   @inline
   final private def fastSqrt(x: Float) : Float = 
     java.lang.Float.intBitsToFloat(532483686 + (java.lang.Float.floatToRawIntBits(x) >> 1))
-    
-  final def updateEmbeddingSqG(i: Int, j: Int, wArr: Mat, g: Float) = {    
+  
+  @inline
+  final def updateEmbeddingSqG(i: Int, j: Int, wArr: Simple2DArray, g: Float) = {    
     embSqG(i,j) += g * g
     wArr(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(embSqG(i,j))))
   }
+
+  @inline
+  final def updateEmbeddingSqG(i: Int, j: Int, wArr: LArray2D[Float], g: Float) = {    
+    embSqG(i,j) += g * g
+    wArr(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(embSqG(i,j))))
+  }
+
+  @inline
+  final def updateOutputSqG(i: Int, j: Int, wArr: LArray2D[Float], g: Float) = {
+    outSqG(i,j) += g * g
+    wArr(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(outSqG(i,j))))
+  }
   
-  final def updateOutputSqG(i: Int, j: Int, wArr: Mat, g: Float) = {
+  final def updateOutputSqG(i: Int, j: Int, wArr: Simple2DArray, g: Float) = {
     outSqG(i,j) += g * g
     wArr(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(outSqG(i,j))))
   }  
@@ -253,11 +323,13 @@ extends EmbedUpdater[EmbedAdaGradUpdater] with Serializable {
 object EmbedWeights {
   
   def apply(eDim: Int, vDim: Int) = {
-     val embW = DenseMat.zeros(vDim, eDim)
-     val outW = DenseMat.zeros(vDim, eDim)
+     // val embW = DenseMat.zeros(vDim, eDim)
+     // val outW = DenseMat.zeros(vDim, eDim)
+    val embW = Simple2DArray.floatArray(vDim, eDim)
+    val outW = Simple2DArray.floatArray(vDim, eDim)
      var i = 0; while (i < vDim) {
        var j = 0; while (j < eDim) {
-         val nv = (util.Random.nextFloat - 0.5f) / eDim
+         val nv = (scala.util.Random.nextFloat - 0.5f) / eDim
          embW.update(i, j, nv)
          j += 1
        }

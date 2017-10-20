@@ -7,14 +7,14 @@ import xerial.larray._
 /**
  * @author wellner
  */
-class CBOWEvaluator[U <: EmbedUpdater[U]](val emb: EmbedWeights, val wSize: Int, val negSampleSize: Int, 
+class CBOWEvaluator(hlSize: Int, vocabSize: Int, val wSize: Int, val negSampleSize: Int, 
     freqTable: Array[Int], logisticTable: Array[Float], chances: Array[Int])
-extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with Serializable {
+extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, EmbedUpdater] with Serializable {
   
   val maxSentLength = 1000
   val ftLen = freqTable.length
-  val hlSize = emb.embW.getDim2
-  val vocabSize = emb.embW.getDim1
+  // val hlSize = emb.embW.getDim2
+  // val vocabSize = emb.embW.getDim1
   val h = Array.fill(hlSize)(0.0f)
   val d = Array.fill(hlSize)(0.0f)
   val maxDp = 6.0f
@@ -48,7 +48,7 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
   val sent = Array.fill(maxSentLength)(0)
   
   //workhorse function that updates weights directly without returning explicit gradient
-  def trainWeightsOnSequence(in: SeqInstance, w: EmbedWeights, up: U) : Unit = {
+  def trainWeightsOnSequence(in: SeqInstance, w: EmbedWeights, up: EmbedUpdater) : Unit = {
     var spos = 0
     val seq = in.seq
     var bagSize = 0
@@ -73,7 +73,6 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
     while (spos < ii) {
       bagSize = 0
       up.updateNumProcessed()
-      //up.totalProcessed += 1
       //val learningRate = initialLearnRate.toFloat / (1.0f + initialLearnRate.toFloat * up.totalProcessed * decay.toFloat)
       //if ((up.totalProcessed % 10000) == 0) printf("\r%d instances procssed .. learning rate %f ", up.totalProcessed, learningRate)    
       val curWord = sent(spos)
@@ -87,7 +86,8 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
     		  val wi = sent(con_i)
     		  if (wi >= 0) {
     			  bagSize += 1
-    			  var i = 0; while (i < hlSize) { h(i) += w.embW(wi, i); i += 1}
+            val wiRow = w.embW.getRow(wi)
+    			  var i = 0; while (i < hlSize) { h(i) += wiRow(i); i += 1}
     		  }
     		}
         a += 1
@@ -106,13 +106,14 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
         }        
         // val offset = outIndex * hlSize
         var dp = 0.0f
+        val outRow = w.outW.getRow(outIndex)
         var i = 0; while (i < hlSize) {
-          dp += h(i) * w.outW(outIndex, i)         
+          dp += h(i) * outRow(i)         
           i += 1 } 
         val out = if (dp >= eDp) 1.0f else if (dp <= -eDp) 0.0f else logisticFn(dp)
         val o_err = (label - out)
         i = 0; while (i < hlSize) { 
-          d(i) += o_err * w.outW(outIndex, i)
+          d(i) += o_err * outRow(i)
           i += 1}
         i = 0; while (i < hlSize) {
           val g = o_err * h(i)
@@ -138,13 +139,13 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, U] with
     }    
   }
       
-  def evaluateTrainingUnit(unit: SeqInstance, weights: EmbedWeights, up: U) : EmbedGradient = { 
+  def evaluateTrainingUnit(unit: SeqInstance, weights: EmbedWeights, up: EmbedUpdater) : EmbedGradient = { 
     trainWeightsOnSequence(unit, weights, up)
     new EmbedGradient()
   }  
   
   def copy() = {
     // this copy will share weights but have separate layer data members
-    new CBOWEvaluator(emb.sharedWeightCopy(), wSize, negSampleSize, freqTable, logisticTable, chances) 
+    new CBOWEvaluator(hlSize, vocabSize, wSize, negSampleSize, freqTable, logisticTable, chances) 
   }
 }
