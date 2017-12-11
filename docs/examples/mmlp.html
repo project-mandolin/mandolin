@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+<title>MMLPs · Mandolin</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content='mandolin'/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:100normal,100italic,300normal,300italic,400normal,400italic,500normal,500italic,700normal,700italic,900normal,900italicc" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="../js/page.js"></script>
+<script type="text/javascript" src="../js/groups.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/normalize.css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="../lib/foundation/dist/foundation.min.css"/>
+<link rel="stylesheet" type="text/css" href="../css/page.css"/>
+
+<!--
+<link rel="shortcut icon" href="../images/favicon.ico" />
+-->
+</head>
+
+<body>
+<div class="off-canvas-wrapper">
+<div class="off-canvas-wrapper-inner" data-off-canvas-wrapper>
+
+<div class="off-canvas position-left" id="off-canvas-menu" data-off-canvas>
+<nav class="off-canvas-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="active page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="off-canvas-content" data-off-canvas-content>
+
+<header class="site-header expanded row">
+<div class="small-12 column">
+<a href="#" class="off-canvas-toggle hide-for-medium" data-toggle="off-canvas-menu"><svg class="svg-icon svg-icon-menu" version="1.1" id="Menu" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve"> <path class="svg-icon-menu-path" fill="#53CDEC" d="M16.4,9H3.6C3.048,9,3,9.447,3,10c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,9.447,16.952,9,16.4,9z M16.4,13
+H3.6C3.048,13,3,13.447,3,14c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,13.447,16.952,13,16.4,13z M3.6,7H16.4
+C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.048,7,3.6,7z"/></svg>
+</a>
+<div class="title"><a href="../index.html">Mandolin</a></div>
+
+<!--
+<a href="https://www.example.com" class="logo show-for-medium">logo</a>
+-->
+</div>
+</header>
+
+<div class="expanded row">
+
+<div class="medium-3 large-2 show-for-medium column">
+<nav class="site-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="active page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="small-12 medium-9 large-10 column">
+<section class="site-content">
+
+<div class="page-header row">
+<div class="medium-12 show-for-medium column">
+<div class="nav-breadcrumbs">
+<ul>
+  <li><a href="../index.html">Mandolin</a></li>
+  <li><a href="../examples/overview.html">Examples</a></li>
+  <li>MMLPs</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="page-content row">
+<div class="small-12 large-9 column" id="docs">
+<h1><a href="#mmlps" name="mmlps" class="anchor"><span class="anchor-link"></span></a>MMLPs</h1>
+<h2><a href="#mnist-example" name="mnist-example" class="anchor"><span class="anchor-link"></span></a>MNIST Example</h2>
+<p>Run the MNIST MMLP example via the following commands, starting from the top-level <code>mandolin</code> directory.</p>
+<pre><code>cd examples/mnist
+java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf
+</code></pre>
+<p>This invocation&rsquo;s behavior is driven by the contents of the <code>mnist.conf</code> file, a portion of which is below:</p>
+<pre class="prettyprint"><code class="language-conf">mandolin {
+    data     = ${?PWD}
+    mode     = &quot;train-test&quot;
+    driver   = mmlp
+        
+    mmlp {
+        dense-vector-size      = 784
+        train-file             = ${mandolin.data}/mnist.10k
+        label-file             = ${mandolin.data}/mnist.labels
+        test-file              = ${mandolin.data}/mnist.t
+        eval-freq              = 1
+        model-file             = ${mandolin.data}/model
+        num-epochs             = 20
+        progress-file          = ${mandolin.data}/mnist.train.progress
+        threads                = 8
+
+ . . . </code></pre>
+<p>A key field is the <code>mode</code> attribute within the <code>mandolin</code> block/namespace. This field, <code>mandolin.mode</code> specifies the overall behavior of the invocation. In this case, the mode is <code>&quot;train-test&quot;</code> which specifies that a model should be trained on the provided training data, specified by the field <code>mandolin.mmlp.train-file</code> and evaluated against the examples in <code>mandolin.mmlp.test-file</code>. The field <code>mandolin.mmlp.eval-freq</code> specifies how frequently (in terms of training iterations/epochs) the model should be evaluated against the test data. The results of this repeated evaluation are presented in the file <code>mandolin.mmlp.progress-file</code>.</p>
+<p>The various configuration options are discussed in more detail <a href="../mmlp/configuration.html">here</a>.</p>
+<p>Mandolin encourages the use of configuration files as they provide a written record of experiments and can be used within version control to allow experiments to be easily repeated and recovered. In some cases, however, it is useful to be able to specify parameters on the command-line. Mandolin configuration attributes can be overridden on the command line by simply specifying attribute value pairs separated by the <code>=</code> sign. For example, we can change the number of training epochs with the invocation:</p>
+<pre><code>java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
+    mandolin.mmlp.num-epochs=60
+</code></pre>
+<p>Rather than using a single test file to validate the trained model, we may prefer to use cross validation. In <code>train-test</code> mode, if Mandolin is only provided a training file and no testing file, the assumed intent is to perform cross validation on the training file. We can achieve this by simply setting the test file to <code>null</code> as follows:</p>
+<pre><code>java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin --conf mnist.conf \
+    mandolin.mmlp.test-file=null
+</code></pre>
+<p>When performing cross validation in <code>train-test</code> mode, Mandolin will not perform an evaluation after each epoch and instead simply evaluate the final models. The evaluation metric results on each fold will be aggregated with the results placed in the contents of the file <code>mandolin.mmlp.progress-file</code>.</p>
+<p>Mandolin supports a variety of model topologies and loss functions which can be specified easily using the configuration system. There are also various methods for optimizing loss functions. The relevant configuration options within <code>mandolin.conf</code> are:</p>
+<pre class="prettyprint"><code class="language-conf">. . .
+
+        optimizer {
+            method                = adagrad
+            initial-learning-rate = 0.1
+        }
+        specification = [
+            {&quot;ltype&quot;:&quot;Input&quot;},
+            {&quot;ltype&quot;:&quot;SoftMax&quot;} ]
+
+. . .</code></pre>
+<p>The options within the <code>mandolin.mmlp.optimizer</code> block indicate which optimization algorithm should be used and any relevant parameters, in this case Adagrad is used (via <code>mandolin.mmlp.optimizer.method=adagrad</code>) and the initial learning rate is set to 0.1.</p>
+<p>The model topology is specified within the <code>mandolin.mmlp.specification</code> attribute which takes a list of layers. In this case, the network is linear having just an input layer and a &ldquo;softmax&rdquo; output layer.</p>
+<p>More details follow in the configuration section.</p>
+<p>Moving on to a more complex example, let&rsquo;s use the same data, but add a hidden layer to create a multi-layered perceptron. Specifically, let&rsquo;s add a single hidden layer with 500 units/dimensions with the rectified linear activation function. </p>
+<p>This model is specified in the configuration file <code>examples/mnist/mnist.1hl.conf</code>. The relevant portions are:</p>
+<pre class="prettyprint"><code class="language-conf">. . .
+
+            optimizer {
+                method                = rmsprop
+               initial-learning-rate = 0.001
+            }
+
+                specification = [
+                  {&quot;ltype&quot;:&quot;Input&quot;},
+                  {&quot;ltype&quot;:&quot;Relu&quot;, &quot;dim&quot;: 500},
+                  {&quot;ltype&quot;:&quot;SoftMax&quot;}
+                ]
+
+. . .</code></pre>
+<p>The model can be invoked as:</p>
+<pre><code>java -cp ../../dist/mandolin-core-0.3.6.jar org.mitre.mandolin.app.Mandolin \
+     --conf mnist.1hl.conf
+</code></pre>
+<p>Training this model requires markedly longer. The results are better, however, as this model has more capacity and can capture non-linear interactions. In fact, adding two more layers of comparable complexity allows the model to reach error rates of less than 1% when using the full MNIST training set.</p>
+<h2><a href="#web-url" name="web-url" class="anchor"><span class="anchor-link"></span></a>Web URL</h2>
+<p>The Web URL dataset contains about 2.4M instances of sparsely-populated feature vectors. To benefit from the sparse vector optimizations, the <code>mandolin.mmlp.ensure-sparse</code> parameter is set to <code>true</code>. Also, the layer type of the input layer in the mmlp specification has changed from <code>Input</code> to <code>InputSparse</code>.</p>
+<pre class="prettyprint"><code class="language-conf">mandolin {
+   data = ${?PWD}
+   mode = &quot;train-test&quot;
+   driver-block = &quot;mmlp&quot;
+
+   mmlp {
+      train-file        = ${mandolin.data}/weburl.train
+      test-file         = ${mandolin.data}/weburl.test
+      label-file        = ${mandolin.data}/url.labels
+      num-epochs	= 10
+      progress-file	= ${?PWD}/url.train.progress
+      synchronous	= false
+      threads		= 16
+      ensure-sparse	= true
+      use-random-features = true
+
+      optimizer {
+         method	               = adagrad
+	 initial-learning-rate = 1.0
+      }
+
+      specification = [
+         {&quot;ltype&quot;:&quot;InputSparse&quot;},
+ 	 {&quot;ltype&quot;:&quot;SoftMax&quot;}
+      ]
+   }
+}</code></pre>
+<p>The Web URL training example can be invoked as:</p>
+<pre><code>cd examples/weburl
+java -cp ../../dist/mandolin-core-0.3.5.jar org.mitre.mandolin.app.Mandolin --conf url.conf
+</code></pre>
+<div class="nav-next">
+<p><strong>Next:</strong> <a href="../examples/spark.html">Spark</a></p>
+</div>
+</div>
+<div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../examples/mmlp.html#mmlps" class="header">MMLPs</a>
+  <ul>
+    <li><a href="../examples/mmlp.html#mnist-example" class="header">MNIST Example</a></li>
+    <li><a href="../examples/mmlp.html#web-url" class="header">Web URL</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
+</div>
+</div>
+
+</section>
+</div>
+
+</div>
+
+<footer class="site-footer">
+
+<section class="site-footer-nav">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 medium-4 large-3 text-center column">
+<div class="nav-links">
+<ul>
+<!-- <li><a href="https://www.example.com/products/">Products</a> -->
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section class="site-footer-base">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 text-center large-9 column">
+
+<!--
+<div class="copyright">
+<span class="text">&copy; 2017</span>
+<a href="https://www.example.com" class="logo">logo</a>
+</div>
+-->
+</div>
+
+</div>
+</div>
+</div>
+</section>
+</footer>
+
+</div>
+</div>
+</div>
+</body>
+
+<script type="text/javascript" src="../lib/foundation/dist/foundation.min.js"></script>
+<script type="text/javascript">jQuery(document).foundation();</script>
+<script type="text/javascript" src="../js/magellan.js"></script>
+
+<style type="text/css">@import "../lib/prettify/prettify.css";</style>
+<script type="text/javascript" src="../lib/prettify/prettify.js"></script>
+<script type="text/javascript" src="../lib/prettify/lang-scala.js"></script>
+<script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
+
+</html>

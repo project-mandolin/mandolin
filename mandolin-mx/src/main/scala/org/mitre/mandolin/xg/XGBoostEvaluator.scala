@@ -14,19 +14,24 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
   paramMap.put("silent", settings.silent)
   paramMap.put("eval_metric", settings.evalMethod)
   paramMap.put("nthread", settings.numThreads)
-  if (numLabels > 2) paramMap.put("num_class", numLabels)  
+  paramMap.put("eta", settings.eta)
+  paramMap.put("booster", settings.booster)
+  
+  val nl = if (settings.regression) 1 else numLabels
+  if (settings.regression) paramMap.put("num_class", 1)
+  if (nl > 2) paramMap.put("num_class", numLabels)  
 
   def mapMMLPFactorToLabeledPoint(gf: MMLPFactor) : LabeledPoint = {
     gf match {
       case x: SparseMMLPFactor =>
         val spv = x.getInput
         val out = x.getOutput        
-        val outVal = out.argmax.toFloat
+        val outVal = if (settings.regression) out(0) else out.argmax.toFloat
         LabeledPoint.fromSparseVector(outVal, spv.indArray, spv.valArray)
       case x: StdMMLPFactor =>
         val dv = x.getInput
         val out = x.getOutput
-        val outVal = out.argmax.toFloat
+        val outVal = if (settings.regression) out(0) else out.argmax.toFloat
         LabeledPoint.fromDenseVector(outVal, dv.asArray)
     }
   }
@@ -38,10 +43,10 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
     }
   }
   
-  def getPredictionsAndEval(booster: Booster, data: Iterator[MMLPFactor]) : (Array[Array[Float]], Float) = {
-    val dataDm = new DMatrix(data map mapMMLPFactorToLabeledPoint)
+  def getPredictionsAndEval(booster: Booster, data: Iterator[MMLPFactor], evMethod: String = "auc") : (Array[Array[Float]], Float) = {
+    val dataDm = new DMatrix(data map mapMMLPFactorToLabeledPoint)    
     val res = booster.predict(dataDm,false,0)
-    val evalInfo = booster.evalSet(Array(dataDm), Array("auc"), 1)   
+    val evalInfo = booster.evalSet(Array(dataDm), Array(evMethod), 1)
     (res, 1.0f - gatherTestAUC(evalInfo))
   }
 
@@ -54,10 +59,17 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
         val metrics = Array(Array.fill(settings.rounds)(0.0f))
         val b = XGBoost.train(trainDm, paramMap.toMap, settings.rounds, Map("auc" -> new DMatrix(tst)), metrics, null, null)
         (1.0f - metrics(0)(settings.rounds - 1), Some(b))
-      case None => 
-        val xv = XGBoost.crossValidation(trainDm, paramMap.toMap, settings.rounds, 5, Array("auc"), null, null)
-        val finalTestMetric = gatherTestAUC(xv.last)
-        (1.0f - finalTestMetric, None)
+      case None =>
+        if (settings.appMode equals "train-test") {
+          val metricEval = settings.evalMethod
+          val xv = XGBoost.crossValidation(trainDm, paramMap.toMap, settings.rounds, 5, Array(metricEval), null, null)
+          val finalTestMetric = gatherTestAUC(xv.last)
+          (1.0f - finalTestMetric, None)
+        } else {
+          val metrics = Array(Array.fill(settings.rounds)(0.0f))
+          val b = XGBoost.train(trainDm, paramMap.toMap, settings.rounds, Map("auc" -> trainDm), metrics, null, null)
+          (1.0f - metrics(0)(settings.rounds - 1), Some(b))
+        }
     }
   }
   

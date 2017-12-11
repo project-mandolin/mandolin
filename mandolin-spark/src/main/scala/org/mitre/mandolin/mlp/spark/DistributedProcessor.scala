@@ -10,7 +10,8 @@ import org.mitre.mandolin.util.spark.SparkIOAssistant
 import org.mitre.mandolin.optimize.spark.DistributedOptimizerEstimator
 import org.mitre.mandolin.predict.DiscreteConfusion
 import org.mitre.mandolin.predict.spark.{PosteriorDecoder, TrainTester, Trainer}
-import org.mitre.mandolin.mlp.{ANNetwork, AbstractProcessor, CategoricalMMLPPredictor, MMLPFactor, MMLPLossGradient, MMLPModelReader, MandolinMLPSettings, MMLPModelSpec, MMLPModelWriter, MMLPPosteriorOutputConstructor, MMLPWeights}
+import org.mitre.mandolin.mlp.{ANNetwork, CatPredictor, RegPredictor, 
+  AbstractProcessor, CategoricalMMLPPredictor, MMLPFactor, MMLPLossGradient, MMLPModelReader, MandolinMLPSettings, MMLPModelSpec, MMLPModelWriter, MMLPPosteriorOutputConstructor, MMLPWeights}
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
@@ -174,7 +175,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor
-    val pr = components.predictor
+    val pr = components.predictor match {case CatPredictor(p) => p}
     val trainFile = appSettings.trainFile
     val optimizer = DistributedMMLPOptimizer.getDistributedOptimizer(sc, appSettings, components.ann)
     val lines = sc.textFile(appSettings.trainFile.get, numPartitions).coalesce(numPartitions, true)
@@ -191,7 +192,7 @@ class DistributedProcessor(val numPartitions: Int) extends AbstractProcessor {
     val io = new SparkIOAssistant(sc)
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor
-    val predictor = components.predictor
+    val predictor = components.predictor match {case CatPredictor(p) => p}
     val labelAlphabet = components.labelAlphabet
     val oc = components.outputConstructor
     val weights = processTrain(appSettings)

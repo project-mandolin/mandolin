@@ -84,6 +84,10 @@ abstract class GeneralSettings(confOptions: Option[ConfigGeneratedCommandOptions
     try config.getBoolean(key) catch {case _: Throwable => false}        
   }
   
+  protected def asBooleanOpt(key: String) = {
+    try Some(config.getBoolean(key)) catch {case _: Throwable => None}
+  }
+  
   protected def mapLogLevel(s: String) = s match {
     case "INFO"  => Level.INFO
     case "DEBUG" => Level.DEBUG

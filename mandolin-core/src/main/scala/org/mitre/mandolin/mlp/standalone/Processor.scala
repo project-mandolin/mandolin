@@ -6,10 +6,11 @@ package org.mitre.mandolin.mlp.standalone
 
 import org.mitre.mandolin.util.{Alphabet, IOAssistant, LocalIOAssistant}
 import org.mitre.mandolin.transform.FeatureExtractor
-import org.mitre.mandolin.predict.{DiscreteConfusion}
+import org.mitre.mandolin.predict.{DiscreteConfusion, RegressionConfusion}
 import org.mitre.mandolin.optimize.standalone.VectorData
 import org.mitre.mandolin.predict.standalone.{Trainer, TrainTester, TrainDecoder, PosteriorDecoder, PosteriorEvalDecoder}
-import org.mitre.mandolin.mlp.{AbstractProcessor, MandolinMLPSettings, MMLPModelWriter, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor, MMLPFactor, MMLPWeights, MMLPInstanceEvaluator, MMLPLossGradient, MMLPModelSpec, ANNetwork, NullMMLPUpdater}
+import org.mitre.mandolin.mlp.{AbstractProcessor, RegPredictor, CatPredictor, 
+  MandolinMLPSettings, MMLPModelWriter, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor, MMLPFactor, MMLPWeights, MMLPInstanceEvaluator, MMLPLossGradient, MMLPModelSpec, ANNetwork, NullMMLPUpdater}
 import org.mitre.mandolin.optimize.{BatchEvaluator, GenData}
 import com.twitter.chill.EmptyScalaKryoInstantiator
 import org.mitre.mandolin.config.MandolinRegistrator
@@ -124,19 +125,33 @@ class Processor extends AbstractProcessor {
     val io = new LocalIOAssistant
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor
-    val pr = components.predictor
+    
     val optimizer = MMLPOptimizer.getOptimizer(appSettings, components.ann)
     val lines = io.readLines(trainFile.get).toVector
     val trainer = new Trainer(fe, optimizer)
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
-    val trainTester =
-      new TrainTester[String, MMLPFactor, MMLPWeights, Int, DiscreteConfusion](trainer,
-        pr, appSettings.numEpochs, appSettings.testFreq, appSettings.progressFile)
-    testLines match {
-      case Some(tl) => trainTester.trainAndTest(lines, tl)
-      case None =>
-        val allVecs = lines map { fe.extractFeatures }
-        trainTester.crossValidate(allVecs, 5)
+    if (appSettings.regression) {
+      val pr = components.predictor match {case RegPredictor(r) => r}      
+      val trainTester =
+        new TrainTester[String, MMLPFactor, MMLPWeights, org.mitre.mandolin.util.Tensor1, RegressionConfusion](trainer,
+          pr, appSettings.numEpochs, appSettings.testFreq, appSettings.progressFile)
+      testLines match {
+        case Some(tl) => trainTester.trainAndTest(lines, tl)
+        case None =>
+          val allVecs = lines map { fe.extractFeatures }
+          trainTester.crossValidate(allVecs, 5)
+        }
+    } else {
+      val pr = components.predictor match {case CatPredictor(p) => p}
+      val trainTester =
+        new TrainTester[String, MMLPFactor, MMLPWeights, Int, DiscreteConfusion](trainer,
+          pr, appSettings.numEpochs, appSettings.testFreq, appSettings.progressFile)
+      testLines match {
+        case Some(tl) => trainTester.trainAndTest(lines, tl)
+        case None =>
+          val allVecs = lines map { fe.extractFeatures }
+          trainTester.crossValidate(allVecs, 5)
+    }
     }
     
   }
@@ -165,7 +180,7 @@ class Processor extends AbstractProcessor {
         val components = getComponentsViaSettings(appSettings, io)
 
         val fe = components.featureExtractor
-        val pr = components.predictor
+        val pr = components.predictor match {case CatPredictor(p) => p}
         // XXX - this will only work properly if each train-test split has the same label set as the first fold
         val optimizer = MMLPOptimizer.getOptimizer(appSettings, components.ann)
         val lines = trLines.toVector
@@ -197,7 +212,7 @@ class Processor extends AbstractProcessor {
     val testLines = appSettings.testFile map { tf => io.readLines(tf).toVector }
     val components = getComponentsViaSettings(appSettings, io)
     val fe = components.featureExtractor
-    val predictor = components.predictor
+    val predictor = components.predictor match {case CatPredictor(p) => p}
     val oc = components.outputConstructor
     val decoder = new PosteriorDecoder(fe, predictor, oc)
     val os = io.getPrintWriterFor(appSettings.outputFile.get, false)

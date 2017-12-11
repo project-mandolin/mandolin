@@ -5,56 +5,72 @@ import org.mitre.mandolin.util.{Alphabet, Simple2DArray, Tensor1 => Vec, Tensor2
 
 import xerial.larray._
 
+class WeightTransport(val emb: Array[Array[Float]], val out: Array[Array[Float]]) {
+  val nrows = emb.length
+  val ncols = emb(0).length
+  def getEmbedWeights() = {
+    val embW = LArray2D.of[Float](ncols, nrows)
+    val outW = LArray2D.of[Float](ncols, nrows)
+  
+    var i = 0; while(i < nrows) {
+      var j = 0; while (j < ncols) {
+        embW(i,j) = emb(i)(j)
+        outW(i,j) = out(i)(j)
+        j += 1
+      }
+      i += 1
+    }
+    new EmbedWeights(embW, outW, 1.0f)
+  }
+  
+  def exportWithMapping(mapping: Alphabet, outFile: java.io.File) = {
+    val os = new java.io.BufferedWriter(new java.io.FileWriter(outFile))
+    val inv = mapping.getInverseMapping
+    os.write(nrows.toString)
+    os.write(' ')
+    os.write(ncols.toString)
+    os.write('\n')
+    var i = 0; while (i < nrows) {
+      os.write(inv(i))
+      var j = 0; while (j < ncols) {
+        os.write(' ')
+        os.write(emb(i)(j).toString)
+        j += 1
+      }
+      os.write('\n')
+      i += 1
+    }
+    os.close
+  }
+  
+}
+
+object WeightTransport {
+  def apply(rows: Int, cols: Int) = {
+    new WeightTransport(Array.tabulate(rows){_ => Array.fill(cols)(0.0f)}, Array.tabulate(rows){_ => Array.fill(cols)(0.0f)})
+  }
+  
+  def initialize(rows: Int, cols: Int) = {
+    new WeightTransport(
+        Array.tabulate(rows){_ => Array.tabulate(cols){_ => (scala.util.Random.nextFloat - 0.5f) / cols}},
+        Array.tabulate(rows){_ => Array.tabulate(cols){_ => (scala.util.Random.nextFloat - 0.5f) / cols}})
+  }
+  
+}
+
 /*
  * Note that these weights are represented using the transpose of MMLP weights.
  * That is, dim(W) = (l-1, l) has dim(l-1) rows and dim(l) columns where dim(l-1) is the number of inputs and dim(l)
  * is the number of outputs/dimensions of current layer
  */
-class EmbedWeights(val embW: Simple2DArray, val outW: Simple2DArray, m: Float) extends Weights[EmbedWeights](m) with Serializable {
+class EmbedWeights(val embW: LArray2D[Float], val outW: LArray2D[Float], m: Float) extends Weights[EmbedWeights](m) with Serializable {
 
-  val numWeights = embW.getSize + outW.getSize
+  val numWeightsL = embW.colSize * embW.rowSize + outW.colSize * outW.rowSize
+  val numWeights = numWeightsL.toInt
+  
   def compress(): Unit = {}
   def decompress(): Unit = {}
   def weightAt(i: Int) = throw new RuntimeException("Not implemented")
-  
-  var fastEmbW : Option[LArray2D[Float]] = None
-  var fastOutW : Option[LArray2D[Float]] = None
-  var accelerated = false
-  def accelerate = {
-    if (!accelerated) {
-      val emb = LArray2D.of[Float](embW.getDim2, embW.getDim1)
-      val out = LArray2D.of[Float](outW.getDim2, outW.getDim1)
-      var i = 0; while (i < embW.getDim1) {
-        var j = 0; while (j < embW.getDim2) {
-          emb(i,j) = embW(i,j)
-          out(i,j) = outW(i,j)
-          j += 1
-        }
-        i += 1
-      }
-      fastEmbW_=(Some(emb))
-      fastOutW_=(Some(out))
-      accelerated_=(true)
-    }
-  }
-  
-  def decelerate = {
-    if (accelerated) {
-      val emb = fastEmbW.get
-      val out = fastOutW.get
-      var i = 0; while (i < embW.getDim1) {
-        var j = 0; while (j < embW.getDim2) {
-          embW(i,j) = emb(i,j)
-          outW(i,j) = out(i,j)
-          j += 1
-        }
-        i += 1
-      }
-    accelerated_=(false)
-    fastEmbW_=(None)
-    fastOutW_=(None)
-    }    
-  }
   
   def compose(otherWeights: EmbedWeights) = {
     this *= mass
@@ -70,15 +86,21 @@ class EmbedWeights(val embW: Simple2DArray, val outW: Simple2DArray, m: Float) e
     this
   }
 
-  def addEquals(otherWeights: EmbedWeights): Unit = {    
+  def addEquals(otherWeights: EmbedWeights): Unit = { throw new RuntimeException("Not implemented") }
+  /*
     embW += otherWeights.embW
     outW += otherWeights.outW
-  }
+  */
 
-  def timesEquals(v: Float) = { 
-    embW *= v
-    outW *= v
+  def timesEquals(v: Float) = {
+    val eAr = embW.rawArray
+    val oAr = outW.rawArray
+    var i = 0L; while (i < eAr.length) {
+      eAr(i) *= v
+      oAr(i) *= v
+      i += 1
     }
+  }
   
   def updateFromArray(ar: Array[Float]) = { throw new RuntimeException("array update for NN not implemented") }
   
@@ -87,20 +109,33 @@ class EmbedWeights(val embW: Simple2DArray, val outW: Simple2DArray, m: Float) e
 
 
   def l2norm = throw new RuntimeException("Norm not implemented")
-  def copy() = new EmbedWeights(embW.copy(), outW.copy(), m)
+  def copy() = {
+    val nA = LArray2D.of[Float](embW.rowSize, embW.colSize)
+    val nO = LArray2D.of[Float](outW.rowSize, outW.colSize)
+    var i = 0L; while (i < embW.colSize) {
+      var j = 0L; while (j < embW.rowSize) {
+        nA(i,j) = embW(i,j)
+        nO(i,j) = outW(i,j)
+        j += 1
+      }      
+      i += 1
+    }
+    new EmbedWeights(nA, nO, m)
+  }
+  
   def asTensor1() = throw new RuntimeException("Tensor construction not available with deep weight array")
   def sharedWeightCopy() = new EmbedWeights(embW, outW, m)
   
   def exportWithMapping(mapping: Alphabet, outFile: java.io.File) = {
     val os = new java.io.BufferedWriter(new java.io.FileWriter(outFile))
     val inv = mapping.getInverseMapping
-    os.write(embW.getDim1.toString)
+    os.write(embW.colSize.toString)
     os.write(' ')
-    os.write(embW.getDim2.toString)
+    os.write(embW.rowSize.toString)
     os.write('\n')
-    var i = 0; while (i < embW.getDim1) {
+    var i = 0; while (i < embW.colSize) {
       os.write(inv(i))
-      var j = 0; while (j < embW.getDim2) {
+      var j = 0; while (j < embW.rowSize) {
         os.write(' ')
         os.write(embW(i,j).toString)
         j += 1
@@ -130,7 +165,7 @@ abstract class EmbedUpdater extends Updater[EmbedWeights, EmbedGradient, EmbedUp
   
   def getArraySeq : Seq[Array[Float]]
   
-  def getTotalProcessed : Int
+  def getTotalProcessed : Long
   def getCurrentRate : Float
   
 }
@@ -138,20 +173,23 @@ abstract class EmbedUpdater extends Updater[EmbedWeights, EmbedGradient, EmbedUp
 
 class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUpdater with Serializable {
   
-  @volatile var totalProcessed = 0.0f
+  val minRate = 0.00001
+  
+  var totalProcessed = 0L
   var currentRate = 0.0f
   
   def getZeroUpdater = new NullUpdater(initialLearnRate, decay)
   
-  def getTotalProcessed : Int = totalProcessed.toInt
+  def getTotalProcessed : Long = totalProcessed
   def getCurrentRate = currentRate
   
   def updateFromArray(ar: Array[Float]) = {}
   
   // these are null ops
   def updateWeights(g: EmbedGradient, w: EmbedWeights): Unit = {}
-  def resetLearningRates(v: Float): Unit = {
-    this.totalProcessed = v    
+  def resetLearningRates(v: Float): Unit = {    
+    this.totalProcessed = v.toLong  
+    currentRate = initialLearnRate / (1.0f + totalProcessed * decay) 
   }
   def copy() : NullUpdater = new NullUpdater(initialLearnRate, decay)
   def compose(u: EmbedUpdater) : EmbedUpdater = {    
@@ -180,8 +218,8 @@ class NullUpdater(val initialLearnRate: Float, val decay: Float) extends EmbedUp
 
   @inline
   final def updateNumProcessed() = {
-    totalProcessed += 1.0f
-    currentRate = initialLearnRate / (1.0f + totalProcessed * decay)
+    totalProcessed += 1
+    currentRate = math.max(initialLearnRate / (1.0f + totalProcessed * decay), 0.000001f)
   }
 
 }
@@ -194,13 +232,15 @@ extends EmbedUpdater with Serializable {
   
   import org.mitre.mandolin.util.SimpleFloatCompressor
   
-  def getTotalProcessed = 0
+  def getTotalProcessed = totalProcessed
   def getCurrentRate = initialLearningRate
+  
   
   // val fullSize = embSqG.length
   def getZeroUpdater = 
     new EmbedAdaGradUpdater(initialLearningRate, Simple2DArray.floatArray(embSqG.getDim1, embSqG.getDim2), Simple2DArray.floatArray(outSqG.getDim1, outSqG.getDim2))
 
+  var totalProcessed = 0L
   var compressedEmbSqG = (Simple2DArray.byteArray(0, 0), Array.fill(0)(0.0f))
   var compressedOutSqG = (Simple2DArray.byteArray(0, 0), Array.fill(0)(0.0f))
   
@@ -317,7 +357,9 @@ extends EmbedUpdater with Serializable {
     outSqG(i,j) += g * g
     wArr(i,j) += (initialLearningRate * g / (initialLearningRate + fastSqrt(outSqG(i,j))))
   }  
-  def updateNumProcessed() = {}
+  def updateNumProcessed() = {
+    totalProcessed += 1
+  }
 }
 
 object EmbedWeights {
@@ -325,10 +367,10 @@ object EmbedWeights {
   def apply(eDim: Int, vDim: Int) = {
      // val embW = DenseMat.zeros(vDim, eDim)
      // val outW = DenseMat.zeros(vDim, eDim)
-    val embW = Simple2DArray.floatArray(vDim, eDim)
-    val outW = Simple2DArray.floatArray(vDim, eDim)
-     var i = 0; while (i < vDim) {
-       var j = 0; while (j < eDim) {
+    val embW = LArray2D.of[Float](eDim, vDim) // Simple2DArray.floatArray(vDim, eDim)
+    val outW = LArray2D.of[Float](eDim, vDim) // Simple2DArray.floatArray(vDim, eDim)
+     var i = 0; while (i < vDim) {  
+       var j = 0; while (j < eDim) { 
          val nv = (scala.util.Random.nextFloat - 0.5f) / eDim
          embW.update(i, j, nv)
          j += 1

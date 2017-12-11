@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+<title>Model Selection · Mandolin</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content='mandolin'/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:100normal,100italic,300normal,300italic,400normal,400italic,500normal,500italic,700normal,700italic,900normal,900italicc" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="../js/page.js"></script>
+<script type="text/javascript" src="../js/groups.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/normalize.css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="../lib/foundation/dist/foundation.min.css"/>
+<link rel="stylesheet" type="text/css" href="../css/page.css"/>
+
+<!--
+<link rel="shortcut icon" href="../images/favicon.ico" />
+-->
+</head>
+
+<body>
+<div class="off-canvas-wrapper">
+<div class="off-canvas-wrapper-inner" data-off-canvas-wrapper>
+
+<div class="off-canvas position-left" id="off-canvas-menu" data-off-canvas>
+<nav class="off-canvas-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="active page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="off-canvas-content" data-off-canvas-content>
+
+<header class="site-header expanded row">
+<div class="small-12 column">
+<a href="#" class="off-canvas-toggle hide-for-medium" data-toggle="off-canvas-menu"><svg class="svg-icon svg-icon-menu" version="1.1" id="Menu" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve"> <path class="svg-icon-menu-path" fill="#53CDEC" d="M16.4,9H3.6C3.048,9,3,9.447,3,10c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,9.447,16.952,9,16.4,9z M16.4,13
+H3.6C3.048,13,3,13.447,3,14c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,13.447,16.952,13,16.4,13z M3.6,7H16.4
+C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.048,7,3.6,7z"/></svg>
+</a>
+<div class="title"><a href="../index.html">Mandolin</a></div>
+
+<!--
+<a href="https://www.example.com" class="logo show-for-medium">logo</a>
+-->
+</div>
+</header>
+
+<div class="expanded row">
+
+<div class="medium-3 large-2 show-for-medium column">
+<nav class="site-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="active page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="small-12 medium-9 large-10 column">
+<section class="site-content">
+
+<div class="page-header row">
+<div class="medium-12 show-for-medium column">
+<div class="nav-breadcrumbs">
+<ul>
+  <li><a href="../index.html">Mandolin</a></li>
+  <li>Model Selection</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="page-content row">
+<div class="small-12 large-9 column" id="docs">
+<h1><a href="#model-selection" name="model-selection" class="anchor"><span class="anchor-link"></span></a>Model Selection</h1>
+<p>Model selection is the task of choosing a model of a set of candidate models. In this impelementation the candidate models are created by first setting the structure of the model then providing a set of values or ranges for the model hyperparameters. To choose a model there needs to be a way of predicting a model&rsquo;s score based on the hyperparameters. For that we used a technique called Bayesian optimization. Often times bayesian optimization is implemented using the Gaussian Processes but we used a neural network to give us the predictive mean and predictive variance. The other part of bayesian optimization is the acqusition function. The acquisition function helps choose the next candidate model to use based on its predictive mean and predictive variance. </p>
+<h2><a href="#model-selection-configuration" name="model-selection-configuration" class="anchor"><span class="anchor-link"></span></a>Model Selection Configuration</h2>
+<table>
+  <thead>
+    <tr>
+      <th align="right">Property Name </th>
+      <th>Meaning </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="right"><code>acquisition-function</code> </td>
+      <td>The acquisition function to use. </td>
+    </tr>
+    <tr>
+      <td align="right"><code>concurrent-evaluations</code> </td>
+      <td>The number of concurrent evaluations. </td>
+    </tr>
+    <tr>
+      <td align="right"><code>score-sample-size</code> </td>
+      <td>The number of candidate models to be sampled </td>
+    </tr>
+    <tr>
+      <td align="right"><code>update-frequency</code> </td>
+      <td>The number of evaluations that need to happen before the predictive neural network was updated. </td>
+    </tr>
+    <tr>
+      <td align="right"><code>total-evals</code> </td>
+      <td>The total number of evaluations before model selection stopped. </td>
+    </tr>
+    <tr>
+      <td align="right"><code>categorical</code> </td>
+      <td>Set of hyperparameters which are categorical and valid values for the hyperparameter. </td>
+    </tr>
+    <tr>
+      <td align="right"><code>real</code> </td>
+      <td>Set of hyperparameters which use real values and valid ranges for the hyperparameter. </td>
+    </tr>
+    <tr>
+      <td align="right"><code>int</code> </td>
+      <td>Set of hyperparameters which use integer values and valid ranges for the hyperparameter. </td>
+    </tr>
+  </tbody>
+</table>
+<div class="nav-next">
+<p><strong>Next:</strong> <a href="../spark/spark.html">Spark</a></p>
+</div>
+</div>
+<div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../model-selection/mselect.html#model-selection" class="header">Model Selection</a>
+  <ul>
+    <li><a href="../model-selection/mselect.html#model-selection-configuration" class="header">Model Selection Configuration</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
+</div>
+</div>
+
+</section>
+</div>
+
+</div>
+
+<footer class="site-footer">
+
+<section class="site-footer-nav">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 medium-4 large-3 text-center column">
+<div class="nav-links">
+<ul>
+<!-- <li><a href="https://www.example.com/products/">Products</a> -->
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section class="site-footer-base">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 text-center large-9 column">
+
+<!--
+<div class="copyright">
+<span class="text">&copy; 2017</span>
+<a href="https://www.example.com" class="logo">logo</a>
+</div>
+-->
+</div>
+
+</div>
+</div>
+</div>
+</section>
+</footer>
+
+</div>
+</div>
+</div>
+</body>
+
+<script type="text/javascript" src="../lib/foundation/dist/foundation.min.js"></script>
+<script type="text/javascript">jQuery(document).foundation();</script>
+<script type="text/javascript" src="../js/magellan.js"></script>
+
+<style type="text/css">@import "../lib/prettify/prettify.css";</style>
+<script type="text/javascript" src="../lib/prettify/prettify.js"></script>
+<script type="text/javascript" src="../lib/prettify/lang-scala.js"></script>
+<script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
+
+</html>

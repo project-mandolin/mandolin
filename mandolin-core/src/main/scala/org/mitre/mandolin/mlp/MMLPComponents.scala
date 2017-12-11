@@ -1116,6 +1116,11 @@ class RegressionMMLPPredictor(n: ANNetwork, gs: Boolean = false)
   }
 
   def getScoredPredictions(u: MMLPFactor, w: MMLPWeights) = throw new RuntimeException("Not implemented")
-  def getConfusion(u: MMLPFactor, w: MMLPWeights) : RegressionConfusion = throw new RuntimeException("Not IMplemented")
+  def getConfusion(u: MMLPFactor, w: MMLPWeights) : RegressionConfusion = {
+    val p = getPrediction(u,w)
+    val score = p(0)
+    val gold  = u.getOutput(0)
+    new RegressionConfusion(math.pow((score - gold), 2.0))
+  }
 }
 

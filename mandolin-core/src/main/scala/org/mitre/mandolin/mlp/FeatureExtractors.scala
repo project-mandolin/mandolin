@@ -76,6 +76,43 @@ class SparseVecFeatureExtractor(alphabet: Alphabet, la: Alphabet)
   def getNumberOfFeatures = alphabet.getSize
 }
 
+class SparseRegressionVecFeatureExtractor(alphabet: Alphabet)
+  extends FeatureExtractor[String, MMLPFactor] with LineParser with Serializable {
+  var ind = 0
+
+  
+  def getAlphabet = alphabet
+
+  def extractFeatures(s: String): MMLPFactor = {
+    val (l, spv, id) = sparseOfLine(s, alphabet, noLabels=noLabels)
+    if (noLabels) {
+      val spVec: SparseVec = SparseVec(alphabet.getSize)
+      spv foreach { f =>
+      if (f.fid >= 0) {
+        val fv = alphabet.getValue(f.fid, f.value).toFloat
+        spVec.update(f.fid, fv)
+        }
+      }
+      val targetVec = DenseVec.zeros(1)
+      new SparseMMLPFactor(ind, spVec.asStatic, targetVec, id)
+    } else {
+      val lv = l.get.toFloat
+      val spVec: SparseVec = SparseVec(alphabet.getSize)
+      val targetVec = DenseVec.tabulate(1) { _ => lv }
+      spv foreach { f =>
+      if (f.fid >= 0) {
+        val fv = alphabet.getValue(f.fid, f.value).toFloat
+        spVec.update(f.fid, fv)
+        }
+      }
+      new SparseMMLPFactor(ind, spVec.asStatic, targetVec, id)  
+    }
+    
+  }
+
+  def getNumberOfFeatures = alphabet.getSize
+}
+
 /**
   * Extractor that constructs `DenseVec` dense vectors from an
   * input sparse representation where the feature indices for each feature have already been computed.

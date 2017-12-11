@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+<title>Syntax</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content='mandolin'/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:100normal,100italic,300normal,300italic,400normal,400italic,500normal,500italic,700normal,700italic,900normal,900italicc" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="../js/page.js"></script>
+<script type="text/javascript" src="../js/groups.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/normalize.css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="../lib/foundation/dist/foundation.min.css"/>
+<link rel="stylesheet" type="text/css" href="../css/page.css"/>
+
+<!--
+<link rel="shortcut icon" href="../images/favicon.ico" />
+-->
+</head>
+
+<body>
+<div class="off-canvas-wrapper">
+<div class="off-canvas-wrapper-inner" data-off-canvas-wrapper>
+
+<div class="off-canvas position-left" id="off-canvas-menu" data-off-canvas>
+<nav class="off-canvas-nav">
+<div class="nav-home">
+<a href="../mmlp/specification.html" class="active">
+<span class="home-icon">⌂</span>Syntax
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="off-canvas-content" data-off-canvas-content>
+
+<header class="site-header expanded row">
+<div class="small-12 column">
+<a href="#" class="off-canvas-toggle hide-for-medium" data-toggle="off-canvas-menu"><svg class="svg-icon svg-icon-menu" version="1.1" id="Menu" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve"> <path class="svg-icon-menu-path" fill="#53CDEC" d="M16.4,9H3.6C3.048,9,3,9.447,3,10c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,9.447,16.952,9,16.4,9z M16.4,13
+H3.6C3.048,13,3,13.447,3,14c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,13.447,16.952,13,16.4,13z M3.6,7H16.4
+C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.048,7,3.6,7z"/></svg>
+</a>
+<div class="title"><a href="../mmlp/specification.html" class="active">Syntax</a></div>
+
+<!--
+<a href="https://www.example.com" class="logo show-for-medium">logo</a>
+-->
+</div>
+</header>
+
+<div class="expanded row">
+
+<div class="medium-3 large-2 show-for-medium column">
+<nav class="site-nav">
+<div class="nav-home">
+<a href="../mmlp/specification.html" class="active">
+<span class="home-icon">⌂</span>Syntax
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="small-12 medium-9 large-10 column">
+<section class="site-content">
+
+<div class="page-header row">
+<div class="medium-12 show-for-medium column">
+</div>
+</div>
+
+<div class="page-content row">
+<div class="small-12 large-9 column" id="docs">
+<p>{%  title: Model Specification %}</p>
+<p>GLP models are specified through a simple JSON-based syntax that provides an ordered list of objects describing each layer in a feed-forward artificial neural network. </p>
+<h2><a href="#syntax" name="syntax" class="anchor"><span class="anchor-link"></span></a>Syntax</h2>
+<p>Each layer specification must a layer type denoted with an <code>ltype</code> attribute. Additional options for the layer for regularization are then provided as part of the layer object, all denoted with JSON syntax.</p>
+<p>Example:</p>
+<pre><code>mandolin.trainer.specification = 
+  [{&quot;ltype&quot;:&quot;Input&quot;, &quot;dropout-ratio&quot;:0.2},
+   {&quot;ltype&quot;:&quot;Relu&quot;,&quot;dim&quot;:50,&quot;l1-pen&quot;:0.00001},
+   {&quot;ltype&quot;:&quot;SoftMax&quot;,&quot;l1-pen&quot;:0.001}]
+</code></pre>
+<p>The above example specifies three layers - i.e. an input layer, an output layer of type <em>SoftMax</em> and a single hidden layer using Rectified Linear activations. Additional options for each layer are specified through attribute value pairs using JSON syntax. For example, the above specification indicates 20% dropout (i.e. masking noise) for the input layer, and different L1 regularization penalty terms for the single hidden layer and output layer.</p>
+<h2><a href="#input-layers" name="input-layers" class="anchor"><span class="anchor-link"></span></a>Input Layers</h2>
+<p>Input layer types include <strong>Input</strong> and <strong>InputSparse</strong>, the latter denoting that the input is sparse and sparse vector and matrix representations should be used for the inputs and weights between the first and second layers. </p>
+<h3><a href="#options" name="options" class="anchor"><span class="anchor-link"></span></a>Options</h3>
+<p>The only additional specification for an input layer is <em>dropout-ratio</em>. This adds masking noise to non-zero features according to the ratio/percentage specified.</p>
+<h2><a href="#hidden-layers" name="hidden-layers" class="anchor"><span class="anchor-link"></span></a>Hidden Layers</h2>
+<p>Layer types include <strong>Logistic</strong>, <strong>TanH</strong>, <strong>Relu</strong> (Rectified linear units) and <strong>Linear</strong>. These functions correspond to those described in the literature. In addition to the type, for each hidden layer the dimensionality (i.e. number of nodes/neurons) must be specified. This is done using the &ldquo;dim&rdquo; attribute. Each hidden layer can optionally be regularized in a few different ways:</p>
+<h3><a href="#options" name="options" class="anchor"><span class="anchor-link"></span></a>Options</h3>
+<p><strong>dropout-ratio</strong>: Just as with input layers, the activations from previous layers can be &ldquo;dropped out&rdquo; randomly. See the paper on this: <em>Dropout: A Simple Way to Prevent Neural Networks from Overfitting</em>, Hinton et al..</p>
+<p><strong>l1-pen</strong>: This option specifies an L1 regularizer on the weights for this layer. Larger penalty terms introduce stronger regularization</p>
+<p><strong>l2-pen</strong>: This option specifies an L2 regularizer on the weights. Currently only either L1 or L2 regularization is supported. If both penalty terms are present, L1 regularization takes precedence and the L2 penalty will be ignored.</p>
+<p><strong>max-norm</strong>: Max-norm enforces that the L2 norm of the weights is less than the specified value; thus smaller values here provide stronger regularization. This type of regularization is especially useful in conjunction with Relu layers as the weights can receive large values as the gradients don&rsquo;t &ldquo;vanish&rdquo; as with sigmoid-type activations.</p>
+<h2><a href="#output-layers" name="output-layers" class="anchor"><span class="anchor-link"></span></a>Output Layers</h2>
+<p>Currently, Mandolin is focused on classification algorithms rather than regression models. Output layers are thus geared towards multiclass classification. The primary (default) output layer is the <em>SoftMax</em> layer, however other output layer types that provide different types of cost/loss functions.</p>
+<p><strong>SoftMax</strong>: Softmax layer implements a cross entropy loss where the linear output activations are transformed with the softmax function.</p>
+<p><strong>Hinge</strong>: This is an &ldquo;L1&rdquo; multiclass hinge loss as proposed by Crammer and Singer. </p>
+<p><strong>ModHuber</strong>: This is a modified Huber loss geared for classification problems, c.f. <em>Solving large scale linear prediction problems using stochastic gradient descent algorithms. ICML.</em>.</p>
+<p><strong>Ramp</strong>: This is a nonconvex loss function. It has a hinge loss but flattens out so that examples &ldquo;strongly&rdquo; misclassified by the model do not contribute to the loss. This effectively <em>ignores</em> hard-to-classify examples and can be useful in situations where significant lable noise is present. See <em>Trading Convexity for Scalability</em>, Collobert, Sinz, Weston, Bottou. (ICML 2006).</p>
+<p><strong>Translog</strong>: This is a smooth version of the ramp loss, non-convex</p>
+<p><strong>T-Logistic</strong>: Another smooth non-convex loss suitable for problems with label noise, cf. <em>t-Logistic Regression</em>, Ding and Vishwanathan. </p>
+<h3><a href="#options" name="options" class="anchor"><span class="anchor-link"></span></a>Options</h3>
+<p>Each output layer can take l1, l2 or max-norm regularization options. </p>
+</div>
+<div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../mmlp/specification.html#syntax" class="header">Syntax</a>
+  <ul>
+    <li><a href="../mmlp/specification.html#input-layers" class="header">Input Layers</a></li>
+    <li><a href="../mmlp/specification.html#hidden-layers" class="header">Hidden Layers</a></li>
+    <li><a href="../mmlp/specification.html#output-layers" class="header">Output Layers</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
+</div>
+</div>
+
+</section>
+</div>
+
+</div>
+
+<footer class="site-footer">
+
+<section class="site-footer-nav">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 medium-4 large-3 text-center column">
+<div class="nav-links">
+<ul>
+<!-- <li><a href="https://www.example.com/products/">Products</a> -->
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section class="site-footer-base">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 text-center large-9 column">
+
+<!--
+<div class="copyright">
+<span class="text">&copy; 2017</span>
+<a href="https://www.example.com" class="logo">logo</a>
+</div>
+-->
+</div>
+
+</div>
+</div>
+</div>
+</section>
+</footer>
+
+</div>
+</div>
+</div>
+</body>
+
+<script type="text/javascript" src="../lib/foundation/dist/foundation.min.js"></script>
+<script type="text/javascript">jQuery(document).foundation();</script>
+<script type="text/javascript" src="../js/magellan.js"></script>
+
+<style type="text/css">@import "../lib/prettify/prettify.css";</style>
+<script type="text/javascript" src="../lib/prettify/prettify.js"></script>
+<script type="text/javascript" src="../lib/prettify/lang-scala.js"></script>
+<script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
+
+</html>

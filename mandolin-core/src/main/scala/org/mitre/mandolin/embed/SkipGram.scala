@@ -18,6 +18,7 @@ class SkipGramEvaluator(hlSize: Int, vocabSize: Int, val wSize: Int, val negSamp
   val maxDp = 6.0f
   val logisticTableSizeCoef = logisticTable.length.toFloat / maxDp / 2.0f
   val eDp = 5.999f
+  var sentsProcessed = 0
 
   // xorshift generator with period 2^128 - 1; on the order of 10 times faster than util.Random.nextInt
   var seed0 = scala.util.Random.nextInt(Integer.MAX_VALUE)
@@ -57,8 +58,6 @@ class SkipGramEvaluator(hlSize: Int, vocabSize: Int, val wSize: Int, val negSamp
     var bagSize = 0
 
     var con_i = 0
-    val fastEmbW = w.fastEmbW.get
-    val fastOutW = w.fastOutW.get
     val sent = Array.fill(maxSentLength)(0)
 
     var ii = 0
@@ -81,7 +80,7 @@ class SkipGramEvaluator(hlSize: Int, vocabSize: Int, val wSize: Int, val negSamp
         val b = nextInt(wSize)
         var a = b;
         up.updateNumProcessed()
-        if ((up.getTotalProcessed % 10000) == 0) {
+        if ((up.getTotalProcessed % 100000) == 0) {
           printf("\r%d instances procssed .. learning rate %f ", up.getTotalProcessed, up.getCurrentRate)
         }
         while (a < wSize * 2 + 1 - b) {
@@ -112,19 +111,19 @@ class SkipGramEvaluator(hlSize: Int, vocabSize: Int, val wSize: Int, val negSamp
               while (i < hlSize) {
                 //dp += l1Ar(inOffset + i) * l2Ar(outOffset + i)
                 //dp += inRow(i) * outRow(i)
-                dp += fastEmbW(inIndex, i) * fastOutW(outIndex, i)
+                dp += w.embW(inIndex, i) * w.outW(outIndex, i)
                 i += 1
               }
               val out = if (dp >= eDp) 1.0f else if (dp <= -eDp) 0.0f else logisticFn(dp)
               val o_err = (label - out)
               i = 0;
               while (i < hlSize) {
-                d(i) += o_err * fastOutW(outIndex, i)
+                d(i) += o_err * w.outW(outIndex, i)
                 i += 1
               }
               i = 0;
               while (i < hlSize) {
-                val g = o_err * fastEmbW(inIndex, i)
+                val g = o_err * w.embW(inIndex, i)
                 up.updateOutputSqG(outIndex, i, w.outW, g)
                 i += 1
               }

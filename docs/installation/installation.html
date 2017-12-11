@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+<title>Installation · Mandolin</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content='mandolin'/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:100normal,100italic,300normal,300italic,400normal,400italic,500normal,500italic,700normal,700italic,900normal,900italicc" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="../js/page.js"></script>
+<script type="text/javascript" src="../js/groups.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/normalize.css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="../lib/foundation/dist/foundation.min.css"/>
+<link rel="stylesheet" type="text/css" href="../css/page.css"/>
+
+<!--
+<link rel="shortcut icon" href="../images/favicon.ico" />
+-->
+</head>
+
+<body>
+<div class="off-canvas-wrapper">
+<div class="off-canvas-wrapper-inner" data-off-canvas-wrapper>
+
+<div class="off-canvas position-left" id="off-canvas-menu" data-off-canvas>
+<nav class="off-canvas-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="active page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="off-canvas-content" data-off-canvas-content>
+
+<header class="site-header expanded row">
+<div class="small-12 column">
+<a href="#" class="off-canvas-toggle hide-for-medium" data-toggle="off-canvas-menu"><svg class="svg-icon svg-icon-menu" version="1.1" id="Menu" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve"> <path class="svg-icon-menu-path" fill="#53CDEC" d="M16.4,9H3.6C3.048,9,3,9.447,3,10c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,9.447,16.952,9,16.4,9z M16.4,13
+H3.6C3.048,13,3,13.447,3,14c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,13.447,16.952,13,16.4,13z M3.6,7H16.4
+C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.048,7,3.6,7z"/></svg>
+</a>
+<div class="title"><a href="../index.html">Mandolin</a></div>
+
+<!--
+<a href="https://www.example.com" class="logo show-for-medium">logo</a>
+-->
+</div>
+</header>
+
+<div class="expanded row">
+
+<div class="medium-3 large-2 show-for-medium column">
+<nav class="site-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="active page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="small-12 medium-9 large-10 column">
+<section class="site-content">
+
+<div class="page-header row">
+<div class="medium-12 show-for-medium column">
+<div class="nav-breadcrumbs">
+<ul>
+  <li><a href="../index.html">Mandolin</a></li>
+  <li>Installation</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="page-content row">
+<div class="small-12 large-9 column" id="docs">
+<h1><a href="#installation" name="installation" class="anchor"><span class="anchor-link"></span></a>Installation</h1>
+<p>Mandolin is written in Scala and grouped into three sub-projects: <code>mandolin-core</code>, <code>mandolin-mx</code> and <code>mandolin-spark</code>.</p>
+<ul>
+  <li>
+  <p><code>mandolin-core</code>: This artifact contains Mandolin&rsquo;s core functionality</p></li>
+  <li>
+  <p><code>mandolin-mx</code>: This artifact contains wrappers around MXNet (for deep learning) and XGBoost (for gradient boosted trees). Both of these libraries use native code. Currently, Mandolin builds artifacts without any bundled native code and assumes the user will provide the appropriate shared libraries at runtime. This artifact depends on <code>mandolin-core</code>. </p></li>
+  <li>
+  <p><code>mandolin-spark</code>: This artfact includes functionality leveraging Apache Spark to speed up training and/or to provide concurrent model selection using a compute cluster. It depends on <code>mandolin-mx</code>. It also includes additional functionality that provides interoperability with <code>spark.ml</code>.</p></li>
+</ul>
+<p>All three artifacts can be built from source by downloading <a href="http://www.scala-sbt.org/download.html">SBT</a>.</p>
+<pre><code>&gt; sbt assembly
+</code></pre>
+<p>This will build three assembly artifacts (i.e. &ldquo;fat&rdquo; jar files) : <code>mandolin-core-0.3.6.jar</code>, <code>mandolin-mx-0.3.6.jar</code> and <code>mandolin-spark-0.3.6.jar</code>. These are placed in the directory <code>mandolin/dist</code>.</p>
+<p>If <strong>only</strong> the the <code>mandolin-core</code> artifact is required, it can be compiled by executing:</p>
+<pre><code>&gt; sbt &quot;project mandolin-core&quot; assembly
+</code></pre>
+<p>This is helpful if one is using only Mandolin&rsquo;s built-in multi-layer perceptron or linear models and Apache Spark nor XGBoost or MXNet are not needed. </p>
+<h2><a href="#building-with-mxnet-and-xgboost" name="building-with-mxnet-and-xgboost" class="anchor"><span class="anchor-link"></span></a>Building with MXNet and XGBoost</h2>
+<p>The <code>mandolin-mx-0.3.6.jar</code> artifact provides bindings to both MXNet and XGBoost as well as Mandolin code that supports model specification via configuration as well as model selection. The native code for both MXNet and XGBoost is <strong><em>not</em></strong> included in this artifact, however. Pre-compiled shared libraries for XGBoost are provided in <code>mandolin-mx/pre-compiled/xgboost</code> for both <code>linux</code> and <code>osx</code>. A pre-compiled shared library for MXNet on <code>osx</code> is available. A pre-built library for MXNet on <code>linux</code> is not provided due to the variety of the builds, e.g. different BLAS implementations, optional GPU support.</p>
+<h3><a href="#rebuilding-mxnet-and-or-xgboost-from-scratcth" name="rebuilding-mxnet-and-or-xgboost-from-scratcth" class="anchor"><span class="anchor-link"></span></a>Rebuilding MXNet and/or XGBoost from scratcth</h3>
+<p>To use Mandolin with new versions of XGBoost or MXNet, follow the steps below:</p>
+<p>1) Build XGBoost and/or MXNet shared libraries <em>and</em> the Scala bindings. For MXNet, only build the <em>core</em>  bindings that do not include any native code embedded in the resulting <code>.jar</code> file.  2) Remove any existing .jar files in the directory <code>mandolin/mandolin-mx/lib</code> and place the newly built .jar files in their place.  3) Build Mandolin using the steps outlined above (i.e. <code>sbt assembly</code> from the top-level directory).</p>
+<h2><a href="#mandolin-with-spark" name="mandolin-with-spark" class="anchor"><span class="anchor-link"></span></a>Mandolin with Spark</h2>
+<p>Currently the Spark build <code>mandolin-spark</code> depends on the <code>mandolin-mx</code> artifact. It provides fast distributed training of individual models using a Spark cluster; it also enables fast distributed model selection. As with the <code>mandolin-mx</code> artifact, the native code for MXNet and/or XGBoost must be specified at runtime.</p>
+<h2><a href="#using-mxnet-and-xgboost" name="using-mxnet-and-xgboost" class="anchor"><span class="anchor-link"></span></a>Using MXNet and XGBoost</h2>
+<p>Runtime libraries must be included in the library path available ot the JVM. This can be done via the <code>LD_LIBRARY_PATH</code> environment variable or using the option <code>Djava.library.path=&lt;path&gt;</code> provided on the command line when invoking the JVM. When using Spark via the <code>spark-submit</code> script, various options are available to provide shared libraries at runtime; see the Apache Spark documentation as well as the section documenting Mandolin examples using Spark.</p>
+<div class="nav-next">
+<p><strong>Next:</strong> <a href="../essentials/essentials.html">Essentials</a></p>
+</div>
+</div>
+<div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html#installation" class="header">Installation</a>
+  <ul>
+    <li><a href="../installation/installation.html#building-with-mxnet-and-xgboost" class="header">Building with MXNet and XGBoost</a></li>
+    <li><a href="../installation/installation.html#mandolin-with-spark" class="header">Mandolin with Spark</a></li>
+    <li><a href="../installation/installation.html#using-mxnet-and-xgboost" class="header">Using MXNet and XGBoost</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
+</div>
+</div>
+
+</section>
+</div>
+
+</div>
+
+<footer class="site-footer">
+
+<section class="site-footer-nav">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 medium-4 large-3 text-center column">
+<div class="nav-links">
+<ul>
+<!-- <li><a href="https://www.example.com/products/">Products</a> -->
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section class="site-footer-base">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 text-center large-9 column">
+
+<!--
+<div class="copyright">
+<span class="text">&copy; 2017</span>
+<a href="https://www.example.com" class="logo">logo</a>
+</div>
+-->
+</div>
+
+</div>
+</div>
+</div>
+</section>
+</footer>
+
+</div>
+</div>
+</div>
+</body>
+
+<script type="text/javascript" src="../lib/foundation/dist/foundation.min.js"></script>
+<script type="text/javascript">jQuery(document).foundation();</script>
+<script type="text/javascript" src="../js/magellan.js"></script>
+
+<style type="text/css">@import "../lib/prettify/prettify.css";</style>
+<script type="text/javascript" src="../lib/prettify/prettify.js"></script>
+<script type="text/javascript" src="../lib/prettify/lang-scala.js"></script>
+<script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
+
+</html>

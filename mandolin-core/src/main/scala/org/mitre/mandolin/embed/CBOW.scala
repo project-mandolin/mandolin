@@ -86,8 +86,7 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, EmbedUp
     		  val wi = sent(con_i)
     		  if (wi >= 0) {
     			  bagSize += 1
-            val wiRow = w.embW.getRow(wi)
-    			  var i = 0; while (i < hlSize) { h(i) += wiRow(i); i += 1}
+    			  var i = 0; while (i < hlSize) { h(i) += w.embW(wi, i); i += 1}
     		  }
     		}
         a += 1
@@ -106,14 +105,13 @@ extends TrainingUnitEvaluator [SeqInstance, EmbedWeights, EmbedGradient, EmbedUp
         }        
         // val offset = outIndex * hlSize
         var dp = 0.0f
-        val outRow = w.outW.getRow(outIndex)
         var i = 0; while (i < hlSize) {
-          dp += h(i) * outRow(i)         
+          dp += h(i) * w.outW(outIndex, i)         
           i += 1 } 
         val out = if (dp >= eDp) 1.0f else if (dp <= -eDp) 0.0f else logisticFn(dp)
         val o_err = (label - out)
         i = 0; while (i < hlSize) { 
-          d(i) += o_err * outRow(i)
+          d(i) += o_err * w.outW(outIndex, i)
           i += 1}
         i = 0; while (i < hlSize) {
           val g = o_err * h(i)

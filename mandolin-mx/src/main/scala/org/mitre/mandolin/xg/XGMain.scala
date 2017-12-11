@@ -7,9 +7,9 @@ import ml.dmlc.xgboost4j.scala.{XGBoost, DMatrix}
 
 object PrintUtils {
   def writeOutputs(os: AbstractPrintWriter, outputs: Iterator[(String, MMLPFactor)], laOpt: Option[Alphabet], noLabels: Boolean = false): Unit = {
-    laOpt foreach { la =>
-      val invLa = la.getInverseMapping
+    laOpt foreach { la =>      
       if (la.getSize < 3) {
+        val invLa = if (la.isInstanceOf[IdentityAlphabet]) Map[Int,String]() else la.getInverseMapping
         os.print("ID,response")
         if (!noLabels) os.print(",value") // if we have labels/values (regression), print them
         os.println
@@ -24,19 +24,21 @@ object PrintUtils {
               os.print(','); os.print(oo(0).toString)
             }
           }
-          os.println}
+          os.println
+        }
       } else {
-      val labelHeader = la.getMapping.toSeq.sortWith((a, b) => a._2 < b._2).map(_._1) // get label strings sorted by their index
-      os.print("ID")
-      for (i <- 0 until labelHeader.length) {
-        os.print(',')
-        os.print(labelHeader(i))
-      }
+        val labelHeader = la.getMapping.toSeq.sortWith((a, b) => a._2 < b._2).map(_._1) // get label strings sorted by their index
+        os.print("ID")
+        for (i <- 0 until labelHeader.length) {
+          os.print(',')
+          os.print(labelHeader(i))
+        }
       if (!noLabels) {
         os.print(',')
         os.print("Label")
       }
       os.println
+      val invLa = la.getInverseMapping
       outputs foreach { case (s, factor) => 
         os.print(s)
         if (!noLabels) { os.print(','); os.print(invLa(factor.getOneHot.toInt).toString) } // pass through ground truth if we had it 
@@ -49,7 +51,8 @@ object PrintUtils {
 object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.app.AppMain {
 
 
-  def getVecIOs(appSettings: XGModelSettings, modelSpec: Option[XGBoostModelSpec], noLabels: Boolean = false): (Vector[MMLPFactor], Option[Vector[MMLPFactor]], FeatureExtractor[String, MMLPFactor], Alphabet) = {
+  def getVecIOs(appSettings: XGModelSettings, modelSpec: Option[XGBoostModelSpec], noLabels: Boolean = false): 
+             (Vector[MMLPFactor], Option[Vector[MMLPFactor]], FeatureExtractor[String, MMLPFactor], Alphabet) = {
     val io = new LocalIOAssistant
     val (featureExtractor, labelAlphabet) = modelSpec match {
       case None => 
@@ -68,8 +71,7 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
       val tstFile = appSettings.testFile
       val tstVecs = tstFile map { tf => (io.readLines(tf) map { l => featureExtractor.extractFeatures(l) } toVector) }      
       (trVecs, tstVecs, featureExtractor, labelAlphabet)      
-    }
-    
+    }    
   }
   
   def getImportanceMap(dumps: Array[String], featureAlphabet: Alphabet): Map[String, Float] = {
@@ -144,7 +146,7 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
         val (_, tstVecs, _, labelAlphabet) = getVecIOs(xgSettings, Some(spec))
         val evaluator = new XGBoostEvaluator(xgSettings, spec.la.getSize)
         val model = XGBoost.loadModel(new java.io.ByteArrayInputStream(spec.booster))
-        val (results, metric) = evaluator.getPredictionsAndEval(model, tstVecs.get.toIterator)    
+        val (results, metric) = evaluator.getPredictionsAndEval(model, tstVecs.get.toIterator, xgSettings.evalMethod)    
         val resVecAndFactor = results.toVector map {ar =>
           val buf = new StringBuilder
           var i = 0; while (i < ar.length) {

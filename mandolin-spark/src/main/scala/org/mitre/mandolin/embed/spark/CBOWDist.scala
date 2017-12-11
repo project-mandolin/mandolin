@@ -107,8 +107,6 @@ object CBOWDist {
     (alphabet, ut, constructLogisticTable(6.0f), discardChances)
   }
   
-  
-
   def main(args: Array[String]) = {
     val appSettings = new org.mitre.mandolin.embed.EmbeddingModelSettings(args)
     val nthreads = appSettings.numThreads
@@ -129,7 +127,7 @@ object CBOWDist {
           new SkipGramEvaluator(eDim, vocabSize, appSettings.contextSize, appSettings.negSample, freqs, logisticTable, chances)
         else new CBOWEvaluator(eDim, vocabSize, appSettings.contextSize,appSettings.negSample, freqs, logisticTable, chances)
     val optimizer = 
-        new DistributedEmbeddingProcessor(sc, ev, epochs, nthreads, vocabSize, eDim, useAdaGrad)
+        new DistributedEmbeddingProcessor(sc, ev, epochs, nthreads, vocabSize, eDim, useAdaGrad, appSettings.initialLearnRate, appSettings.sgdLambda)
     val lines2 = lines1 map { fe.extractFeatures }  // heavy lift to map to seqinstance objects -- do this before repartitioning, tho?
     val finalWeights = optimizer.estimate(lines2)
     finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))    

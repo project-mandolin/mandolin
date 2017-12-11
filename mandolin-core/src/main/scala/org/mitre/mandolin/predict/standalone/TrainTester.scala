@@ -62,11 +62,15 @@ class TrainTester[IType, U: ClassTag, W <: Weights[W] : ClassTag, R: ClassTag, C
       val t = System.nanoTime()
       val (weights, trainLoss) = trainer.retrainWeights(trainVectors, evalFrequency)
       elapsedTrainingTime += ((System.nanoTime - t) / 1E9) // just compute training wall time here
-
+      
       val confusion = evPr.evalUnits(testVectors, weights)
       val confMat = confusion.getMatrix
       val acc = confMat.getAccuracy
-      val auRoc = if (confMat.dim == 2) confusion.getAreaUnderROC(1) else confusion.getTotalAreaUnderROC()
+      val auRoc = 
+        if (confMat.dim == 2) confusion.getAreaUnderROC(1)
+        else if (confMat.dim < 2) {
+          confMat.getAccuracy
+        } else confusion.getTotalAreaUnderROC()
       val accAt50 = confusion.getAccuracyAtThroughPut(0.5)
       val accAt30 = confusion.getAccuracyAtThroughPut(0.3)
       logDetails(trainLoss, acc, auRoc, accAt50, accAt30, elapsedTrainingTime, (i * evalFrequency))

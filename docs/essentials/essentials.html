@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+<title>Essentials · Mandolin</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content='mandolin'/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:100normal,100italic,300normal,300italic,400normal,400italic,500normal,500italic,700normal,700italic,900normal,900italicc" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="../js/page.js"></script>
+<script type="text/javascript" src="../js/groups.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/normalize.css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="../lib/foundation/dist/foundation.min.css"/>
+<link rel="stylesheet" type="text/css" href="../css/page.css"/>
+
+<!--
+<link rel="shortcut icon" href="../images/favicon.ico" />
+-->
+</head>
+
+<body>
+<div class="off-canvas-wrapper">
+<div class="off-canvas-wrapper-inner" data-off-canvas-wrapper>
+
+<div class="off-canvas position-left" id="off-canvas-menu" data-off-canvas>
+<nav class="off-canvas-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="active page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="off-canvas-content" data-off-canvas-content>
+
+<header class="site-header expanded row">
+<div class="small-12 column">
+<a href="#" class="off-canvas-toggle hide-for-medium" data-toggle="off-canvas-menu"><svg class="svg-icon svg-icon-menu" version="1.1" id="Menu" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve"> <path class="svg-icon-menu-path" fill="#53CDEC" d="M16.4,9H3.6C3.048,9,3,9.447,3,10c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,9.447,16.952,9,16.4,9z M16.4,13
+H3.6C3.048,13,3,13.447,3,14c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,13.447,16.952,13,16.4,13z M3.6,7H16.4
+C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.048,7,3.6,7z"/></svg>
+</a>
+<div class="title"><a href="../index.html">Mandolin</a></div>
+
+<!--
+<a href="https://www.example.com" class="logo show-for-medium">logo</a>
+-->
+</div>
+</header>
+
+<div class="expanded row">
+
+<div class="medium-3 large-2 show-for-medium column">
+<nav class="site-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="active page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="small-12 medium-9 large-10 column">
+<section class="site-content">
+
+<div class="page-header row">
+<div class="medium-12 show-for-medium column">
+<div class="nav-breadcrumbs">
+<ul>
+  <li><a href="../index.html">Mandolin</a></li>
+  <li>Essentials</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="page-content row">
+<div class="small-12 large-9 column" id="docs">
+<h1><a href="#essentials" name="essentials" class="anchor"><span class="anchor-link"></span></a>Essentials</h1>
+<h2><a href="#file-formats" name="file-formats" class="anchor"><span class="anchor-link"></span></a>File Formats</h2>
+<p>Mandolin includes a standard file format for representing training and test instances that is based on the sparse vector representation used by libSVM. </p>
+<p>For classification problems, the input has the following form for each training/test instances:</p>
+<pre><code>&lt;label&gt; &lt;feature_1&gt;:&lt;value&gt; &lt;feature_2&gt;:&lt;value&gt; ... &lt;feature_N&gt;:&lt;value&gt; 
+</code></pre>
+<p>Each line represents a separate training instance. The <code>&lt;label&gt;</code> value is a string that denotes the label/class of the training instance. Each <code>&lt;feature_i&gt;</code> is either a name of a unique feature in the model or an index that refers to which component in the input vector the feature corresponds to. This input format lends itself well to <em>sparse</em> representations where the total number of features in the model is large, but for any given instance a relatively small number of features will have a non-zero value.</p>
+<h3><a href="#dense-vector-representation" name="dense-vector-representation" class="anchor"><span class="anchor-link"></span></a>Dense Vector Representation</h3>
+<p>This representation uses a <a href="../api/index.html#org.mitre.mandolin.util.DenseTensor1">dense vector</a> as the model inputs. It reads the input assuming that each <code>&lt;feature_i&gt;</code> denoting a feature corresponds to index of the feature in the dense vector. This requires that the dimension of the input space be specified a priori. This is done by setting the configuration <code>mandolin.app.trainer.dense-vector-size</code> to a positive integer value. For example, if <code>mandolin.app.trainer.dense-vector-size=4</code> an input file with feature representations has dense vectors corresponding to those to the right.</p>
+<pre><code> 1:0.2 3:0.4         # ==&gt; [0.2 0.0 0.4 0.0]
+ 2:0.3               # ==&gt; [0.0 0.3 0.0 0.0]
+ 2:0.8 3:-1.2 4:2.0  # ==&gt; [0.0 0.8 -1.2 2.0]
+</code></pre>
+<p>Finally, note that the model topology specification should specify that the inputs are dense and not sparse. See the <a href="Configuration">configuration</a>.</p>
+<h3><a href="#vector-construction-with-an-alphabet" name="vector-construction-with-an-alphabet" class="anchor"><span class="anchor-link"></span></a>Vector Construction with an Alphabet</h3>
+<p>This input method does not require that the feature names correspond to integers referring to the feature indices. Instead, features names may be arbitrary strings. The input reader will build up a symbol table that maps each feature name to a unique integer, sometimes referred to as an <a href="../api/index.html#org.mitre.mandolin.util.Alphabet">Alphabet</a>.</p>
+<p>Whether the input vectors will be dense or sparse is determined in this case by the model specification. For a dense input representation, the input layer specification should have the form: <code>{&quot;ltype&quot;: &quot;Input&quot;, ... }</code>.</p>
+<p>To specify that the input vectors should be sparse, the input layer specification should appear as: <code>{&quot;ltype&quot;: &quot;InputSparse&quot;,...}</code>.</p>
+<p>See the <a href="Configuration">configuration</a></p>
+<h3><a href="#hashed-features" name="hashed-features" class="anchor"><span class="anchor-link"></span></a>Hashed Features</h3>
+<p>For datasets with a very large number of features, it can be much more efficient to simply hash feature names in a way that maps each feature name to an integer between <code>0</code> and <code>n</code>, where <code>n</code> is a specified constant. A potential downside to this approach is that some feature names may hash to the same integer. If this occurs infrequently enough, however, the impact on the model is minimal. The integer <code>i</code> is obtained for a feature name <code>&lt;feature_i&gt;</code> represented as a <code>String</code> via the expression:</p>
+<pre><code>i = MurmurHash(&lt;feature_i&gt;) % n;
+</code></pre>
+<p>Where <code>n</code> is the specified size of the hash space and <code>%</code> is the modulo operator. The function <code>MurmurHash</code> is the MurmurHash3 algorithm.</p>
+<p>As the input vector space will be large and instances here will be sparse the input layer specification should have the form: <code>{&quot;ltype&quot;: &quot;InputSparse&quot;,...}</code></p>
+<h3><a href="#label-file" name="label-file" class="anchor"><span class="anchor-link"></span></a>Label File</h3>
+<p>For <em>all</em> input datasets the labels to be used by the classifier must be specified in a separate file, indicated with the configuration option <code>mandolin.app.trainer.label-file</code>. This file should contain the labels (as strings) that match the labels in <code>mandolin.app.trainer.train-file</code> and <code>mandolin.app.trainer.test-file</code></p>
+<div class="nav-next">
+<p><strong>Next:</strong> <a href="../examples/overview.html">Examples</a></p>
+</div>
+</div>
+<div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../essentials/essentials.html#essentials" class="header">Essentials</a>
+  <ul>
+    <li><a href="../essentials/essentials.html#file-formats" class="header">File Formats</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
+</div>
+</div>
+
+</section>
+</div>
+
+</div>
+
+<footer class="site-footer">
+
+<section class="site-footer-nav">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 medium-4 large-3 text-center column">
+<div class="nav-links">
+<ul>
+<!-- <li><a href="https://www.example.com/products/">Products</a> -->
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section class="site-footer-base">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 text-center large-9 column">
+
+<!--
+<div class="copyright">
+<span class="text">&copy; 2017</span>
+<a href="https://www.example.com" class="logo">logo</a>
+</div>
+-->
+</div>
+
+</div>
+</div>
+</div>
+</section>
+</footer>
+
+</div>
+</div>
+</div>
+</body>
+
+<script type="text/javascript" src="../lib/foundation/dist/foundation.min.js"></script>
+<script type="text/javascript">jQuery(document).foundation();</script>
+<script type="text/javascript" src="../js/magellan.js"></script>
+
+<style type="text/css">@import "../lib/prettify/prettify.css";</style>
+<script type="text/javascript" src="../lib/prettify/prettify.js"></script>
+<script type="text/javascript" src="../lib/prettify/lang-scala.js"></script>
+<script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
+
+</html>

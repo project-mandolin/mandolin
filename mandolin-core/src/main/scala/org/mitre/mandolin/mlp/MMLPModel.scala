@@ -44,21 +44,21 @@ object MMLPTrainerBuilder extends AbstractProcessor {
    * already constructed as MMLPFactor objects.
    */
   def apply(modelSpec: IndexedSeq[LType]) : (Trainer[String, MMLPFactor, MMLPWeights], ANNetwork) = {
-    val (nn, predictor, oc) = getSubComponents(modelSpec)
+    val (nn, predictor, oc) = getSubComponents(modelSpec, false)
     val settings = new MandolinMLPSettings
     val optimizer = MMLPOptimizer.getOptimizer(settings, nn)
     (new Trainer(optimizer), nn)
   }
   
   def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T,MMLPFactor], idim: Int, odim: Int) : (Trainer[T, MMLPFactor, MMLPWeights], ANNetwork) = {
-    val (nn, predictor, oc) = getSubComponents(modelSpec, idim, odim)
+    val (nn, predictor, oc) = getSubComponents(modelSpec, idim, odim, (odim < 2))
     val settings = new MandolinMLPSettings
     val optimizer = MMLPOptimizer.getOptimizer(settings, nn)
     (new Trainer(fe, optimizer), nn)
   }
   
   def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T,MMLPFactor], idim: Int, odim: Int, sets: Seq[(String, Any)]) : (Trainer[T, MMLPFactor, MMLPWeights], ANNetwork) = {
-    val (nn, predictor, oc) = getSubComponents(modelSpec, idim, odim)
+    val (nn, predictor, oc) = getSubComponents(modelSpec, idim, odim, (odim < 2))
     val settings = (new MandolinMLPSettings).withSets(sets)
     val optimizer = MMLPOptimizer.getOptimizer(settings, nn)
     (new Trainer(fe, optimizer), nn)
@@ -68,15 +68,25 @@ object MMLPTrainerBuilder extends AbstractProcessor {
    * This method allows for an arbitrary feature extractor to be used with an arbitrary model spec
    */
   def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T, MMLPFactor]) : (Trainer[T, MMLPFactor, MMLPWeights], ANNetwork) = {
-    val (nn, predictor, oc) = getSubComponents(modelSpec)
+    val (nn, predictor, oc) = getSubComponents(modelSpec, false)
+    val settings = new MandolinMLPSettings
+    val optimizer = MMLPOptimizer.getOptimizer(settings, nn)
+    (new Trainer(fe, optimizer), nn)
+  }
+  
+  /**
+   * This method allows for an arbitrary feature extractor to be used with an arbitrary model spec
+   */
+  def apply[T](modelSpec: IndexedSeq[LType], fe: FeatureExtractor[T, MMLPFactor], reg: Boolean) : (Trainer[T, MMLPFactor, MMLPWeights], ANNetwork) = {
+    val (nn, predictor, oc) = getSubComponents(modelSpec, reg)
     val settings = new MandolinMLPSettings
     val optimizer = MMLPOptimizer.getOptimizer(settings, nn)
     (new Trainer(fe, optimizer), nn)
   }
   
 
-  def apply(modelSpec: IndexedSeq[LType], fa: Alphabet, la: Alphabet, sparse: Boolean = false) : (Trainer[String, MMLPFactor, MMLPWeights], ANNetwork) = {
-    val (nn, predictor, oc) = getSubComponents(modelSpec)    
+  def apply(modelSpec: IndexedSeq[LType], fa: Alphabet, la: Alphabet, sparse: Boolean = false, reg: Boolean = false) : (Trainer[String, MMLPFactor, MMLPWeights], ANNetwork) = {
+    val (nn, predictor, oc) = getSubComponents(modelSpec, reg)    
     val fe = if (sparse)
       new SparseVecFeatureExtractor(la, fa)
     else {
@@ -91,7 +101,7 @@ object MMLPTrainerBuilder extends AbstractProcessor {
   // XXX - let API here simply create the appropriate settings; seems backwards but most convenient
   def apply(modelSpec: IndexedSeq[LType], sets: Seq[(String, Any)]) : (Trainer[String, MMLPFactor, MMLPWeights], ANNetwork) = {
     val settings = (new MandolinMLPSettings).withSets(sets)
-    val (nn, predictor, oc) = getSubComponents(modelSpec)
+    val (nn, predictor, oc) = getSubComponents(modelSpec, settings.regression)
     val optimizer = MMLPOptimizer.getOptimizer(settings, nn)
     (new Trainer(optimizer), nn)
   }

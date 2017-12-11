@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+<title>MXNet · Mandolin</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content='mandolin'/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:100normal,100italic,300normal,300italic,400normal,400italic,500normal,500italic,700normal,700italic,900normal,900italicc" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="../js/page.js"></script>
+<script type="text/javascript" src="../js/groups.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/normalize.css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="../lib/foundation/dist/foundation.min.css"/>
+<link rel="stylesheet" type="text/css" href="../css/page.css"/>
+
+<!--
+<link rel="shortcut icon" href="../images/favicon.ico" />
+-->
+</head>
+
+<body>
+<div class="off-canvas-wrapper">
+<div class="off-canvas-wrapper-inner" data-off-canvas-wrapper>
+
+<div class="off-canvas position-left" id="off-canvas-menu" data-off-canvas>
+<nav class="off-canvas-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="active page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="off-canvas-content" data-off-canvas-content>
+
+<header class="site-header expanded row">
+<div class="small-12 column">
+<a href="#" class="off-canvas-toggle hide-for-medium" data-toggle="off-canvas-menu"><svg class="svg-icon svg-icon-menu" version="1.1" id="Menu" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve"> <path class="svg-icon-menu-path" fill="#53CDEC" d="M16.4,9H3.6C3.048,9,3,9.447,3,10c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,9.447,16.952,9,16.4,9z M16.4,13
+H3.6C3.048,13,3,13.447,3,14c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,13.447,16.952,13,16.4,13z M3.6,7H16.4
+C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.048,7,3.6,7z"/></svg>
+</a>
+<div class="title"><a href="../index.html">Mandolin</a></div>
+
+<!--
+<a href="https://www.example.com" class="logo show-for-medium">logo</a>
+-->
+</div>
+</header>
+
+<div class="expanded row">
+
+<div class="medium-3 large-2 show-for-medium column">
+<nav class="site-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="active page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="small-12 medium-9 large-10 column">
+<section class="site-content">
+
+<div class="page-header row">
+<div class="medium-12 show-for-medium column">
+<div class="nav-breadcrumbs">
+<ul>
+  <li><a href="../index.html">Mandolin</a></li>
+  <li><a href="../examples/overview.html">Examples</a></li>
+  <li>MXNet</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="page-content row">
+<div class="small-12 large-9 column" id="docs">
+<h1><a href="#mxnet" name="mxnet" class="anchor"><span class="anchor-link"></span></a>MXNet</h1>
+<p>MXNet can be used in a variety of ways within Mandolin as demonstrated through the following examples. Note that these examples all use the <code>mandolin-mx-0.3.6.jar</code> artifact and require that the MXNet shared object has been compiled on the target platform. Assume for these examples, the necessary object file(s) are located in <code>$HOME/lib</code>. Assume that $MXNET defines the home directory for MXNet and that $MANDOLIN defines the location of Mandolin.</p>
+<h2><a href="#mnist" name="mnist" class="anchor"><span class="anchor-link"></span></a>MNIST</h2>
+<pre><code>cd $MANDOLIN/examples/mx_mnist
+java -Djava.library.path=$HOME/lib -Xmx2g -cp $MANDOLIN/dist/mandolin-mx-0.3.6.jar \
+    org.mitre.mandolin.app.Mandolin --conf mx.conf
+</code></pre>
+<p>Note that this uses the same input files as the MMLP MNIST <a href="mmlp.html">example</a>. The config file specifies the mode as <code>train</code>. </p>
+<h2><a href="#mnist-via-native-format" name="mnist-via-native-format" class="anchor"><span class="anchor-link"></span></a>MNIST via Native Format</h2>
+<p>Example using MNIST in a binary image format (not RecordIO).</p>
+<h2><a href="#caltech-image-dataset" name="caltech-image-dataset" class="anchor"><span class="anchor-link"></span></a>CalTech Image Dataset</h2>
+<p>Training image classification models is the canonical deep neural networks task. This example involves training and evaluating the model on a real (but small) image dataset, the CalTech 101 dataset.</p>
+<h3><a href="#download-the-data" name="download-the-data" class="anchor"><span class="anchor-link"></span></a>Download the Data</h3>
+<p>First, grab the image data which can be downloaded via the Download at:</p>
+<pre><code>http://www.vision.caltech.edu/Image_Datasets/Caltech101/101_ObjectCategories.tar.gz
+</code></pre>
+<p>Create a space for the data:</p>
+<pre><code>mkdir $MANDOLIN/examples/caltech/data
+mv 101_ObjectCategories.tar.gz $MANDOLIN/examples/caltech/data
+</code></pre>
+<p>Unpack the data into the <code>$MANDOLIN/examples/caltech/data</code> directory:</p>
+<pre><code>cd $MANDOLIN/examples/caltech/data
+tar xzvf 101_ObjectCategories.tar.gz
+</code></pre>
+<h3><a href="#build-the-recordio-files" name="build-the-recordio-files" class="anchor"><span class="anchor-link"></span></a>Build the RecordIO Files</h3>
+<p>The next step is to build the RecordIO file that contains the labeled images in a packed format. This can be done via MXNet&rsquo;s <code>im2rec.py</code> script. Assuming MXNet has been built and installed properly, from <code>$MANDOLIN/examples/caltech</code>, run:</p>
+<pre><code>python $MXNET/tools/im2rec.py --list=1 --recursive=1 --shuffle=1 --train-ratio=0.8 --test-ratio=0.2 data/caltech data/101_ObjectCategories
+</code></pre>
+<p>This will create the files <code>data/caltech_train.lst</code> and <code>data/caltech_test.lst</code> which are listings of the image files to be included in the training and test sets, respectively.</p>
+<p>The same script must be invoked again to build the RecordIO files for the training and test sets:</p>
+<pre><code>python $MXNET/tools/im2rec.py --num-thread=12 --pass-through=1  data/caltech data/101_ObjectCategories
+</code></pre>
+<p>The number of threads used to build the packed file(s) can be adjusted as appropriate for the machine it&rsquo;s run on. After finishing, the files <code>data/caltech_train.rec</code> and <code>data/caltech_test.rec</code> should be found in the <code>$MANDOLIN/examples/caltech/data/</code> directory.</p>
+<h3><a href="#train-and-evaluate-a-model" name="train-and-evaluate-a-model" class="anchor"><span class="anchor-link"></span></a>Train and Evaluate a Model</h3>
+<p>The final step involves invoking Mandolin to build a model via MXNet. This assumes that MXNet has been built on the target platform and the necesary shared object files reside in an appropriate <code>lib</code> directory. </p>
+<p>Mandolin is invoked on this example as:</p>
+<pre><code>java -Djava.library.path=$HOME/lib -Xmx6g -cp $MANDOLIN/dist/mandolin-mx-0.3.6.jar org.mitre.mandolin.app.Mandolin --conf caltech.conf
+</code></pre>
+<p>As usual, the various training parameters are specified in the configuration file. For this example, a fairly simple (and arbitrary) convolutional neural network is used as the architecture. More complex architectures, details of which can be found in the documentation section on MXNet Specifications.</p>
+<div class="nav-next">
+<p><strong>Next:</strong> <a href="../mmlp/mmlp.html">MMLPs</a></p>
+</div>
+</div>
+<div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../examples/mxnet.html#mxnet" class="header">MXNet</a>
+  <ul>
+    <li><a href="../examples/mxnet.html#mnist" class="header">MNIST</a></li>
+    <li><a href="../examples/mxnet.html#mnist-via-native-format" class="header">MNIST via Native Format</a></li>
+    <li><a href="../examples/mxnet.html#caltech-image-dataset" class="header">CalTech Image Dataset</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
+</div>
+</div>
+
+</section>
+</div>
+
+</div>
+
+<footer class="site-footer">
+
+<section class="site-footer-nav">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 medium-4 large-3 text-center column">
+<div class="nav-links">
+<ul>
+<!-- <li><a href="https://www.example.com/products/">Products</a> -->
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section class="site-footer-base">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 text-center large-9 column">
+
+<!--
+<div class="copyright">
+<span class="text">&copy; 2017</span>
+<a href="https://www.example.com" class="logo">logo</a>
+</div>
+-->
+</div>
+
+</div>
+</div>
+</div>
+</section>
+</footer>
+
+</div>
+</div>
+</div>
+</body>
+
+<script type="text/javascript" src="../lib/foundation/dist/foundation.min.js"></script>
+<script type="text/javascript">jQuery(document).foundation();</script>
+<script type="text/javascript" src="../js/magellan.js"></script>
+
+<style type="text/css">@import "../lib/prettify/prettify.css";</style>
+<script type="text/javascript" src="../lib/prettify/prettify.js"></script>
+<script type="text/javascript" src="../lib/prettify/lang-scala.js"></script>
+<script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
+
+</html>

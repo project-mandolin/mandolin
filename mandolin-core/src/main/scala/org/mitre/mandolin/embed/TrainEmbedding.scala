@@ -54,7 +54,7 @@ object TrainEmbedding {
       val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedUpdater](wts, ev, up,epochs,1,nthreads,None)
       val trainer = new Trainer(fe, optimizer)
       val nlines = lines map {fe.extractFeatures}
-      val (finalWeights,_) = trainer.retrainWeights(nlines.toVector)
+      val (finalWeights,_) = trainer.retrainWeights(nlines.toVector, appSettings.numEpochs)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     } else {
       println(">> Using vanilla SGD weight update scheme <<")
@@ -64,12 +64,10 @@ object TrainEmbedding {
           new SkipGramEvaluator(eDim, vocabSize, appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
         else 
           new CBOWEvaluator(eDim, vocabSize,appSettings.contextSize,appSettings.negSample,freqs, logisticTable, chances)
-      wts.accelerate
       val optimizer = new OnlineOptimizer[SeqInstance, EmbedWeights, EmbedGradient, EmbedUpdater](wts, ev, up,epochs,1,nthreads,None)
-      wts.decelerate
       val trainer = new Trainer(fe, optimizer)
       val nlines = lines map {fe.extractFeatures}
-      val (finalWeights,_) = trainer.retrainWeights(nlines.toVector)
+      val (finalWeights,_) = trainer.retrainWeights(nlines.toVector, appSettings.numEpochs)
       finalWeights.exportWithMapping(mapping, new java.io.File(appSettings.modelFile.get))
     }
   } 

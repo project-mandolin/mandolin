@@ -22,7 +22,11 @@ extends MandolinMLPSettings(_confOptions, _conf) {
   override val outputFile = asStrOpt("mandolin.xg.prediction-file")
   override val numThreads = asIntOpt("mandolin.xg.threads").getOrElse(1)
   override val denseVectorSize = asIntOpt("mandolin.xg.dense-vector-size").getOrElse(0)
+  override val regression = asBooleanOpt("mandolin.xg.regression").getOrElse(false)
+  
 
+  val booster = asStrOpt("mandolin.xg.booster").getOrElse("gbtree")
+  val eta = asFloatOpt("mandolin.xg.eta").getOrElse(0.3f)
   val featureImportance = asStrOpt("mandolin.xg.feature-importance-file")
   val maxDepth = asIntOpt("mandolin.xg.max-depth").getOrElse(5)
   val rounds   = asIntOpt("mandolin.xg.rounds").getOrElse(20)

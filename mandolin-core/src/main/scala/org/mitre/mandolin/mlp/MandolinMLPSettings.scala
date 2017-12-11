@@ -13,6 +13,7 @@ class MandolinMLPSettings(_confOptions: Option[ConfigGeneratedCommandOptions], _
   val decoderInputFile = asStrOpt("mandolin.mmlp.test-file")
   val outputFile = asStrOpt("mandolin.mmlp.prediction-file")
   val inputModelFile = asStrOpt("mandolin.mmlp.model-file")
+  val regression     = asBooleanOpt("mandolin.mmlp.regression").getOrElse(false)
 
   val numFeatures = asInt("mandolin.mmlp.num-hash-features")
   val trainFile = asStrOpt("mandolin.mmlp.train-file")

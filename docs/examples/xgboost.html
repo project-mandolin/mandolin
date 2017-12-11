@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+<title>XGBoost · Mandolin</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content='mandolin'/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:100normal,100italic,300normal,300italic,400normal,400italic,500normal,500italic,700normal,700italic,900normal,900italicc" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="../js/page.js"></script>
+<script type="text/javascript" src="../js/groups.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/normalize.css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="../lib/foundation/dist/foundation.min.css"/>
+<link rel="stylesheet" type="text/css" href="../css/page.css"/>
+
+<!--
+<link rel="shortcut icon" href="../images/favicon.ico" />
+-->
+</head>
+
+<body>
+<div class="off-canvas-wrapper">
+<div class="off-canvas-wrapper-inner" data-off-canvas-wrapper>
+
+<div class="off-canvas position-left" id="off-canvas-menu" data-off-canvas>
+<nav class="off-canvas-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="active page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="off-canvas-content" data-off-canvas-content>
+
+<header class="site-header expanded row">
+<div class="small-12 column">
+<a href="#" class="off-canvas-toggle hide-for-medium" data-toggle="off-canvas-menu"><svg class="svg-icon svg-icon-menu" version="1.1" id="Menu" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20 20" enable-background="new 0 0 20 20" xml:space="preserve"> <path class="svg-icon-menu-path" fill="#53CDEC" d="M16.4,9H3.6C3.048,9,3,9.447,3,10c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,9.447,16.952,9,16.4,9z M16.4,13
+H3.6C3.048,13,3,13.447,3,14c0,0.553,0.048,1,0.6,1H16.4c0.552,0,0.6-0.447,0.6-1C17,13.447,16.952,13,16.4,13z M3.6,7H16.4
+C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.048,7,3.6,7z"/></svg>
+</a>
+<div class="title"><a href="../index.html">Mandolin</a></div>
+
+<!--
+<a href="https://www.example.com" class="logo show-for-medium">logo</a>
+-->
+</div>
+</header>
+
+<div class="expanded row">
+
+<div class="medium-3 large-2 show-for-medium column">
+<nav class="site-nav">
+<div class="nav-home">
+<a href="../index.html" >
+<span class="home-icon">⌂</span>Mandolin
+</a>
+<div class="version-number">
+0.3.6.2*
+</div>
+</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../installation/installation.html" class="page">Installation</a></li>
+  <li><a href="../essentials/essentials.html" class="page">Essentials</a></li>
+  <li><a href="../examples/overview.html" class="page">Examples</a>
+  <ul>
+    <li><a href="../examples/mmlp.html" class="page">MMLPs</a></li>
+    <li><a href="../examples/spark.html" class="page">Spark</a></li>
+    <li><a href="../examples/xgboost.html" class="active page">XGBoost</a></li>
+    <li><a href="../examples/mxnet.html" class="page">MXNet</a></li>
+  </ul></li>
+  <li><a href="../mmlp/mmlp.html" class="page">MMLPs</a></li>
+  <li><a href="../xgboost/xgboost.html" class="page">XGBoost</a></li>
+  <li><a href="../mxnet/mxnet.html" class="page">MXNet</a></li>
+  <li><a href="../model-selection/mselect.html" class="page">Model Selection</a></li>
+  <li><a href="../spark/spark.html" class="page">Spark</a></li>
+  <li><a href="../api-use/api.html" class="page">API Use</a></li>
+</ul>
+</div>
+
+</nav>
+</div>
+
+<div class="small-12 medium-9 large-10 column">
+<section class="site-content">
+
+<div class="page-header row">
+<div class="medium-12 show-for-medium column">
+<div class="nav-breadcrumbs">
+<ul>
+  <li><a href="../index.html">Mandolin</a></li>
+  <li><a href="../examples/overview.html">Examples</a></li>
+  <li>XGBoost</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="page-content row">
+<div class="small-12 large-9 column" id="docs">
+<h1><a href="#xgboost" name="xgboost" class="anchor"><span class="anchor-link"></span></a>XGBoost</h1>
+<p>Mandolin provides a wrapper for XGBoost. The standard Mandolin file format is used (rather than XGBoost&rsquo;s native format). The wrapper also facilitates use of model selection over XGBoost hyper-parameters. (see &hellip; )</p>
+<h2><a href="#splice-example" name="splice-example" class="anchor"><span class="anchor-link"></span></a>Splice Example</h2>
+<p>A small excerpt of the full Splice dataset is used here to demonstrate the utility of XGBoost for modeling problems best captured with a non-linear classifier. The example can be run via:</p>
+<pre><code>cd $MANDOLIN/examples/splice
+java -Djava.library.path=$MANDOLIN/mandolin-mx/pre-compiled/xgboost/linux -Xmx2g \
+    -cp ../../dist/mandolin-mx-0.3.6.jar --conf splice.conf
+</code></pre>
+<p>The default <code>splice.conf</code> file in this example runs Mandolin in <code>train-test</code> mode. Here, with a small dataset, the training file is used as the test file. This is a big <em>no-no</em>, generally, but can be helpful to see how well the model is fitting the training data. We can perform a more meaningful experiment by running cross validation on the training data. This is triggered by simply setting the <code>test-file</code> to null which can be done by editing the <code>splice.conf</code> file or overriding on the command-line as follows:</p>
+<pre><code> java -Djava.library.path=$MANDOLIN/mandolin-mx/pre-compiled/xgboost/linux -Xmx2g \
+    -cp ../../dist/mandolin-mx-0.3.6.jar --conf splice.conf mandolin.xg.test-file=null
+</code></pre>
+<p>The progress and evaluation metrics across 5 folds are logged to the console after each epoch/round/iteration of training.</p>
+<h3><a href="#training-a-model" name="training-a-model" class="anchor"><span class="anchor-link"></span></a>Training a model</h3>
+<p>Running in <code>train-test</code> mode is good for experimentation, whether using cross validation or a validation/test dataset. We can train a model to be saved for making subsequent predictions by running in <code>train</code> mode.</p>
+<pre><code>java -Djava.library.path=$MANDOLIN/mandolin-mx/pre-compiled/xgboost/linux -Xmx2g \
+    -cp ../../dist/mandolin-mx-0.3.6.jar --conf splice.conf mandolin.mode=train
+</code></pre>
+<p>This will save a model in the file specified via the configuration attribute <code>mandolin.xg.model-file</code>. If certain configruation options are set to non-null values, some side-effects of the training process may be realized. In the example here, the attribute <code>mandolin.xg.feature-importance-file</code> is set to non-null and Mandolin will provide each feature with it&rsquo;s associated Gain according to XGBoost in file provided.</p>
+<h3><a href="#making-predictions-and-evaluating" name="making-predictions-and-evaluating" class="anchor"><span class="anchor-link"></span></a>Making Predictions and Evaluating</h3>
+<p>The trained model can be used to make predictions on a held out test dataset and provide an evaluation by running Mandolin in <code>predict-eval</code> mode. In this case, we could evaluate the model on the training data (again, a held out test set should be used in practice) via:</p>
+<pre><code>java -Djava.library.path=$MANDOLIN/mandolin-mx/pre-compiled/xgboost/linux -Xmx2g \
+    -cp ../../dist/mandolin-mx-0.3.6.jar --conf splice.conf mandolin.mode=predict-eval \
+mandolin.xg.prediction-file=outputs.1
+</code></pre>
+<p>This will take the trained model file (specified via <code>mandolin.xg.model-file</code> in <code>splice.conf</code>) and apply it to the labeled instances in <code>mandolin.xg.test-file</code>. The resulting predictions are placed in the file <code>outputs.1</code> as specified via <code>mandolin.xg.prediction-file</code>. As this is a binary classification task, the prediction file format has three columns:</p>
+<pre><code>ID, response, value
+</code></pre>
+<p>The <code>ID</code> refers to an optional unique ID for each test instance that can be specified by including a <code>#</code> symbol followed by the ID on the input file. This defaults to -1 if no IDs are specified, as is the case here. The <code>response</code> field provides the probability of the instance being positive according to the model. Note that the positive label (in this example <code>+1</code>) should be the first label in the <code>mandolin.xg.labels</code> file. The <code>value</code> field provides the &ldquo;ground truth&rdquo; label for the instance as it appears in the input file.</p>
+<h3><a href="#making-predictions-on-novel-data-without-ground-truth" name="making-predictions-on-novel-data-without-ground-truth" class="anchor"><span class="anchor-link"></span></a>Making Predictions on Novel Data without Ground Truth</h3>
+<p>Tuning ML algorithms is done on training and test datasets with available ground truth to ascertain accuracy/performance. Ultimately models are designed to be used to make predictions on data without any available ground truth. Mandolin models can be used to make predictions by running the software in <code>predict</code> mode. This assumes that the test file in <code>mandolin.xg.test-file</code> includes feature vectors (just like the training and test instances with labels), but that the left-most column is removed - i.e. no label is provided. An example file without labels is provided with the example called <code>rawtest.vecs</code>. Our trained model can be used to make predictions on these intances by invoking:</p>
+<pre><code>java -Djava.library.path=$MANDOLIN/mandolin-mx/pre-compiled/xgboost/linux -Xmx2g \
+    -cp ../../dist/mandolin-mx-0.3.6.jar --conf splice.conf mandolin.mode=predict \
+mandolin.xg.test-file=rawtest.vecs mandolin.xg.prediction-file=outputs.2
+</code></pre>
+<p>Since the ground truth labels are not provided here, the resulting prediction file, <code>outputs.2</code> will not contain the final <code>value</code> column.</p>
+<p>While using <code>predict</code> mode can be convenient for batch processing data, using the learnt model to make predictions programmatically is often better for embedding within an application. See (&hellip;) for information on using Mandolin-trained models programmatically via an API.</p>
+<div class="nav-next">
+<p><strong>Next:</strong> <a href="../examples/mxnet.html">MXNet</a></p>
+</div>
+</div>
+<div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../examples/xgboost.html#xgboost" class="header">XGBoost</a>
+  <ul>
+    <li><a href="../examples/xgboost.html#splice-example" class="header">Splice Example</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
+</div>
+</div>
+
+</section>
+</div>
+
+</div>
+
+<footer class="site-footer">
+
+<section class="site-footer-nav">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 medium-4 large-3 text-center column">
+<div class="nav-links">
+<ul>
+<!-- <li><a href="https://www.example.com/products/">Products</a> -->
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section class="site-footer-base">
+<div class="expanded row">
+<div class="small-12 large-offset-2 large-10 column">
+<div class="row site-footer-content">
+
+<div class="small-12 text-center large-9 column">
+
+<!--
+<div class="copyright">
+<span class="text">&copy; 2017</span>
+<a href="https://www.example.com" class="logo">logo</a>
+</div>
+-->
+</div>
+
+</div>
+</div>
+</div>
+</section>
+</footer>
+
+</div>
+</div>
+</div>
+</body>
+
+<script type="text/javascript" src="../lib/foundation/dist/foundation.min.js"></script>
+<script type="text/javascript">jQuery(document).foundation();</script>
+<script type="text/javascript" src="../js/magellan.js"></script>
+
+<style type="text/css">@import "../lib/prettify/prettify.css";</style>
+<script type="text/javascript" src="../lib/prettify/prettify.js"></script>
+<script type="text/javascript" src="../lib/prettify/lang-scala.js"></script>
+<script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
+
+</html>

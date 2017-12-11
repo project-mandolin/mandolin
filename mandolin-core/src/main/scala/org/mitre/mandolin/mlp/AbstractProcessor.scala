@@ -7,9 +7,13 @@ import org.mitre.mandolin.transform.{ FeatureExtractor, FeatureImportance }
 import org.mitre.mandolin.gm.Feature
 import org.mitre.mandolin.util.LineParser
 
+abstract class CategoricalOrRegressionPredictor
+case class CatPredictor(p: CategoricalMMLPPredictor) extends CategoricalOrRegressionPredictor
+case class RegPredictor(p: RegressionMMLPPredictor) extends CategoricalOrRegressionPredictor
+
 case class MMLPComponentSet(
                              ann: ANNetwork,
-                             predictor: CategoricalMMLPPredictor,
+                             predictor: CategoricalOrRegressionPredictor,
                              outputConstructor: MMLPPosteriorOutputConstructor,
                              featureExtractor: FeatureExtractor[String,MMLPFactor],
                              labelAlphabet: Alphabet,
@@ -104,14 +108,15 @@ abstract class AbstractProcessor extends LineParser {
 
   import ANNBuilder._
 
-  def getLabelAlphabet(labFile: Option[String] = None, io: IOAssistant): Alphabet = {
+  def getLabelAlphabet(labFile: Option[String] = None, io: IOAssistant, regression: Boolean = false): Alphabet = {
     if (labFile.isDefined) {
       val labels = io.readLines(labFile.get)
       val la = new StdAlphabet
       labels foreach { l => la.ofString(l) }
       la.ensureFixed
       la
-    } else new StdAlphabet
+    } else if (regression) new IdentityAlphabet(1)  
+    else new StdAlphabet
   }
 
   def getAlphabet(inputLines: Vector[String], la: StdAlphabet, scaling: Boolean, selectFeatures: Int, fd: Option[String], io: IOAssistant): (Alphabet, Int) = {
@@ -199,41 +204,42 @@ abstract class AbstractProcessor extends LineParser {
     }
   }
 
-  def getSubComponents(appSettings: MandolinMLPSettings, idim: Int, odim: Int) : (ANNetwork, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor) = {
+  def getSubComponents(appSettings: MandolinMLPSettings, idim: Int, odim: Int, reg: Boolean) : (ANNetwork, CategoricalOrRegressionPredictor, MMLPPosteriorOutputConstructor) = {
     val specs = appSettings.netspecConfig match {case Some(c) => getMMLPSpec(c, idim, odim) case None => getMMLPSpec(appSettings.netspec, idim, odim)}
-    getSubComponents(specs)
+    getSubComponents(specs, reg)
   }
 
-  def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int): (ANNetwork, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor) = {
+  def getSubComponents(confSpecs: List[Map[String, String]], idim: Int, odim: Int, reg: Boolean): (ANNetwork, CategoricalOrRegressionPredictor, MMLPPosteriorOutputConstructor) = {
     val specs = getMMLPSpec(confSpecs, idim, odim)
-    getSubComponents(specs)
+    getSubComponents(specs, reg)
   }
 
-  def getSubComponents(mspec: IndexedSeq[LType], idim: Int, odim: Int): (ANNetwork, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor) = {
+  def getSubComponents(mspec: IndexedSeq[LType], idim: Int, odim: Int, reg: Boolean): (ANNetwork, CategoricalOrRegressionPredictor, MMLPPosteriorOutputConstructor) = {
     val specs = ANNetwork.fullySpecifySpec(mspec, idim, odim)
-    getSubComponents(specs)
+    getSubComponents(specs, reg)
   }
 
-  def getSubComponents(specs: IndexedSeq[LType]): (ANNetwork, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor) = {
+  def getSubComponents(specs: IndexedSeq[LType], regression: Boolean): (ANNetwork, CategoricalOrRegressionPredictor, MMLPPosteriorOutputConstructor) = {
     val nn = ANNetwork(specs)
-    val predictor = new CategoricalMMLPPredictor(nn, true)
+    val predictor : CategoricalOrRegressionPredictor = 
+      if (regression) RegPredictor(new RegressionMMLPPredictor(nn, true)) else CatPredictor(new CategoricalMMLPPredictor(nn, true)) 
     val oc = new MMLPPosteriorOutputConstructor
     (nn, predictor, oc)
   }
 
   def getComponentsDenseVecs(confSpecs: List[Map[String, String]], dim: Int, labelAlphabet: Alphabet, fa: Alphabet): MMLPComponentSet = {
     val isSparse = confSpecs.head("ltype").equals("InputSparse")
-    val regression = confSpecs.last("ltype").equals("Linear")
+    val regression = confSpecs.last("ltype").equals("Linear")    
     val fe =
       if (regression) new StdVectorExtractorRegression(fa, dim)
       else if (isSparse) new SparseVecFeatureExtractor(fa, labelAlphabet) else new StdVectorExtractorWithAlphabet(labelAlphabet, fa, dim)
     val laSize = if (regression) 1 else labelAlphabet.getSize
-    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, laSize)
+    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, dim, laSize, regression)
     MMLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, dim, 1000)
   }
 
   def getComponentsDenseVecs(appSettings: MandolinMLPSettings, io: IOAssistant): MMLPComponentSet = {
-    val la = getLabelAlphabet(appSettings.labelFile, io)
+    val la = getLabelAlphabet(appSettings.labelFile, io, appSettings.regression)
     val fa =
       if (appSettings.scaleInputs) getScaledDenseVecAlphabet(io.readLines(appSettings.trainFile.get), la, appSettings.denseVectorSize)
       else new IdentityAlphabet(appSettings.denseVectorSize, fix = true)
@@ -242,41 +248,50 @@ abstract class AbstractProcessor extends LineParser {
   }
 
   def getComponentsDenseVecs(layerSpecs: IndexedSeq[LType]): MMLPComponentSet = {
-    val (nn, predictor, outConstructor) = getSubComponents(layerSpecs)
+    val (nn, predictor, outConstructor) = getSubComponents(layerSpecs, false)
     val labelAlphabet = new IdentityAlphabet(layerSpecs.last.dim)
     val fa = new IdentityAlphabet(layerSpecs.head.dim)
     val fe = new StdVectorExtractorWithAlphabet(labelAlphabet, fa, layerSpecs.head.dim)
     MMLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, layerSpecs.head.dim,1000)
   }
 
-  def getComponentsHashsedFeatures(confSpecs: List[Map[String, String]], randFeatures: Int, labelAlphabet: StdAlphabet): MMLPComponentSet = {
+  def getComponentsHashsedFeatures(confSpecs: List[Map[String, String]], randFeatures: Int, labelAlphabet: StdAlphabet, reg: Boolean): MMLPComponentSet = {
     val fa = new RandomAlphabet(randFeatures)
-    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, randFeatures, labelAlphabet.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(confSpecs, randFeatures, labelAlphabet.getSize, reg)
     val fe = new SparseVecFeatureExtractor(fa, labelAlphabet)
     MMLPComponentSet(nn, predictor, outConstructor, fe, labelAlphabet, randFeatures, 1000)
   }
 
   def getComponentsHashedFeatures(appSettings: MandolinMLPSettings, io: IOAssistant): MMLPComponentSet = {
-    val la = getLabelAlphabet(appSettings.labelFile, io)
+    val la = getLabelAlphabet(appSettings.labelFile, io, appSettings.regression)
     val fa = new RandomAlphabet(appSettings.numFeatures)
     val cspec = appSettings.netspecConfig match {case Some(c) => mapSpecToList(c) case None => appSettings.netspec}
-    val (nn, predictor, outConstructor) = getSubComponents(cspec, appSettings.numFeatures, la.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(cspec, appSettings.numFeatures, la.getSize, appSettings.regression)
     val fe = new SparseVecFeatureExtractor(fa, la)
     MMLPComponentSet(nn, predictor, outConstructor, fe, la, appSettings.numFeatures,1000)
   }
 
   def getComponentsInducedAlphabet(mspec: IndexedSeq[LType], lines: Iterator[String],
-                                   la: Alphabet, scale: Boolean = false, selectedFeatures: Int = -1, io: IOAssistant, faO: Option[(Alphabet,Int)] = None): MMLPComponentSet = {
+                                   la: Alphabet, scale: Boolean = false, 
+                                   selectedFeatures: Int = -1, io: IOAssistant, 
+                                   faO: Option[(Alphabet,Int)] = None,
+                                   regression: Boolean = false): MMLPComponentSet = {
     val (fa,npts) = faO match {
       case None => getAlphabet(lines, la, scale, selectedFeatures, None, io)
       case Some(x) => x // don't recompute alphabet if we've done so already
     }
     fa.ensureFixed
     la.ensureFixed
-    val (nn, predictor, outConstructor) = getSubComponents(mspec, fa.getSize, la.getSize)
+    val (nn, predictor, outConstructor) = getSubComponents(mspec, fa.getSize, la.getSize, regression)
     val isSparse = ((mspec.length > 1) && (mspec(0).designate match {case SparseInputLType => true case _ => false}))
-    val fe = if (isSparse) new SparseVecFeatureExtractor(fa, la) else new VecFeatureExtractor(fa, la)
-    MMLPComponentSet(nn, predictor, outConstructor, fe, la, fa.getSize, npts)
+    val fe = 
+      if (regression) {
+        if (isSparse) new SparseRegressionVecFeatureExtractor(fa) else new StdVectorExtractorRegression(fa: Alphabet, fa.getSize)
+      } else {
+        if (isSparse) new SparseVecFeatureExtractor(fa, la) else new VecFeatureExtractor(fa, la)
+      }
+    val actualLa = if (regression) new IdentityAlphabet(1) else la
+    MMLPComponentSet(nn, predictor, outConstructor, fe, actualLa, fa.getSize, npts)
   }
 
   def getComponentsInducedAlphabet(appSettings: MandolinMLPSettings, lines: Iterator[String],
@@ -284,11 +299,13 @@ abstract class AbstractProcessor extends LineParser {
     val (fa,npts) = getAlphabet(lines, la, scale, selectedFeatures, None, io)
     fa.ensureFixed
     val mspec = appSettings.netspecConfig match {case Some(c) => getMMLPSpec(c, fa.getSize, la.getSize) case None => getMMLPSpec(appSettings.netspec, fa.getSize, la.getSize)}
-    getComponentsInducedAlphabet(mspec, lines, la, scale, selectedFeatures, io, Some((fa,npts)))
+    val regression = appSettings.regression
+    println("Regression = " + regression)
+    getComponentsInducedAlphabet(mspec, lines, la, scale, selectedFeatures, io, Some((fa,npts)), regression)
   }
 
   def getComponentsInducedAlphabet(appSettings: MandolinMLPSettings, io: IOAssistant): MMLPComponentSet = {
-    val la = getLabelAlphabet(appSettings.labelFile, io)
+    val la = getLabelAlphabet(appSettings.labelFile, io, appSettings.regression)
     val lines = io.readLines(appSettings.trainFile.get)
     getComponentsInducedAlphabet(appSettings, lines, la, appSettings.scaleInputs, appSettings.filterFeaturesMI, io)
   }
