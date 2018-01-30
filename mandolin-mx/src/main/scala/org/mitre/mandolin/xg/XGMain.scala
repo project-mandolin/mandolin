@@ -114,7 +114,7 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
       case "train" =>
         val (trVecs, tstVecs, fe, labelAlphabet) = getVecIOs(xgSettings, None)
         val evaluator = new XGBoostEvaluator(xgSettings, labelAlphabet.getSize)
-        val (finalMetric, booster) = evaluator.evaluateTrainingSet(trVecs.toIterator, tstVecs map { _.toIterator})
+        val (finalMetric, booster) = evaluator.evaluateTrainingSet(trVecs, tstVecs map { _.toIterator})
         val io = new LocalIOAssistant
         booster foreach { b =>               
           xgSettings.featureImportance foreach {fi =>
@@ -135,7 +135,7 @@ object XGMain extends org.mitre.mandolin.config.LogInit with org.mitre.mandolin.
       case "train-test" =>
         val (trVecs, tstVecs, fe, labelAlphabet) = getVecIOs(xgSettings, None)
         val evaluator = new XGBoostEvaluator(xgSettings, labelAlphabet.getSize)
-        val (finalMetric, _) = evaluator.evaluateTrainingSet(trVecs.toIterator, tstVecs map { _.toIterator})
+        val (finalMetric, _) = evaluator.evaluateTrainingSet(trVecs, tstVecs map { _.toIterator})
         println("Training complete.")
         println("Final evaluation metric result: " + finalMetric)
       case "predict-eval" =>

@@ -38,12 +38,12 @@ class XGModelInstance(appSettings: XGModelSettings, nfs: Int, modelId: Int, star
     tstVecs match {
       case Some(tstVecs) =>
         val evaluator = new XGBoostEvaluator(appSettings, 2)  // XXX - this needs to be redone to keep the number of labels
-        val (finalMetric, _) = evaluator.evaluateTrainingSet(trVecs.toIterator, Some(tstVecs.toIterator))
+        val (finalMetric, _) = evaluator.evaluateTrainingSet(trVecs, Some(tstVecs.toIterator))
         finalMetric.toDouble
       case None =>
         val evaluator = new XGBoostEvaluator(appSettings, 2)
         // this will do x-validation if not supplied with tst data
-        val (finalMetric, _) = evaluator.evaluateTrainingSet(trVecs.toIterator, None)
+        val (finalMetric, _) = evaluator.evaluateTrainingSet(trVecs, None)
         finalMetric.toDouble
     }
   }

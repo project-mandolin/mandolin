@@ -87,7 +87,7 @@ object MandolinBuild extends Build {
     resolvers += "Snapshot Repo" at "https://oss.sonatype.org/content/repositories/snapshots/",
     resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository",
     externalResolvers := Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false),
-    javacOptions ++= Seq("-source","1.7","-target","1.7"),
+    javacOptions ++= Seq("-source","1.8","-target","1.8"),
     scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value+"/src/root-doc.txt", "-unchecked")
   )  
 
