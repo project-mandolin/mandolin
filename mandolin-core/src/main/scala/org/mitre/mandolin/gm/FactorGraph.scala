@@ -388,10 +388,10 @@ extends FeatureExtractor[String, SingletonFactor] {
         val l_ind = math.max(singletonLa.ofString(label), 0)
         val lv = DenseVec.zeros(singletonLa.getSize)
         lv.update(l_ind, 1.0f) // one-hot encoding
-      val sgf = vec match {
-        case v: DenseVec => new StdMMLPFactor(-1, v, lv, Some(uniqueId))
-        case v: SparseVec => new SparseMMLPFactor(-1, v, lv, Some(uniqueId))
-      }
+        val sgf = vec match {
+          case v: DenseVec => new StdMMLPFactor(-1, v, lv, Some(uniqueId))
+          case v: SparseVec => new SparseMMLPFactor(-1, v, lv, Some(uniqueId))
+        }
         val factor = new SingletonFactor(sgf, l_ind, singletonWeight)
         variableToSingletonFactors += (v1 -> factor)
         factor

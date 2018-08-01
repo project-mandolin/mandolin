@@ -78,12 +78,12 @@ class MMLPRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
   
   def positivePosterior(s: List[StringDoublePair]) : java.lang.Double = {
     val scores = decodePairs(s)
-    (scores.find{case (s,i) => i == posIndex}).get._2
+    (scores.find{case (s,i) => i == posIndex}).get._1
   }
   
   def positivePosterior(s: List[String]) = {
     val scores = decode(s)
-    (scores.find{case (s,i) => i == posIndex}).get._2
+    (scores.find{case (s,i) => i == posIndex}).get._1
   }
   
   def decode(s: String) = {

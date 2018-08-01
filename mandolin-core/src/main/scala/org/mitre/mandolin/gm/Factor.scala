@@ -5,6 +5,7 @@ import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, SparseTensor1 => Spars
 
 abstract class GMFactor[F <: GMFactor[F]] {
   var currentAssignment : Int = 0
+  var currentScore : Double = -Double.MaxValue
   def getMode(fm: FactorModel[F], dual: Boolean) : Int
   def getMode(fm: FactorModel[F], dual: Boolean, tau: Double) : Int
   def getModeHard(fm: FactorModel[F], dual: Boolean) : Int
@@ -12,7 +13,8 @@ abstract class GMFactor[F <: GMFactor[F]] {
   def getInput : MMLPFactor
   def indexToAssignment(i: Int) : Array[Int]
   def assignmentToIndex(ar: Array[Int]) : Int
-  
+
+
   def setMode(fm: FactorModel[F], dual: Boolean) : Unit = {
     currentAssignment = getMode(fm, dual)
   }
@@ -85,6 +87,7 @@ class SingletonFactor(input: MMLPFactor, val label: Int, singletonWeight: Double
         reparameterizedMarginals(i) /= zSum   // normalize
         i += 1
       }
+      currentScore = bestSc // set this score in case we use downstream
       best
     }
   }
