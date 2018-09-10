@@ -5,7 +5,24 @@ import org.mitre.mandolin.util.{LocalIOAssistant, AbstractPrintWriter, Alphabet,
 import ml.dmlc.xgboost4j.LabeledPoint
 import ml.dmlc.xgboost4j.scala.{DMatrix, XGBoost, Booster}
 
-class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
+trait DataConversions {
+  def mapMMLPFactorToLabeledPoint(regression: Boolean)(gf: MMLPFactor) : LabeledPoint = {
+    gf match {
+      case x: SparseMMLPFactor =>
+        val spv = x.getInput
+        val out = x.getOutput        
+        val outVal = if (regression) out(0) else out.argmax.toFloat
+        LabeledPoint.fromSparseVector(outVal, spv.indArray, spv.valArray)
+      case x: StdMMLPFactor =>
+        val dv = x.getInput
+        val out = x.getOutput
+        val outVal = if (regression) out(0) else out.argmax.toFloat
+        LabeledPoint.fromDenseVector(outVal, dv.asArray)
+    }
+  }
+}
+
+class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) extends DataConversions {
   
   val paramMap = new scala.collection.mutable.HashMap[String, Any]
   paramMap.put("gamma", settings.gamma)
@@ -22,20 +39,7 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
   if (settings.regression) paramMap.put("num_class", 1)
   if (nl > 2) paramMap.put("num_class", numLabels)  
 
-  def mapMMLPFactorToLabeledPoint(gf: MMLPFactor) : LabeledPoint = {
-    gf match {
-      case x: SparseMMLPFactor =>
-        val spv = x.getInput
-        val out = x.getOutput        
-        val outVal = if (settings.regression) out(0) else out.argmax.toFloat
-        LabeledPoint.fromSparseVector(outVal, spv.indArray, spv.valArray)
-      case x: StdMMLPFactor =>
-        val dv = x.getInput
-        val out = x.getOutput
-        val outVal = if (settings.regression) out(0) else out.argmax.toFloat
-        LabeledPoint.fromDenseVector(outVal, dv.asArray)
-    }
-  }
+  
 
   def gatherTestAUC(s: String) = {
     s.split('\t').toList match {
@@ -45,7 +49,7 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
   }
   
   def getPredictionsAndEval(booster: Booster, data: Iterator[MMLPFactor], evMethod: String = "auc") : (Array[Array[Float]], Float) = {
-    val dataDm = new DMatrix(data map mapMMLPFactorToLabeledPoint)    
+    val dataDm = new DMatrix(data map mapMMLPFactorToLabeledPoint(settings.regression))    
     val res = booster.predict(dataDm,false,0)
     val evalInfo = booster.evalSet(Array(dataDm), Array(evMethod), 1)
     (res, 1.0f - gatherTestAUC(evalInfo))
@@ -53,8 +57,8 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
 
   def evaluateTrainingSet(trainVec: Vector[MMLPFactor], test: Option[Iterator[MMLPFactor]]) : (Float, Option[Booster]) = {
     val train = trainVec.toIterator
-    val trIter = train map mapMMLPFactorToLabeledPoint
-    val tstIter = test map {iter => iter map mapMMLPFactorToLabeledPoint }
+    val trIter = train map mapMMLPFactorToLabeledPoint(settings.regression)
+    val tstIter = test map {iter => iter map mapMMLPFactorToLabeledPoint(settings.regression) }
     val trainDm = new DMatrix(trIter)
     tstIter match {
       case Some(tst) =>
@@ -82,7 +86,7 @@ class XGBoostEvaluator(settings: XGModelSettings, numLabels: Int) {
   
   def getCrossValidationPredictions(allDataFactors: Vector[MMLPFactor], paramMap: collection.mutable.HashMap[String, Any], rounds: Int, folds: Int, file: String) = {
     val io = new LocalIOAssistant
-    val allData = allDataFactors map mapMMLPFactorToLabeledPoint
+    val allData = allDataFactors map mapMMLPFactorToLabeledPoint(settings.regression)
     val totalSize = allData.length
     val testFoldSize = totalSize / folds
     val nums = util.Random.shuffle(for (i <- 0 until totalSize) yield i)
