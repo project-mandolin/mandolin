@@ -11,6 +11,7 @@ trait MandolinRegistrator {
     (new AllScalaRegistrar).apply(kryo)
     kryo.register(classOf[collection.mutable.HashMap[Int,Double]])
     kryo.register(classOf[cern.colt.map.OpenIntDoubleHashMap])
+    kryo.register(classOf[org.mitre.mandolin.util.Tensor])
     kryo.register(classOf[org.mitre.mandolin.util.Tensor1])
     kryo.register(classOf[org.mitre.mandolin.util.Tensor2])
     kryo.register(classOf[org.mitre.mandolin.util.DenseTensor1])

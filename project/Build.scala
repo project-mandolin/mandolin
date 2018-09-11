@@ -31,7 +31,7 @@ object MandolinBuild extends Build {
   // In addition, the native code is pre-built in mandolin/mandolin-mx/native  
   lazy val mandolinMx = Project(id = "mandolin-mx", base = file("mandolin-mx")).
                             settings(mxNetSettings("mx"):_*).
-                            //settings(mxNetDependencySettings:_*).
+                            settings(mxNetDependencySettings:_*).
                             settings(assemblyProjSettings("mx"):_*).
                             //settings(siteSettings:_*).
                             settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(mandolinCore)
@@ -154,11 +154,10 @@ object MandolinBuild extends Build {
     Seq(
       libraryDependencies ++= Seq(
       	// "commons-logging" % "commons-logging" % "1.2"
-	// "ml.dmlc" % "xgboost4j" % "0.7",
+	"ml.dmlc" % "xgboost4j" % "0.72"
         // "ml.dmlc.mxnet" % "mxnet-core_2.11" % "0.1.2-SNAPSHOT"
       )
-    )
-    
+    )    
   }
 
   lazy val assemblyLinuxCoreTask = TaskKey[Unit]("linux-core")

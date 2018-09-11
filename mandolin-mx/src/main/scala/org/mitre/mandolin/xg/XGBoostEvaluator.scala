@@ -12,12 +12,12 @@ trait DataConversions {
         val spv = x.getInput
         val out = x.getOutput        
         val outVal = if (regression) out(0) else out.argmax.toFloat
-        LabeledPoint.fromSparseVector(outVal, spv.indArray, spv.valArray)
+        LabeledPoint(outVal, spv.indArray, spv.valArray)
       case x: StdMMLPFactor =>
         val dv = x.getInput
         val out = x.getOutput
         val outVal = if (regression) out(0) else out.argmax.toFloat
-        LabeledPoint.fromDenseVector(outVal, dv.asArray)
+        LabeledPoint(outVal, null, dv.asArray)
     }
   }
 }
