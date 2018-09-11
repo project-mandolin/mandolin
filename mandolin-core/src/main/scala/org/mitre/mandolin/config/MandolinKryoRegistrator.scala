@@ -31,6 +31,7 @@ trait MandolinRegistrator {
     kryo.register(classOf[org.mitre.mandolin.mlp.VecFeatureExtractor])
     kryo.register(classOf[org.mitre.mandolin.mlp.Layer])
     kryo.register(classOf[org.mitre.mandolin.mlp.DenseInputLayer])
+    kryo.register(classOf[org.mitre.mandolin.mlp.SparseInputLayer])
     kryo.register(classOf[org.mitre.mandolin.mlp.LayerDesignate])
     kryo.register(classOf[org.mitre.mandolin.mlp.ANNetwork])
     kryo.register(classOf[org.mitre.mandolin.mlp.LType])
