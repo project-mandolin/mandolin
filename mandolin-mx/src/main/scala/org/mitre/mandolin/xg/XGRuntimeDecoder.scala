@@ -1,12 +1,12 @@
 package org.mitre.mandolin.xg
 
 import org.mitre.mandolin.util.{DenseTensor1 => DenseVec, LocalIOAssistant, Tensor2 => Mat,IOAssistant}
-import org.mitre.mandolin.app.StringDoublePair
+import org.mitre.mandolin.app.{StringDoublePair, RuntimeDecoder}
 import org.mitre.mandolin.mlp.StdMMLPFactor
 import scala.collection.JavaConversions._
 import ml.dmlc.xgboost4j.scala.{XGBoost, DMatrix}
 
-class XGBinaryRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) extends DataConversions {
+class XGBinaryRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) extends RuntimeDecoder with DataConversions {
   def this(filePath: String, io: IOAssistant) = this(filePath, io, "")
   def this(filePath: String) = this(filePath, new LocalIOAssistant, "")
   
@@ -20,6 +20,8 @@ class XGBinaryRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String)
   val fa = fe.getAlphabet
   val laSize = spec.la.getSize
   val invLa  = spec.la.getInverseMapping
+  
+  val featureSet : Set[String] = fa.getMapping.keySet.toSet
   
   // val evaluator = new XGBoostEvaluator(xgSettings, laSize)
   val booster = XGBoost.loadModel(new java.io.ByteArrayInputStream(spec.booster))
