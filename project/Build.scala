@@ -129,7 +129,7 @@ object MandolinBuild extends Build {
       "org.slf4j" % "slf4j-log4j12" % "1.7.5",
       "com.typesafe" % "config" % "1.2.1",
       "colt" % "colt" % "1.2.0",
-      "com.twitter" %% "chill" % "0.9.2",
+      "com.twitter" %% "chill" % "0.8.0",
       "org.scalanlp" %% "breeze" % "0.13.2",
       "org.scala-graph" %% "graph-core" % "1.12.0",
       "com.typesafe.akka" %% "akka-actor" % "2.5.0",
