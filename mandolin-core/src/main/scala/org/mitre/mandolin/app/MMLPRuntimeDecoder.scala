@@ -3,12 +3,24 @@ package org.mitre.mandolin.app
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import org.mitre.mandolin.mlp.{StdMMLPFactor, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor}
+import org.mitre.mandolin.mlp.{StdMMLPFactor, MMLPFactor, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor}
 import org.mitre.mandolin.mlp.standalone.StandaloneMMLPModelReader
-import org.mitre.mandolin.util.{IOAssistant, DenseTensor1 => DenseVec, LocalIOAssistant, Tensor2 => Mat}
+import org.mitre.mandolin.util.{Alphabet, IOAssistant, DenseTensor1 => DenseVec, LocalIOAssistant, Tensor2 => Mat}
+import org.mitre.mandolin.transform.FeatureExtractor
 import scala.collection.JavaConversions._
+import scala.collection.mutable.HashMap
 
 case class StringDoublePair(val str: String, val value: Double)
+
+abstract class RuntimeDecoder {
+
+  val featureSet : Set[String]
+  def decode(s: String) : Seq[(Float, Int)]
+  def decodePairsMPEWithScore(li: List[StringDoublePair]) : StringDoublePair
+  def decodePairsMPEWithScore(li: java.util.List[StringDoublePair]) : StringDoublePair
+  
+  
+}
 
 /**
  * A simple runtime decoder for trained MMLPs. Provides a lightweight way to use
@@ -20,7 +32,7 @@ case class StringDoublePair(val str: String, val value: Double)
  * @param filePath path to input file containing serialized model
  * @author wellner
  */
-class MMLPRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
+class MMLPRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) extends RuntimeDecoder {
   def this(filePath: String, io: IOAssistant) = this(filePath, io, "")
   def this(filePath: String) = this(filePath, new LocalIOAssistant, "")
   
@@ -39,21 +51,24 @@ class MMLPRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String) {
 
   fa.ensureFixed // make sure the feature alphabet is fixed
   
-  def topMatrixEntriesForRow(m: Mat, r: Int) : List[(String,Float)] = {
-    val invFa = fa.getInverseMapping
-    var best : List[(Int,Float)] = Nil
-    for (j <- 0 until m.getDim2) best = (j, m(r,j)) :: best
-    best.sortBy(_._2).reverse map {e => (invFa(e._1), e._2)}
-  } 
-  
-  val orderedFeatures = {
+  val orderedFeatures : HashMap[String, Vector[(String, Float)]] = {
     val hm = new collection.mutable.HashMap[String,Vector[(String,Float)]]
     invLa foreach {case (i,l) =>
       hm.put(l, topMatrixEntriesForRow(model.wts.wts.get(0)._1, i).toVector)
       }
     hm
-  }
+  }    
   
+  val featureSet : Set[String] = fa.getMapping.keySet.toSet  
+  
+  def topMatrixEntriesForRow(m: Mat, r: Int) : List[(String,Float)] = {
+    val invFa = fa.getInverseMapping
+    var best : List[(Int,Float)] = Nil
+    for (j <- 0 until m.getDim2) best = (j, m(r,j)) :: best
+    best.sortBy(_._2).reverse map {e => (invFa(e._1), e._2)}
+  }
+     
+    
   var unknownFeatures = Set[String]()
   
   /** @return A Java Set of Strings containing all features provided that weren't recognized by the model alphabet */
