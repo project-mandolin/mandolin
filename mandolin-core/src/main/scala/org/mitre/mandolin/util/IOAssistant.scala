@@ -3,7 +3,9 @@ package org.mitre.mandolin.util
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
-import com.esotericsoftware.kryo.io.{ Input => KInput, Output => KOutput }
+import java.io.DataInputStream
+
+import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
 import com.esotericsoftware.kryo.Kryo
 
 abstract class AbstractPrintWriter(fp: String, append: Boolean) {
@@ -31,6 +33,7 @@ abstract class IOAssistant {
   
   def writeSerializedObject(kryo: Kryo, filePath: String, o: Any) : Unit
   def readSerializedObject(kryo: Kryo, filePath: String, c: Class[_]) : Any
+  def readSerializedObject(kryo: Kryo, is: DataInputStream, c: Class[_]) : Any
   def readLines(filePath: String): Iterator[String] 
 }
 
@@ -58,5 +61,13 @@ class LocalIOAssistant extends IOAssistant {
     kInput.close
     is.close
     m    
+  }
+
+  def readSerializedObject(kryo: Kryo, is: DataInputStream, c: Class[_]) = {
+    val kInput = new KInput(is)
+    val m = kryo.readObject(kInput, c)
+    kInput.close
+    is.close
+    m
   }
 }

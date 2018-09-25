@@ -4,13 +4,14 @@ package org.mitre.mandolin.mlp.standalone
  * Copyright (c) 2014-2015 The MITRE Corporation
  */
 
+import java.io.DataInputStream
+
 import org.mitre.mandolin.util.{Alphabet, IOAssistant, LocalIOAssistant}
 import org.mitre.mandolin.transform.FeatureExtractor
 import org.mitre.mandolin.predict.{DiscreteConfusion, RegressionConfusion}
 import org.mitre.mandolin.optimize.standalone.VectorData
-import org.mitre.mandolin.predict.standalone.{Trainer, TrainTester, TrainDecoder, PosteriorDecoder, PosteriorEvalDecoder}
-import org.mitre.mandolin.mlp.{AbstractProcessor, RegPredictor, CatPredictor, 
-  MandolinMLPSettings, MMLPModelWriter, CategoricalMMLPPredictor, MMLPPosteriorOutputConstructor, MMLPFactor, MMLPWeights, MMLPInstanceEvaluator, MMLPLossGradient, MMLPModelSpec, ANNetwork, NullMMLPUpdater}
+import org.mitre.mandolin.predict.standalone.{PosteriorDecoder, PosteriorEvalDecoder, TrainDecoder, TrainTester, Trainer}
+import org.mitre.mandolin.mlp.{ANNetwork, AbstractProcessor, CatPredictor, CategoricalMMLPPredictor, MMLPFactor, MMLPInstanceEvaluator, MMLPLossGradient, MMLPModelSpec, MMLPModelWriter, MMLPPosteriorOutputConstructor, MMLPWeights, MandolinMLPSettings, NullMMLPUpdater, RegPredictor}
 import org.mitre.mandolin.optimize.{BatchEvaluator, GenData}
 import com.twitter.chill.EmptyScalaKryoInstantiator
 import org.mitre.mandolin.config.MandolinRegistrator
@@ -60,6 +61,10 @@ class StandaloneMMLPModelReader {
 
   def readModel(f: String, io: IOAssistant): MMLPModelSpec = {
     io.readSerializedObject(kryo, f, classOf[MMLPModelSpec]).asInstanceOf[MMLPModelSpec]
+  }
+
+  def readModel(is: DataInputStream, io: IOAssistant): MMLPModelSpec = {
+    io.readSerializedObject(kryo, is, classOf[MMLPModelSpec]).asInstanceOf[MMLPModelSpec]
   }
 }
 

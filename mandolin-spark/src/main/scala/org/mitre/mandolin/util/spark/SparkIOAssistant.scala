@@ -1,12 +1,13 @@
 package org.mitre.mandolin.util.spark
 
-import org.apache.spark.SparkContext
-import org.apache.hadoop.fs.{ FileSystem, Path, FSDataOutputStream }
-import org.apache.hadoop.conf.Configuration
-import com.esotericsoftware.kryo.io.{ Input => KInput, Output => KOutput }
-import com.esotericsoftware.kryo.Kryo
+import java.io.DataInputStream
 
-import org.mitre.mandolin.util.{IOAssistant, LocalPrintWriter, AbstractPrintWriter}
+import org.apache.spark.SparkContext
+import org.apache.hadoop.fs.{FSDataOutputStream, FileSystem, Path}
+import org.apache.hadoop.conf.Configuration
+import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
+import com.esotericsoftware.kryo.Kryo
+import org.mitre.mandolin.util.{AbstractPrintWriter, IOAssistant, LocalPrintWriter}
 /**
  * @author wellner
  */
@@ -94,4 +95,6 @@ class SparkIOAssistant(sc: SparkContext) extends IOAssistant {
       m
     }
   }
+
+  def readSerializedObject(kryo: Kryo, is: DataInputStream, c: Class[_]): Any = throw new RuntimeException("not implemented")
 }
