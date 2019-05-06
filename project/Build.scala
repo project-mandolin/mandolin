@@ -47,7 +47,8 @@ object MandolinBuild extends Build {
   
 
   def rootSettings = sharedSettings ++ Seq(
-    name := "mandolin"
+    name := "mandolin",
+    retrieveManaged := true
   )
 
   def sharedSettings : Seq[Setting[_]] = Defaults.defaultSettings ++ Seq(

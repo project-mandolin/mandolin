@@ -28,6 +28,7 @@ class XGBinaryRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String)
   
   def decode(s: String) : Seq[(Float, Int)] = {
     val factor = fe.extractFeatures(s)
+    
     val dataDm = new DMatrix(Iterator(factor) map mapMMLPFactorToLabeledPoint(false))
     val res = booster.predict(dataDm,false,0)
     val res0 = res(0)
@@ -40,8 +41,8 @@ class XGBinaryRuntimeDecoder(filePath: String, io: IOAssistant, posCase: String)
       val fid = fa.ofString(s.str)
       if ((fid >= 0) && (fid < fa.getSize)) dVec(fa.ofString(s.str)) = s.value.toFloat}
     val lv = DenseVec.zeros(laSize)
-    val factor = new StdMMLPFactor(-1, dVec, lv, None)
-    val dataDm = new DMatrix(Iterator(factor) map mapMMLPFactorToLabeledPoint(false))
+    // val factor = new StdMMLPFactor(-1, dVec, lv, None)
+    val dataDm = new DMatrix(dVec.asArray, 1, fa.getSize)
     val res = booster.predict(dataDm, false, 0)
     val res0 = res(0)
     new StringDoublePair(posCase, res0(0))
